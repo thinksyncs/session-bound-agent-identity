@@ -218,6 +218,13 @@ For example:
 Aggregated validation errors should remain inspectable by layer and field so
 callers can fail closed while still reporting actionable diagnostics.
 
+The validator also rejects unsafe identity-policy values, including invalid
+UTF-8 and control characters such as CRLF. This protects log, header, and
+diagnostic paths from accepting values that could be reused for injection.
+Validation errors intentionally report only layer, field, and error class; they
+do not echo raw peer values. Any HTTP or HTML presentation layer must still use
+normal output escaping and CSRF protections at that layer.
+
 ## Minimal implementation path
 
 A small implementation can be staged without changing the aTLS wire protocol:

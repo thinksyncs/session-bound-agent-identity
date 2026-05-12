@@ -5,6 +5,7 @@ package identitypolicy
 
 import (
 	"errors"
+	"strings"
 	"testing"
 )
 
@@ -103,6 +104,28 @@ func TestValidateAcceptsObservedSetSupersetWithDuplicatesAndBlanks(t *testing.T)
 		Scopes:               []string{" ", "read:orders", "read:orders", "write:audit"},
 		Resources:            []string{"orders", "audit-log"},
 		AuthorizationDetails: []string{"settle", "notify"},
+	}
+
+	if err := Validate(policy, observed); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestValidateAcceptsPrintablePolicyValues(t *testing.T) {
+	policy := Policy{
+		Require: Requirements{
+			L2B: true,
+			L5:  true,
+		},
+		Expected: Values{
+			Service:   "https://service.example.com/a?env=prod&tenant=a",
+			Resources: []string{"urn:cocos:resource:orders#read"},
+		},
+	}
+
+	observed := Values{
+		Service:   "https://service.example.com/a?env=prod&tenant=a",
+		Resources: []string{"urn:cocos:resource:orders#read", "urn:cocos:resource:audit#write"},
 	}
 
 	if err := Validate(policy, observed); err != nil {
@@ -308,6 +331,69 @@ func TestValidateRejectsBlankObservedExactValue(t *testing.T) {
 	err := Validate(policy, Values{Agent: " "})
 	if !errors.Is(err, ErrMissingObserved) {
 		t.Fatalf("Validate() error = %v, want %v", err, ErrMissingObserved)
+	}
+}
+
+func TestValidateRejectsUnsafeExpectedExactValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments\r\nx-forwarded-host: attacker"},
+	}
+
+	err := Validate(policy, Values{Service: "payments"})
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
+func TestValidateRejectsUnsafeObservedExactValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L3: true},
+		Expected: Values{Agent: "agent-a"},
+	}
+
+	err := Validate(policy, Values{Agent: "agent-a\nagent-b"})
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
+func TestValidateRejectsInvalidUTF8ObservedValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L4: true},
+		Expected: Values{TaskID: "task-1"},
+	}
+
+	err := Validate(policy, Values{TaskID: string([]byte{0xff})})
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
+func TestValidateRejectsUnsafeSetValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L5: true},
+		Expected: Values{Scopes: []string{"read:orders"}},
+	}
+
+	err := Validate(policy, Values{Scopes: []string{"read:orders", "admin\r\nx-role: admin"}})
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
+func TestValidateErrorsDoNotEchoRawObservedValues(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments"},
+	}
+
+	err := Validate(policy, Values{Service: `<script>alert("xss")</script>`})
+	if !errors.Is(err, ErrMismatch) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrMismatch)
+	}
+	if strings.Contains(err.Error(), "<script>") {
+		t.Fatalf("Validate() error = %q, must not echo raw observed value", err.Error())
 	}
 }
 

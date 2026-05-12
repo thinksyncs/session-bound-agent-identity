@@ -9,12 +9,15 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"unicode"
+	"unicode/utf8"
 )
 
 var (
 	ErrMissingExpected = errors.New("identitypolicy: missing expected value")
 	ErrMissingObserved = errors.New("identitypolicy: missing observed value")
 	ErrMismatch        = errors.New("identitypolicy: value mismatch")
+	ErrUnsafeValue     = errors.New("identitypolicy: unsafe value")
 )
 
 const (
@@ -238,9 +241,17 @@ func validateExactLayer(layer string, expected, observed Values, fields []field)
 			continue
 		}
 		hasExpected = true
+		if isUnsafe(want) {
+			errs = append(errs, validationError(layer, f.name, ErrUnsafeValue))
+			continue
+		}
 		got := f.get(observed)
 		if isEmpty(got) {
 			errs = append(errs, validationError(layer, f.name, ErrMissingObserved))
+			continue
+		}
+		if isUnsafe(got) {
+			errs = append(errs, validationError(layer, f.name, ErrUnsafeValue))
 			continue
 		}
 		if got != want {
@@ -291,12 +302,18 @@ func requireContainsAll(layer, fieldName string, expected, observed []string) er
 		if isEmpty(value) {
 			return validationError(layer, fieldName, ErrMissingExpected)
 		}
+		if isUnsafe(value) {
+			return validationError(layer, fieldName, ErrUnsafeValue)
+		}
 	}
 
 	seen := make(map[string]struct{}, len(observed))
 	for _, value := range observed {
 		if isEmpty(value) {
 			continue
+		}
+		if isUnsafe(value) {
+			return validationError(layer, fieldName, ErrUnsafeValue)
 		}
 		seen[value] = struct{}{}
 	}
@@ -336,4 +353,16 @@ func validationError(layer, field string, err error) *ValidationError {
 
 func isEmpty(value string) bool {
 	return strings.TrimSpace(value) == ""
+}
+
+func isUnsafe(value string) bool {
+	if !utf8.ValidString(value) {
+		return true
+	}
+	for _, r := range value {
+		if unicode.IsControl(r) {
+			return true
+		}
+	}
+	return false
 }
