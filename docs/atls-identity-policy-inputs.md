@@ -202,6 +202,29 @@ Concrete policy rules should follow this shape:
   policy decision.
 - A mismatch is a hard failure for flows that require that layer.
 
+## Error handling
+
+Validation failures should preserve the layer, field, and error class. Callers
+can then distinguish local policy configuration errors from missing peer claims
+or mismatched values.
+
+For example:
+
+- missing local expected value: configuration or policy setup problem
+- missing observed value: peer evidence, metadata, or token did not carry the
+  required claim
+- mismatch: peer supplied a claim, but it did not match local policy
+
+Aggregated validation errors should remain inspectable by layer and field so
+callers can fail closed while still reporting actionable diagnostics.
+
+The validator also rejects unsafe identity-policy values, including invalid
+UTF-8 and control characters such as CRLF. This protects log, header, and
+diagnostic paths from accepting values that could be reused for injection.
+Validation errors intentionally report only layer, field, and error class; they
+do not echo raw peer values. Any HTTP or HTML presentation layer must still use
+normal output escaping and CSRF protections at that layer.
+
 ## Minimal implementation path
 
 A small implementation can be staged without changing the aTLS wire protocol:
@@ -219,8 +242,26 @@ The aTLS verifier can remain focused on L1 and L2a. L2b through L5 enforcement
 can live at the layer that has access to deployment policy, agent metadata,
 computation state, and authorization decisions.
 
+## Implementation status
+
+The reusable validator lives in `pkg/atls/identitypolicy`. It implements the
+expected-versus-observed comparison model described above, but it is not wired
+into the aTLS verifier by default.
+
+Callers are expected to:
+
+- build a local `Policy` from trusted deployment or authorization inputs,
+- extract observed `Values` from the appropriate CoCos layer,
+- call `identitypolicy.Validate`,
+- and treat validation errors as fail-closed for layers required by policy.
+
+`identitypolicy.Validate` reports all layer and field failures found in one
+pass. Callers can inspect `ValidationErrors` for per-field diagnostics, while
+still using `errors.Is` with the package sentinel errors.
+
 ## Suggested next step
 
-Document which L2b through L5 inputs CoCos deployments expect to enforce. After
-that, add minimal fail-closed checks for missing or mismatched expected values at
-the layer where enforcement belongs.
+Decide which L2b through L5 inputs each CoCos deployment expects to enforce.
+Then wire `identitypolicy.Validate` at the layer that owns those inputs, such as
+manager configuration, agent metadata, computation state, or an authorization
+policy engine.
