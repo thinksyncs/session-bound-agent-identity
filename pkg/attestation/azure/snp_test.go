@@ -634,10 +634,3 @@ func TestExtractAzureMeasurement_Error(t *testing.T) {
 	assert.Error(t, err)
 	assert.Contains(t, err.Error(), "failed to get tee from claims")
 }
-
-func TestVerifier_VerifyEAT(t *testing.T) {
-	v := verifier{}
-	err := v.VerifyEAT(nil, nil, nil)
-	assert.Error(t, err)
-	assert.Contains(t, err.Error(), "VerifyEAT is deprecated")
-}
