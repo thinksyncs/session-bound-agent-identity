@@ -56,6 +56,49 @@ These names are analogies, not normative requirements. A CoCos deployment could
 source the same expected values from configuration, a registry, CoRIM metadata,
 an EAT claim, an agent manifest, or an application policy engine.
 
+## Policy shape
+
+The core rule is to keep expected values separate from observed values.
+
+- Expected values come from local policy, configuration, a trusted registry, or
+  a policy engine.
+- Observed values come from attestation evidence, CoRIM metadata, EAT claims,
+  agent manifests, request metadata, or authorization tokens.
+- Verification compares observed values against expected values.
+- Observed values must not become expected values without a trusted local policy
+  decision.
+
+A minimal policy object can be shaped as follows:
+
+```yaml
+identity_policy:
+  require:
+    l2b: false
+    l3: false
+    l4: false
+    l5: false
+
+  expected:
+    service: ""
+    tenant: ""
+    deployment: ""
+    environment: ""
+    workload: ""
+    agent: ""
+    agent_public_key: ""
+    computation_id: ""
+    task_id: ""
+    thread_id: ""
+    delegation_id: ""
+    scopes: []
+    resources: []
+    authorization_details: []
+```
+
+An implementation can split this object across existing configuration, manager
+state, agent metadata, or an external policy engine. The important part is the
+source of authority, not the concrete serialization format.
+
 ## L2b: intended service, tenant, or deployment
 
 The verifier needs a local source of expected identity values. Examples include:
@@ -129,6 +172,21 @@ it does not claim that all inputs already exist or are enforced today.
 | L4 | Expected task, thread, context, or delegation | computation ID, request context, session state, delegation token, callback binding |
 | L5 | Expected authorization or capability | OAuth/OIDC-style policy, capability token, policy engine, user consent, tool policy |
 
+## Validation algorithm
+
+For each layer that is required by policy:
+
+1. Load the local expected value for that layer.
+2. Reject if the expected value is missing or ambiguous.
+3. Extract the observed value from the trusted source for that layer.
+4. Reject if the observed value is missing.
+5. Compare the observed value with the expected value.
+6. Reject on mismatch.
+7. Continue to the next required layer.
+
+For set-like values such as scopes or resources, the observed set must satisfy
+the local policy. A peer-provided scope list is not enough by itself.
+
 ## Fail-closed principle
 
 For L2b through L5, the safe default should be fail closed when an expected local
@@ -143,6 +201,23 @@ Concrete policy rules should follow this shape:
 - Peer-provided values are never promoted into expected values without a trusted
   policy decision.
 - A mismatch is a hard failure for flows that require that layer.
+
+## Minimal implementation path
+
+A small implementation can be staged without changing the aTLS wire protocol:
+
+1. Define a local policy input structure for L2b through L5 expected values.
+2. Define extraction points for observed values.
+3. Add fail-closed validators for exact-match string fields.
+4. Add set-containment validation for scopes, resources, or authorization
+   details.
+5. Wire the validators at the application or manager layer before treating an
+   accepted aTLS peer as the intended deployment, agent, task, or authorized
+   actor.
+
+The aTLS verifier can remain focused on L1 and L2a. L2b through L5 enforcement
+can live at the layer that has access to deployment policy, agent metadata,
+computation state, and authorization decisions.
 
 ## Suggested next step
 
