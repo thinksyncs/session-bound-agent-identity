@@ -7,13 +7,19 @@ import (
 	"context"
 	"crypto/tls"
 	"crypto/x509"
+	"errors"
 	"fmt"
 	"net"
 	"time"
 
 	"github.com/ultravioletrs/cocos/pkg/atls/ea"
 	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
+	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 )
+
+// ErrMissingObservedIdentity reports an enabled identity policy without a
+// trusted observed-identity source.
+var ErrMissingObservedIdentity = errors.New("atls: missing observed identity source")
 
 type Conn struct {
 	*tls.Conn
@@ -21,11 +27,16 @@ type Conn struct {
 	ValidationResult *ea.ValidationResult
 }
 
+// ObservedIdentityFunc extracts observed identity values after aTLS validation.
+type ObservedIdentityFunc func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error)
+
 type ClientConfig struct {
 	TLSConfig         *tls.Config
 	Session           *ea.Session
 	VerifyOptions     *x509.VerifyOptions
 	AttestationPolicy eaattestation.VerificationPolicy
+	IdentityPolicy    identitypolicy.Policy
+	ObservedIdentity  ObservedIdentityFunc
 	Request           *ea.AuthenticatorRequest
 	RequestBuilder    func() (*ea.AuthenticatorRequest, error)
 }
@@ -135,6 +146,10 @@ func ClientContext(ctx context.Context, tlsConn *tls.Conn, cfg *ClientConfig) (*
 			return err
 		}
 
+		if err := validateIdentityPolicy(cfg, &st, validation); err != nil {
+			return err
+		}
+
 		res = &Conn{Conn: tlsConn, Request: req, ValidationResult: validation}
 		return nil
 	})
@@ -143,6 +158,23 @@ func ClientContext(ctx context.Context, tlsConn *tls.Conn, cfg *ClientConfig) (*
 	}
 
 	return res, nil
+}
+
+func validateIdentityPolicy(cfg *ClientConfig, st *tls.ConnectionState, validation *ea.ValidationResult) error {
+	if !cfg.IdentityPolicy.Enabled() {
+		return nil
+	}
+	if cfg.ObservedIdentity == nil {
+		return ErrMissingObservedIdentity
+	}
+	observed, err := cfg.ObservedIdentity(st, validation)
+	if err != nil {
+		return fmt.Errorf("atls: observed identity source failed: %w", err)
+	}
+	if err := cfg.IdentityPolicy.Validate(observed); err != nil {
+		return fmt.Errorf("atls: identity policy validation failed: %w", err)
+	}
+	return nil
 }
 
 func Server(tlsConn *tls.Conn, cfg *ServerConfig) (*Conn, error) {

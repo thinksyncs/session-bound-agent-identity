@@ -10,10 +10,14 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"errors"
 	"math/big"
 	"net"
 	"testing"
 	"time"
+
+	"github.com/ultravioletrs/cocos/pkg/atls/ea"
+	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 )
 
 func selfSignedCert(t *testing.T) tls.Certificate {
@@ -97,4 +101,59 @@ func TestServerAllowsIdentityWithoutTLSConfig(t *testing.T) {
 
 	defer srvRes.conn.Close()
 	defer cliRes.conn.Close()
+}
+
+func TestValidateIdentityPolicySkipsDisabledPolicy(t *testing.T) {
+	cfg := &ClientConfig{}
+
+	if err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil); err != nil {
+		t.Fatalf("validateIdentityPolicy() error = %v", err)
+	}
+}
+
+func TestValidateIdentityPolicyRequiresObservedIdentitySource(t *testing.T) {
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L2B: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil)
+	if !errors.Is(err, ErrMissingObservedIdentity) {
+		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, ErrMissingObservedIdentity)
+	}
+}
+
+func TestValidateIdentityPolicyAcceptsObservedIdentity(t *testing.T) {
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L2B: true, L3: true},
+			Expected: identitypolicy.Values{Service: "payments", Agent: "agent-a"},
+		},
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error) {
+			return identitypolicy.Values{Service: "payments", Agent: "agent-a"}, nil
+		},
+	}
+
+	if err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil); err != nil {
+		t.Fatalf("validateIdentityPolicy() error = %v", err)
+	}
+}
+
+func TestValidateIdentityPolicyRejectsObservedIdentityMismatch(t *testing.T) {
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L2B: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error) {
+			return identitypolicy.Values{Service: "analytics"}, nil
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil)
+	if !errors.Is(err, identitypolicy.ErrMismatch) {
+		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, identitypolicy.ErrMismatch)
+	}
 }

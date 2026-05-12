@@ -30,8 +30,10 @@ values as the policy.
 
 ## Scope
 
-This note does not change the aTLS verifier. It records the policy inputs that
-would be needed before L2b through L5 can be enforced consistently.
+This note records the policy inputs needed before L2b through L5 can be
+enforced consistently. The aTLS client transport exposes an optional
+`atls.ClientConfig.IdentityPolicy` hook for callers that already have a trusted
+source for the observed identity values.
 
 Out of scope for this note:
 
@@ -98,6 +100,27 @@ identity_policy:
 An implementation can split this object across existing configuration, manager
 state, agent metadata, or an external policy engine. The important part is the
 source of authority, not the concrete serialization format.
+
+## Production wiring
+
+The production aTLS client hook is:
+
+- `atls.ClientConfig.IdentityPolicy` for local expected values.
+- `atls.ClientConfig.ObservedIdentity` for observed values extracted from a
+  trusted source.
+
+The hook runs after exported-authenticator and attestation validation, but
+before the accepted aTLS connection is returned to the caller.
+
+The expected values are owned by local policy. In practice, that means manager
+configuration, operator configuration, a trusted registry, or an authorization
+policy engine. Peer-provided values must not become expected values.
+
+The observed values are extracted by the caller-supplied `ObservedIdentity`
+callback. That callback should read from trusted evidence, CoRIM metadata, EAT
+claims, agent manifests, request metadata, or authorization tokens. If an
+identity policy is enabled without an observed-identity callback, the client
+fails closed.
 
 ## L2b: intended service, tenant, or deployment
 

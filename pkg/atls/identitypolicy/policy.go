@@ -53,6 +53,11 @@ type Requirements struct {
 	L5  bool `json:"l5" yaml:"l5"`
 }
 
+// Enabled reports whether at least one identity-policy layer is required.
+func (r Requirements) Enabled() bool {
+	return r.L2B || r.L3 || r.L4 || r.L5
+}
+
 // Values contains local expected values or observed peer values.
 type Values struct {
 	Service              string   `json:"service,omitempty" yaml:"service,omitempty"`
@@ -75,6 +80,11 @@ type Values struct {
 type Policy struct {
 	Require  Requirements `json:"require" yaml:"require"`
 	Expected Values       `json:"expected" yaml:"expected"`
+}
+
+// Enabled reports whether this policy should be enforced.
+func (p Policy) Enabled() bool {
+	return p.Require.Enabled()
 }
 
 // Validate checks observed values against this policy.
