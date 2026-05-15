@@ -22,7 +22,14 @@ type ClientConfig = internaltransport.ClientConfig
 
 type ServerConfig = internaltransport.ServerConfig
 
+// ObservedIdentityFunc extracts observed identity values after aTLS validation.
+type ObservedIdentityFunc = internaltransport.ObservedIdentityFunc
+
 type AuthenticatorRequest = ea.AuthenticatorRequest
+
+// ErrMissingObservedIdentity reports an enabled identity policy without a
+// trusted observed-identity source.
+var ErrMissingObservedIdentity = internaltransport.ErrMissingObservedIdentity
 
 func Dial(network, address string, cfg *ClientConfig) (*Conn, error) {
 	return internaltransport.Dial(network, address, cfg)

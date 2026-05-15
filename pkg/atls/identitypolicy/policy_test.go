@@ -9,6 +9,34 @@ import (
 	"testing"
 )
 
+func TestPolicyEnabled(t *testing.T) {
+	tests := []struct {
+		name   string
+		policy Policy
+		want   bool
+	}{
+		{
+			name: "disabled",
+			want: false,
+		},
+		{
+			name: "enabled",
+			policy: Policy{
+				Require: Requirements{L3: true},
+			},
+			want: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.policy.Enabled(); got != tt.want {
+				t.Fatalf("Policy.Enabled() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestValidateAcceptsMatchingRequiredLayers(t *testing.T) {
 	policy := Policy{
 		Require: Requirements{
