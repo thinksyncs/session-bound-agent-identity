@@ -5,6 +5,7 @@ package identitypolicy
 
 import (
 	"errors"
+	"strconv"
 	"strings"
 	"testing"
 )
@@ -157,6 +158,18 @@ func TestValidateAcceptsPrintablePolicyValues(t *testing.T) {
 	}
 
 	if err := Validate(policy, observed); err != nil {
+		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestValidateAcceptsMaxLengthValue(t *testing.T) {
+	value := strings.Repeat("a", MaxValueLength)
+	policy := Policy{
+		Require:  Requirements{L3: true},
+		Expected: Values{Agent: value},
+	}
+
+	if err := Validate(policy, Values{Agent: value}); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
 }
@@ -374,6 +387,19 @@ func TestValidateRejectsUnsafeExpectedExactValue(t *testing.T) {
 	}
 }
 
+func TestValidateRejectsHTMLDelimiters(t *testing.T) {
+	value := `<script>alert("xss")</script>`
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: value},
+	}
+
+	err := Validate(policy, Values{Service: value})
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
 func TestValidateRejectsUnsafeObservedExactValue(t *testing.T) {
 	policy := Policy{
 		Require:  Requirements{L3: true},
@@ -383,6 +409,54 @@ func TestValidateRejectsUnsafeObservedExactValue(t *testing.T) {
 	err := Validate(policy, Values{Agent: "agent-a\nagent-b"})
 	if !errors.Is(err, ErrUnsafeValue) {
 		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
+	}
+}
+
+func TestValidateRejectsTooLongExpectedExactValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L3: true},
+		Expected: Values{Agent: strings.Repeat("a", MaxValueLength+1)},
+	}
+
+	err := Validate(policy, Values{Agent: "agent-a"})
+	if !errors.Is(err, ErrValueTooLong) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrValueTooLong)
+	}
+}
+
+func TestValidateRejectsTooLongObservedExactValue(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L3: true},
+		Expected: Values{Agent: "agent-a"},
+	}
+
+	err := Validate(policy, Values{Agent: strings.Repeat("a", MaxValueLength+1)})
+	if !errors.Is(err, ErrValueTooLong) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrValueTooLong)
+	}
+}
+
+func TestValidateRejectsTooManyExpectedSetValues(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L5: true},
+		Expected: Values{Scopes: repeatValues("scope", MaxSetValues+1)},
+	}
+
+	err := Validate(policy, Values{Scopes: repeatValues("scope", MaxSetValues+1)})
+	if !errors.Is(err, ErrTooManyValues) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrTooManyValues)
+	}
+}
+
+func TestValidateRejectsTooManyObservedSetValues(t *testing.T) {
+	policy := Policy{
+		Require:  Requirements{L5: true},
+		Expected: Values{Scopes: []string{"scope-0"}},
+	}
+
+	err := Validate(policy, Values{Scopes: repeatValues("scope", MaxSetValues+1)})
+	if !errors.Is(err, ErrTooManyValues) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrTooManyValues)
 	}
 }
 
@@ -417,8 +491,8 @@ func TestValidateErrorsDoNotEchoRawObservedValues(t *testing.T) {
 	}
 
 	err := Validate(policy, Values{Service: `<script>alert("xss")</script>`})
-	if !errors.Is(err, ErrMismatch) {
-		t.Fatalf("Validate() error = %v, want %v", err, ErrMismatch)
+	if !errors.Is(err, ErrUnsafeValue) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrUnsafeValue)
 	}
 	if strings.Contains(err.Error(), "<script>") {
 		t.Fatalf("Validate() error = %q, must not echo raw observed value", err.Error())
@@ -474,4 +548,12 @@ func TestValidateSkipsUnrequiredLayers(t *testing.T) {
 	if err := Validate(policy, Values{}); err != nil {
 		t.Fatalf("Validate() error = %v", err)
 	}
+}
+
+func repeatValues(prefix string, n int) []string {
+	values := make([]string, n)
+	for i := range values {
+		values[i] = prefix + "-" + strconv.Itoa(i)
+	}
+	return values
 }

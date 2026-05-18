@@ -18,6 +18,8 @@ var (
 	ErrMissingObserved = errors.New("identitypolicy: missing observed value")
 	ErrMismatch        = errors.New("identitypolicy: value mismatch")
 	ErrUnsafeValue     = errors.New("identitypolicy: unsafe value")
+	ErrValueTooLong    = errors.New("identitypolicy: value too long")
+	ErrTooManyValues   = errors.New("identitypolicy: too many values")
 )
 
 const (
@@ -43,6 +45,11 @@ const (
 	FieldScopes               = "scopes"
 	FieldResources            = "resources"
 	FieldAuthorizationDetails = "authorization_details"
+)
+
+const (
+	MaxValueLength = 1024
+	MaxSetValues   = 128
 )
 
 // Requirements selects which identity-policy layers must be enforced.
@@ -251,8 +258,8 @@ func validateExactLayer(layer string, expected, observed Values, fields []field)
 			continue
 		}
 		hasExpected = true
-		if isUnsafe(want) {
-			errs = append(errs, validationError(layer, f.name, ErrUnsafeValue))
+		if err := validateValue(want); err != nil {
+			errs = append(errs, validationError(layer, f.name, err))
 			continue
 		}
 		got := f.get(observed)
@@ -260,8 +267,8 @@ func validateExactLayer(layer string, expected, observed Values, fields []field)
 			errs = append(errs, validationError(layer, f.name, ErrMissingObserved))
 			continue
 		}
-		if isUnsafe(got) {
-			errs = append(errs, validationError(layer, f.name, ErrUnsafeValue))
+		if err := validateValue(got); err != nil {
+			errs = append(errs, validationError(layer, f.name, err))
 			continue
 		}
 		if got != want {
@@ -308,12 +315,16 @@ func validateL5(expected, observed Values) error {
 }
 
 func requireContainsAll(layer, fieldName string, expected, observed []string) error {
+	if len(expected) > MaxSetValues || len(observed) > MaxSetValues {
+		return validationError(layer, fieldName, ErrTooManyValues)
+	}
+
 	for _, value := range expected {
 		if isEmpty(value) {
 			return validationError(layer, fieldName, ErrMissingExpected)
 		}
-		if isUnsafe(value) {
-			return validationError(layer, fieldName, ErrUnsafeValue)
+		if err := validateValue(value); err != nil {
+			return validationError(layer, fieldName, err)
 		}
 	}
 
@@ -322,8 +333,8 @@ func requireContainsAll(layer, fieldName string, expected, observed []string) er
 		if isEmpty(value) {
 			continue
 		}
-		if isUnsafe(value) {
-			return validationError(layer, fieldName, ErrUnsafeValue)
+		if err := validateValue(value); err != nil {
+			return validationError(layer, fieldName, err)
 		}
 		seen[value] = struct{}{}
 	}
@@ -365,12 +376,22 @@ func isEmpty(value string) bool {
 	return strings.TrimSpace(value) == ""
 }
 
+func validateValue(value string) error {
+	if len(value) > MaxValueLength {
+		return ErrValueTooLong
+	}
+	if isUnsafe(value) {
+		return ErrUnsafeValue
+	}
+	return nil
+}
+
 func isUnsafe(value string) bool {
 	if !utf8.ValidString(value) {
 		return true
 	}
 	for _, r := range value {
-		if unicode.IsControl(r) {
+		if unicode.IsControl(r) || r == '<' || r == '>' {
 			return true
 		}
 	}
