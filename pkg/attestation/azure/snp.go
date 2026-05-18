@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/edgelesssys/go-azguestattestation/maa"
@@ -89,7 +91,6 @@ func (a provider) TeeAttestation(teeNonce []byte) ([]byte, error) {
 }
 
 func (a provider) VTpmAttestation(vTpmNonce []byte) ([]byte, error) {
-	fmt.Printf("DEBUG: VTpmAttestation: vtpm.ExternalTPM is %T at %p\n", vtpm.ExternalTPM, &vtpm.ExternalTPM)
 	quote, err := vtpm.FetchQuote(vTpmNonce)
 	if err != nil {
 		return []byte{}, errors.Wrap(vtpm.ErrFetchQuote, err)
@@ -131,21 +132,8 @@ func NewVerifier(writer io.Writer) attestation.Verifier {
 
 // VerifyEAT verifies an EAT token and extracts the binary report for verification.
 func (v verifier) VerifyEAT(eatToken []byte, teeNonce []byte, vTpmNonce []byte) error {
-	// EAT verification logic is handled by certificate_verifier calling VerifyWithCoRIM
-	// But legacy interface might require VerifyEAT.
-	// In certificate_verifier.go, platformVerifier returns attestation.Verifier.
-	// certificate_verifier calls v.VerifyWithCoRIM directly (type assertion?).
-	// No, attestation.Verifier interface must have VerifyWithCoRIM.
-	// I previously updated Verifier interface to have VerifyWithCoRIM and VerifyEAT.
-	// But VerifyEAT implementation here calls VerifyAttestation which calls legacy.
-	// I should probably remove VerifyEAT from here if interface doesn't REQUIRE it or if I can stub it.
-	// But certificate_verifier calls v.VerifyWithCoRIM.
-	// Does it call VerifyEAT?
-	// certificate_verifier call: `func (v *certificateVerifier) verifyCertificateExtension` calls `eat.DecodeCBOR` then `verifier.VerifyWithCoRIM`.
-	// So VerifyEAT is NOT called by certificate_verifier.
-	// Is VerifyEAT in interface?
-	// If yes, I must keep it or stub it.
-	// I'll stub it to return error "not implemented used VerifyWithCoRIM".
+	// Kept only for backward compatibility with legacy call sites.
+	// Current verification path uses VerifyWithCoRIM.
 	return fmt.Errorf("VerifyEAT is deprecated, use VerifyWithCoRIM")
 }
 
@@ -273,13 +261,15 @@ func validateToken(token string) (map[string]any, error) {
 	if !jkuOk {
 		return nil, fmt.Errorf("token is missing jku or kid in header")
 	}
-
-	MaaUrlCerts := MaaURL
-	if MaaURL == "" {
-		MaaUrlCerts = jku
+	if _, kidOk := unverifiedToken.Header["kid"].(string); !kidOk {
+		return nil, fmt.Errorf("token is missing jku or kid in header")
+	}
+	maaURLCerts, err := validateJKU(jku, MaaURL)
+	if err != nil {
+		return nil, err
 	}
 
-	keySet, err := maa.GetKeySet(context.Background(), MaaUrlCerts, http.DefaultClient)
+	keySet, err := maa.GetKeySet(context.Background(), maaURLCerts, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key set: %w", err)
 	}
@@ -290,4 +280,42 @@ func validateToken(token string) (map[string]any, error) {
 	}
 
 	return claims, nil
+}
+
+func validateJKU(jku, configuredMaaURL string) (string, error) {
+	jkuURL, err := url.Parse(jku)
+	if err != nil {
+		return "", fmt.Errorf("invalid jku URL: %w", err)
+	}
+	if jkuURL.Scheme != "https" {
+		return "", fmt.Errorf("jku must use https")
+	}
+	if jkuURL.Hostname() == "" || jkuURL.User != nil || jkuURL.RawQuery != "" || jkuURL.Fragment != "" {
+		return "", fmt.Errorf("jku must be a clean absolute https URL without userinfo, query, or fragment")
+	}
+	if jkuURL.Path != "/certs" {
+		return "", fmt.Errorf("jku path must be /certs")
+	}
+
+	// If MaaURL is explicitly configured, require host pinning to the same endpoint.
+	if configuredMaaURL != "" {
+		maaURL, err := url.Parse(configuredMaaURL)
+		if err != nil {
+			return "", fmt.Errorf("invalid configured MAA URL: %w", err)
+		}
+		if maaURL.Scheme != "https" || maaURL.Hostname() == "" {
+			return "", fmt.Errorf("configured MAA URL must be an absolute https URL")
+		}
+		if !strings.EqualFold(jkuURL.Hostname(), maaURL.Hostname()) || jkuURL.Port() != maaURL.Port() {
+			return "", fmt.Errorf("jku host %q does not match configured MAA host %q", jkuURL.Host, maaURL.Host)
+		}
+		return configuredMaaURL, nil
+	}
+
+	// When MaaURL is not configured, accept only official Azure attestation hosts.
+	if !strings.HasSuffix(strings.ToLower(jkuURL.Hostname()), ".attest.azure.net") {
+		return "", fmt.Errorf("jku host is not an allowed Azure attestation domain")
+	}
+
+	return (&url.URL{Scheme: jkuURL.Scheme, Host: jkuURL.Host}).String(), nil
 }

@@ -225,8 +225,9 @@ func TestGetFreePort(t *testing.T) {
 	assert.NoError(t, err)
 	assert.GreaterOrEqual(t, port, 6000)
 
-	_, err = net.Listen("tcp", net.JoinHostPort("localhost", fmt.Sprint(port)))
+	listener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
 	assert.NoError(t, err)
+	defer listener.Close()
 
 	port, err = getFreePort(6000, 6100)
 	assert.NoError(t, err)
@@ -378,6 +379,52 @@ func TestTmpEnvironmentWithAWSCredentials(t *testing.T) {
 	}
 }
 
+func TestTempCertMountRestrictsClientKeyPermissions(t *testing.T) {
+	dir, err := tempCertMount("test-id", &CreateReq{
+		AgentCvmClientCert:   []byte("client-cert"),
+		AgentCvmClientKey:    []byte("client-key"),
+		AgentCvmServerCaCert: []byte("server-ca"),
+	})
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	keyInfo, err := os.Stat(path.Join(dir, "key.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), keyInfo.Mode().Perm())
+
+	certInfo, err := os.Stat(path.Join(dir, "cert.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), certInfo.Mode().Perm())
+
+	caInfo, err := os.Stat(path.Join(dir, "ca.pem"))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o644), caInfo.Mode().Perm())
+}
+
+func TestTmpEnvironmentRestrictsFilePermissions(t *testing.T) {
+	dir, err := tmpEnvironment("test-id", &CreateReq{
+		AgentLogLevel:      "debug",
+		AgentCvmServerUrl:  "localhost:7001",
+		AwsSecretAccessKey: "secret",
+	})
+	require.NoError(t, err)
+	defer os.RemoveAll(dir)
+
+	info, err := os.Stat(path.Join(dir, cvmEnvironmentFile))
+	require.NoError(t, err)
+	assert.Equal(t, os.FileMode(0o600), info.Mode().Perm())
+}
+
+func TestTmpEnvironmentRejectsInjectedLines(t *testing.T) {
+	dir, err := tmpEnvironment("test-id", &CreateReq{
+		AgentLogLevel:     "debug",
+		AgentCvmServerUrl: "localhost:7001\nAWS_SECRET_ACCESS_KEY=injected",
+	})
+	require.Error(t, err)
+	assert.Empty(t, dir)
+	assert.ErrorIs(t, err, ErrMalformedEntity)
+}
+
 func TestShutdown(t *testing.T) {
 	ms := &managerService{
 		vms:        make(map[string]vm.VM),
@@ -396,14 +443,11 @@ func TestShutdown(t *testing.T) {
 }
 
 func TestCreateVMWithAaKbsParams(t *testing.T) {
-	vmf := new(mocks.Provider)
-	vmMock := new(mocks.VM)
-	persistence := new(persistenceMocks.Persistence)
-
 	tests := []struct {
 		name              string
 		aaKbsParams       string
 		expectedKernelArg string
+		wantErr           bool
 	}{
 		{
 			name:              "with AaKbsParams",
@@ -415,22 +459,37 @@ func TestCreateVMWithAaKbsParams(t *testing.T) {
 			aaKbsParams:       "",
 			expectedKernelArg: "",
 		},
+		{
+			name:        "reject AaKbsParams with whitespace",
+			aaKbsParams: "cc_kbc::http://kbs.example.com:8080 quiet",
+			wantErr:     true,
+		},
+		{
+			name:        "reject AaKbsParams with newline",
+			aaKbsParams: "cc_kbc::http://kbs.example.com:8080\nagent.debug_console",
+			wantErr:     true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			vmf := new(mocks.Provider)
+			vmMock := new(mocks.VM)
+			persistence := new(persistenceMocks.Persistence)
 			var capturedConfig any
 
-			vmf.On("Execute", mock.Anything, mock.Anything, mock.Anything).
-				Run(func(args mock.Arguments) {
-					capturedConfig = args.Get(0)
-				}).
-				Return(vmMock).Once()
+			if !tt.wantErr {
+				vmf.On("Execute", mock.Anything, mock.Anything, mock.Anything).
+					Run(func(args mock.Arguments) {
+						capturedConfig = args.Get(0)
+					}).
+					Return(vmMock).Once()
 
-			vmMock.On("Start").Return(nil).Once()
-			vmMock.On("GetProcess").Return(1234).Once()
-			vmMock.On("Transition", mock.Anything).Return(nil).Once()
-			persistence.On("SaveVM", mock.Anything).Return(nil).Once()
+				vmMock.On("Start").Return(nil).Once()
+				vmMock.On("GetProcess").Return(1234).Once()
+				vmMock.On("Transition", mock.Anything).Return(nil).Once()
+				persistence.On("SaveVM", mock.Anything).Return(nil).Once()
+			}
 
 			tempDir := CreateDummyCoRIMFile(t, []byte("success"))
 			defer os.RemoveAll(tempDir)
@@ -457,6 +516,11 @@ func TestCreateVMWithAaKbsParams(t *testing.T) {
 				AaKbsParams: tt.aaKbsParams,
 			})
 
+			if tt.wantErr {
+				require.Error(t, err)
+				assert.ErrorIs(t, err, ErrMalformedEntity)
+				return
+			}
 			require.NoError(t, err)
 			require.NotNil(t, capturedConfig)
 

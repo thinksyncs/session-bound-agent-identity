@@ -320,6 +320,93 @@ func TestValidateToken(t *testing.T) {
 	}
 }
 
+func TestValidateJKU(t *testing.T) {
+	tests := []struct {
+		name      string
+		jku       string
+		maaURL    string
+		wantBase  string
+		wantError bool
+	}{
+		{
+			name:      "valid pinned host",
+			jku:       "https://sharedeus2.eus2.attest.azure.net/certs",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net",
+			wantBase:  "https://sharedeus2.eus2.attest.azure.net",
+			wantError: false,
+		},
+		{
+			name:      "valid pinned host with port",
+			jku:       "https://sharedeus2.eus2.attest.azure.net:443/certs",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net:443",
+			wantBase:  "https://sharedeus2.eus2.attest.azure.net:443",
+			wantError: false,
+		},
+		{
+			name:      "reject non-https",
+			jku:       "http://sharedeus2.eus2.attest.azure.net/certs",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net",
+			wantError: true,
+		},
+		{
+			name:      "reject query in jku",
+			jku:       "https://sharedeus2.eus2.attest.azure.net/certs?x=1",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net",
+			wantError: true,
+		},
+		{
+			name:      "reject non-certs jku path",
+			jku:       "https://sharedeus2.eus2.attest.azure.net/other",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net",
+			wantError: true,
+		},
+		{
+			name:      "reject host mismatch when pinned",
+			jku:       "https://evil.attest.azure.net/certs",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net",
+			wantError: true,
+		},
+		{
+			name:      "reject port mismatch when pinned",
+			jku:       "https://sharedeus2.eus2.attest.azure.net:444/certs",
+			maaURL:    "https://sharedeus2.eus2.attest.azure.net:443",
+			wantError: true,
+		},
+		{
+			name:      "allow azure domain when not pinned",
+			jku:       "https://example.westeurope.attest.azure.net/certs",
+			maaURL:    "",
+			wantBase:  "https://example.westeurope.attest.azure.net",
+			wantError: false,
+		},
+		{
+			name:      "allow azure domain with port when not pinned",
+			jku:       "https://example.westeurope.attest.azure.net:8443/certs",
+			maaURL:    "",
+			wantBase:  "https://example.westeurope.attest.azure.net:8443",
+			wantError: false,
+		},
+		{
+			name:      "reject non-azure domain when not pinned",
+			jku:       "https://example.com/certs",
+			maaURL:    "",
+			wantError: true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			baseURL, err := validateJKU(tt.jku, tt.maaURL)
+			if tt.wantError {
+				assert.Error(t, err)
+				return
+			}
+			assert.NoError(t, err)
+			assert.Equal(t, tt.wantBase, baseURL)
+		})
+	}
+}
+
 func TestIntegration_FullAttestationFlow(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")

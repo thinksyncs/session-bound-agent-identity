@@ -34,19 +34,19 @@ func (s *authInterceptor) AuthStreamInterceptor() grpc.StreamServerInterceptor {
 	return func(srv any, stream grpc.ServerStream, info *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		switch info.FullMethod {
 		case agent.AgentService_Algo_FullMethodName:
-			if _, err := s.auth.AuthenticateUser(stream.Context(), auth.AlgorithmProviderRole); err != nil {
+			if _, err := s.auth.AuthenticateUser(stream.Context(), auth.AlgorithmProviderRole, info.FullMethod); err != nil {
 				return status.Errorf(codes.Unauthenticated, "%v", err.Error())
 			}
 			return handler(srv, stream)
 		case agent.AgentService_Data_FullMethodName:
-			ctx, err := s.auth.AuthenticateUser(stream.Context(), auth.DataProviderRole)
+			ctx, err := s.auth.AuthenticateUser(stream.Context(), auth.DataProviderRole, info.FullMethod)
 			if err != nil {
 				return status.Errorf(codes.Unauthenticated, "%s", err.Error())
 			}
 			wrapped := &wrappedServerStream{ServerStream: stream, ctx: ctx}
 			return handler(srv, wrapped)
 		case agent.AgentService_Result_FullMethodName:
-			ctx, err := s.auth.AuthenticateUser(stream.Context(), auth.ConsumerRole)
+			ctx, err := s.auth.AuthenticateUser(stream.Context(), auth.ConsumerRole, info.FullMethod)
 			if err != nil {
 				return status.Errorf(codes.Unauthenticated, "%v", err.Error())
 			}
@@ -62,7 +62,7 @@ func (s *authInterceptor) AuthUnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		switch info.FullMethod {
 		case agent.AgentService_Result_FullMethodName:
-			ctx, err := s.auth.AuthenticateUser(ctx, auth.ConsumerRole)
+			ctx, err := s.auth.AuthenticateUser(ctx, auth.ConsumerRole, info.FullMethod)
 			if err != nil {
 				return nil, status.Errorf(codes.Unauthenticated, "%v", err.Error())
 			}

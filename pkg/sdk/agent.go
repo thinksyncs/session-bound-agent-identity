@@ -11,8 +11,10 @@ import (
 	"crypto/rsa"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/ultravioletrs/cocos/agent"
@@ -52,7 +54,7 @@ func NewAgentSDK(agentClient agent.AgentServiceClient) SDK {
 }
 
 func (sdk *agentSDK) Algo(ctx context.Context, algorithm, requirements *os.File, privKey any) error {
-	md, err := generateMetadata(string(auth.AlgorithmProviderRole), privKey)
+	md, err := generateMetadata(auth.AlgorithmProviderRole, agent.AgentService_Algo_FullMethodName, privKey)
 	if err != nil {
 		return err
 	}
@@ -71,7 +73,7 @@ func (sdk *agentSDK) Algo(ctx context.Context, algorithm, requirements *os.File,
 }
 
 func (sdk *agentSDK) Data(ctx context.Context, dataset *os.File, filename string, privKey any) error {
-	md, err := generateMetadata(string(auth.DataProviderRole), privKey)
+	md, err := generateMetadata(auth.DataProviderRole, agent.AgentService_Data_FullMethodName, privKey)
 	if err != nil {
 		return err
 	}
@@ -92,7 +94,7 @@ func (sdk *agentSDK) Data(ctx context.Context, dataset *os.File, filename string
 func (sdk *agentSDK) Result(ctx context.Context, privKey any, resultFile *os.File) error {
 	request := &agent.ResultRequest{}
 
-	md, err := generateMetadata(string(auth.ConsumerRole), privKey)
+	md, err := generateMetadata(auth.ConsumerRole, agent.AgentService_Result_FullMethodName, privKey)
 	if err != nil {
 		return err
 	}
@@ -205,15 +207,16 @@ func (sdk *agentSDK) IMAMeasurements(ctx context.Context, resultFile *os.File) (
 	return pb.ReceiveIMAMeasurements(imaMeasurementsProgressDescription, fileSize, stream, resultFile)
 }
 
-func signData(userID string, privKey crypto.Signer) ([]byte, error) {
+func signData(role auth.UserRole, method, issuedAt, nonce string, privKey crypto.Signer) ([]byte, error) {
 	var signature []byte
 	var err error
+	payload := auth.SignaturePayload(role, method, issuedAt, nonce)
 
 	switch k := privKey.(type) {
 	case ed25519.PrivateKey:
-		signature, err = k.Sign(rand.Reader, []byte(userID), crypto.Hash(0))
+		signature, err = k.Sign(rand.Reader, payload, crypto.Hash(0))
 	case *rsa.PrivateKey, *ecdsa.PrivateKey:
-		hash := sha256.Sum256([]byte(userID))
+		hash := sha256.Sum256(payload)
 		signature, err = privKey.Sign(rand.Reader, hash[:], crypto.SHA256)
 	default:
 		return nil, errors.New("unsupported key type")
@@ -226,14 +229,30 @@ func signData(userID string, privKey crypto.Signer) ([]byte, error) {
 	return signature, nil
 }
 
-func generateMetadata(userID string, privateKey crypto.PrivateKey) (metadata.MD, error) {
-	signature, err := signData(userID, privateKey.(crypto.Signer))
+func generateMetadata(role auth.UserRole, method string, privateKey crypto.PrivateKey) (metadata.MD, error) {
+	issuedAt := time.Now().UTC().Format(time.RFC3339Nano)
+	nonce, err := newSignatureNonce()
+	if err != nil {
+		return nil, err
+	}
+
+	signature, err := signData(role, method, issuedAt, nonce, privateKey.(crypto.Signer))
 	if err != nil {
 		return nil, err
 	}
 
 	kv := make(map[string]string)
-	kv[auth.UserMetadataKey] = userID
+	kv[auth.UserMetadataKey] = string(role)
 	kv[auth.SignatureMetadataKey] = base64.StdEncoding.EncodeToString(signature)
+	kv[auth.SignatureTimestampMetadataKey] = issuedAt
+	kv[auth.SignatureNonceMetadataKey] = nonce
 	return metadata.New(kv), nil
+}
+
+func newSignatureNonce() (string, error) {
+	nonce := make([]byte, 16)
+	if _, err := rand.Read(nonce); err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(nonce), nil
 }

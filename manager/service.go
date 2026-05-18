@@ -12,9 +12,11 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
+	"unicode"
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/google/uuid"
@@ -168,6 +170,10 @@ func (ms *managerService) CreateVM(ctx context.Context, req *CreateReq) (string,
 		LaunchTCB: 0,
 	}
 	if req.AaKbsParams != "" {
+		if err := validateAAKBSParams(req.AaKbsParams); err != nil {
+			ms.mu.Unlock()
+			return "", id, err
+		}
 		cfg.Config.KernelCommandLine = fmt.Sprintf("%s agent.aa_kbc_params=%s", cfg.Config.KernelCommandLine, req.AaKbsParams)
 	}
 	ms.mu.Unlock()
@@ -418,7 +424,7 @@ func tempCertMount(id string, req *CreateReq) (string, error) {
 		return "", err
 	}
 
-	if err = os.WriteFile(fmt.Sprintf("%s/%s", dir, "key.pem"), req.AgentCvmClientKey, 0o644); err != nil {
+	if err = os.WriteFile(fmt.Sprintf("%s/%s", dir, "key.pem"), req.AgentCvmClientKey, 0o600); err != nil {
 		return "", err
 	}
 
@@ -467,20 +473,50 @@ func tmpEnvironment(id string, req *CreateReq) (string, error) {
 		envMap[awsRegionKey] = req.AwsRegion
 	}
 
-	envFile, err := os.OpenFile(fmt.Sprintf("%s/%s", dir, cvmEnvironmentFile), os.O_CREATE|os.O_WRONLY, 0o644)
+	for key, value := range envMap {
+		if err := validateEnvironmentValue(key, value); err != nil {
+			_ = os.RemoveAll(dir)
+			return "", err
+		}
+	}
+
+	envFile, err := os.OpenFile(fmt.Sprintf("%s/%s", dir, cvmEnvironmentFile), os.O_CREATE|os.O_WRONLY|os.O_TRUNC, 0o600)
 	if err != nil {
+		_ = os.RemoveAll(dir)
 		return "", err
 	}
 
 	for k, v := range envMap {
 		if _, err = envFile.WriteString(fmt.Sprintf("%s=%s\n", k, v)); err != nil {
+			_ = envFile.Close()
+			_ = os.RemoveAll(dir)
 			return "", err
 		}
 	}
 
 	if err = envFile.Close(); err != nil {
+		_ = os.RemoveAll(dir)
 		return "", err
 	}
 
 	return dir, nil
+}
+
+func validateEnvironmentValue(key, value string) error {
+	if strings.ContainsAny(value, "\x00\r\n") {
+		return fmt.Errorf("%w: environment value for %s contains a line break or NUL byte", ErrMalformedEntity, key)
+	}
+	return nil
+}
+
+func validateAAKBSParams(value string) error {
+	if len(value) > 1024 {
+		return fmt.Errorf("%w: aa_kbs_params is too long", ErrMalformedEntity)
+	}
+	for _, r := range value {
+		if unicode.IsSpace(r) || unicode.IsControl(r) {
+			return fmt.Errorf("%w: aa_kbs_params must not contain whitespace or control characters", ErrMalformedEntity)
+		}
+	}
+	return nil
 }

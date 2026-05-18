@@ -42,8 +42,8 @@ func (_m *Authenticator) EXPECT() *Authenticator_Expecter {
 }
 
 // AuthenticateUser provides a mock function for the type Authenticator
-func (_mock *Authenticator) AuthenticateUser(ctx context.Context, role auth.UserRole) (context.Context, error) {
-	ret := _mock.Called(ctx, role)
+func (_mock *Authenticator) AuthenticateUser(ctx context.Context, role auth.UserRole, method string) (context.Context, error) {
+	ret := _mock.Called(ctx, role, method)
 
 	if len(ret) == 0 {
 		panic("no return value specified for AuthenticateUser")
@@ -51,18 +51,18 @@ func (_mock *Authenticator) AuthenticateUser(ctx context.Context, role auth.User
 
 	var r0 context.Context
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.UserRole) (context.Context, error)); ok {
-		return returnFunc(ctx, role)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.UserRole, string) (context.Context, error)); ok {
+		return returnFunc(ctx, role, method)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.UserRole) context.Context); ok {
-		r0 = returnFunc(ctx, role)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, auth.UserRole, string) context.Context); ok {
+		r0 = returnFunc(ctx, role, method)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(context.Context)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, auth.UserRole) error); ok {
-		r1 = returnFunc(ctx, role)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, auth.UserRole, string) error); ok {
+		r1 = returnFunc(ctx, role, method)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -77,11 +77,12 @@ type Authenticator_AuthenticateUser_Call struct {
 // AuthenticateUser is a helper method to define mock.On call
 //   - ctx context.Context
 //   - role auth.UserRole
-func (_e *Authenticator_Expecter) AuthenticateUser(ctx interface{}, role interface{}) *Authenticator_AuthenticateUser_Call {
-	return &Authenticator_AuthenticateUser_Call{Call: _e.mock.On("AuthenticateUser", ctx, role)}
+//   - method string
+func (_e *Authenticator_Expecter) AuthenticateUser(ctx interface{}, role interface{}, method interface{}) *Authenticator_AuthenticateUser_Call {
+	return &Authenticator_AuthenticateUser_Call{Call: _e.mock.On("AuthenticateUser", ctx, role, method)}
 }
 
-func (_c *Authenticator_AuthenticateUser_Call) Run(run func(ctx context.Context, role auth.UserRole)) *Authenticator_AuthenticateUser_Call {
+func (_c *Authenticator_AuthenticateUser_Call) Run(run func(ctx context.Context, role auth.UserRole, method string)) *Authenticator_AuthenticateUser_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -91,9 +92,14 @@ func (_c *Authenticator_AuthenticateUser_Call) Run(run func(ctx context.Context,
 		if args[1] != nil {
 			arg1 = args[1].(auth.UserRole)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -104,7 +110,7 @@ func (_c *Authenticator_AuthenticateUser_Call) Return(context1 context.Context, 
 	return _c
 }
 
-func (_c *Authenticator_AuthenticateUser_Call) RunAndReturn(run func(ctx context.Context, role auth.UserRole) (context.Context, error)) *Authenticator_AuthenticateUser_Call {
+func (_c *Authenticator_AuthenticateUser_Call) RunAndReturn(run func(ctx context.Context, role auth.UserRole, method string) (context.Context, error)) *Authenticator_AuthenticateUser_Call {
 	_c.Call.Return(run)
 	return _c
 }

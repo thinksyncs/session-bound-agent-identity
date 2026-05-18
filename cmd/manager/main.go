@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"log/slog"
+	"net"
 	"net/url"
 	"os"
 	"strings"
@@ -118,11 +119,13 @@ func main() {
 		exitCode = 1
 		return
 	}
+	warnIfPublicWithoutTLS(logger, "Manager gRPC", managerGRPCConfig)
 
 	httpServerConfig := smqserver.Config{Port: defSvcHTTPPort}
 	if err := env.ParseWithOptions(&httpServerConfig, env.Options{Prefix: envPrefixHTTP}); err != nil {
 		logger.Error(fmt.Sprintf("failed to load %s gRPC server configuration : %s", svcName, err))
 	}
+	warnIfPublicWithoutTLS(logger, "Manager HTTP", httpServerConfig)
 
 	svc, err := newService(logger, tracer, *qemuCfg, cfg.AttestationPolicyBinaryPath, cfg.PcrValues, cfg.SigningKeyPath, cfg.EosVersion, cfg.MaxVMs)
 	if err != nil {
@@ -176,4 +179,22 @@ func newService(logger *slog.Logger, tracer trace.Tracer, qemuCfg qemu.Config, a
 	svc = tracing.New(svc, tracer)
 
 	return svc, nil
+}
+
+func warnIfPublicWithoutTLS(logger *slog.Logger, name string, cfg smqserver.Config) {
+	if isLocalBindHost(cfg.Host) || cfg.CertFile != "" || cfg.KeyFile != "" {
+		return
+	}
+
+	logger.Warn(fmt.Sprintf("%s is configured to listen on %q without TLS; bind to localhost or configure mTLS before exposing it", name, cfg.Host))
+}
+
+func isLocalBindHost(host string) bool {
+	host = strings.TrimSpace(strings.Trim(host, "[]"))
+	if strings.EqualFold(host, "localhost") {
+		return true
+	}
+
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }

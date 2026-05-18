@@ -6,6 +6,11 @@ Manager service provides a barebones gRPC API and Service interface implementati
 
 The service is configured using the environment variables from the following table. Note that any unset variables will be replaced with their default values.
 
+The sample `cocos-manager.env` binds Manager gRPC and HTTP endpoints to
+`127.0.0.1`. If you bind either endpoint to `0.0.0.0` or another non-loopback
+address, configure TLS/mTLS and network access controls first. The Manager gRPC
+API can create and remove CVMs.
+
 | Variable                                   | Description                                                                                                      | Default                        |
 | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------- | ------------------------------ |
 | COCOS_JAEGER_URL                           | The URL for the Jaeger tracing endpoint.                                                                         | http://localhost:4318          |

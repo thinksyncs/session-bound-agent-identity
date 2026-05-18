@@ -50,10 +50,10 @@ func TestAuthUnaryInterceptor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.authorized {
 			case true:
-				mockCall := authmock.On("AuthenticateUser", context.Background(), tt.role).Return(context.Background(), nil)
+				mockCall := authmock.On("AuthenticateUser", context.Background(), tt.role, tt.method).Return(context.Background(), nil)
 				mockCall.Once()
 			case false:
-				mockCall := authmock.On("AuthenticateUser", context.Background(), tt.role).Return(context.Background(), auth.ErrMissingMetadata)
+				mockCall := authmock.On("AuthenticateUser", context.Background(), tt.role, tt.method).Return(context.Background(), auth.ErrMissingMetadata)
 				mockCall.Once()
 			}
 			unaryInt, _ := NewAuthInterceptor(authmock)
@@ -121,10 +121,10 @@ func TestAuthStreamInterceptor(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.authorized {
 			case true:
-				mockCall := authmock.On("AuthenticateUser", mock.Anything, tt.role).Return(context.Background(), nil)
+				mockCall := authmock.On("AuthenticateUser", mock.Anything, tt.role, tt.method).Return(context.Background(), nil)
 				mockCall.Once()
 			case false:
-				mockCall := authmock.On("AuthenticateUser", mock.Anything, tt.role).Return(context.Background(), auth.ErrMissingMetadata)
+				mockCall := authmock.On("AuthenticateUser", mock.Anything, tt.role, tt.method).Return(context.Background(), auth.ErrMissingMetadata)
 				mockCall.Once()
 			}
 			_, streamInt := NewAuthInterceptor(authmock)
