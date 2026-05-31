@@ -5,8 +5,10 @@ package internaltransport
 
 import (
 	"context"
+	"crypto/sha256"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
@@ -27,8 +29,8 @@ type Conn struct {
 	ValidationResult *ea.ValidationResult
 }
 
-// ObservedIdentityFunc extracts observed identity values after aTLS validation.
-type ObservedIdentityFunc func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error)
+// ObservedIdentityFunc extracts a session-bound identity assertion after aTLS validation.
+type ObservedIdentityFunc func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error)
 
 type ClientConfig struct {
 	TLSConfig         *tls.Config
@@ -167,14 +169,45 @@ func validateIdentityPolicy(cfg *ClientConfig, st *tls.ConnectionState, validati
 	if cfg.ObservedIdentity == nil {
 		return ErrMissingObservedIdentity
 	}
-	observed, err := cfg.ObservedIdentity(st, validation)
+	assertion, err := cfg.ObservedIdentity(st, validation)
 	if err != nil {
 		return fmt.Errorf("atls: observed identity source failed: %w", err)
 	}
-	if err := cfg.IdentityPolicy.Validate(observed); err != nil {
+	expectedBinding, err := expectedIdentityBinding(validation)
+	if err != nil {
+		return err
+	}
+	if err := cfg.IdentityPolicy.ValidateAssertion(assertion, expectedBinding, time.Now()); err != nil {
 		return fmt.Errorf("atls: identity policy validation failed: %w", err)
 	}
 	return nil
+}
+
+func expectedIdentityBinding(validation *ea.ValidationResult) (identitypolicy.Binding, error) {
+	if validation == nil {
+		return identitypolicy.Binding{}, fmt.Errorf("atls: missing validation result")
+	}
+	if len(validation.Chain) == 0 || validation.Chain[0] == nil {
+		return identitypolicy.Binding{}, fmt.Errorf("atls: missing validated leaf certificate")
+	}
+	if len(validation.Context) == 0 {
+		return identitypolicy.Binding{}, fmt.Errorf("atls: missing certificate request context")
+	}
+	pub, err := eaattestation.PublicKeyBytes(validation.Chain[0])
+	if err != nil {
+		return identitypolicy.Binding{}, err
+	}
+	leafHash := sha256.Sum256(pub)
+	contextHash := sha256.Sum256(validation.Context)
+	binding := identitypolicy.Binding{
+		LeafPublicKeySHA256:  hex.EncodeToString(leafHash[:]),
+		RequestContextSHA256: hex.EncodeToString(contextHash[:]),
+	}
+	if validation.Attestation != nil && validation.Attestation.BindingVerified && validation.Attestation.Payload != nil {
+		binderHash := sha256.Sum256(validation.Attestation.Payload.Binder.Binding)
+		binding.AttestationBinderSHA256 = hex.EncodeToString(binderHash[:])
+	}
+	return binding, nil
 }
 
 func Server(tlsConn *tls.Conn, cfg *ServerConfig) (*Conn, error) {

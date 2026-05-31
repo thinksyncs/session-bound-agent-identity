@@ -9,17 +9,21 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 	"unicode"
 	"unicode/utf8"
 )
 
 var (
-	ErrMissingExpected = errors.New("identitypolicy: missing expected value")
-	ErrMissingObserved = errors.New("identitypolicy: missing observed value")
-	ErrMismatch        = errors.New("identitypolicy: value mismatch")
-	ErrUnsafeValue     = errors.New("identitypolicy: unsafe value")
-	ErrValueTooLong    = errors.New("identitypolicy: value too long")
-	ErrTooManyValues   = errors.New("identitypolicy: too many values")
+	ErrMissingExpected  = errors.New("identitypolicy: missing expected value")
+	ErrMissingObserved  = errors.New("identitypolicy: missing observed value")
+	ErrMismatch         = errors.New("identitypolicy: value mismatch")
+	ErrUnsafeValue      = errors.New("identitypolicy: unsafe value")
+	ErrValueTooLong     = errors.New("identitypolicy: value too long")
+	ErrTooManyValues    = errors.New("identitypolicy: too many values")
+	ErrMissingBinding   = errors.New("identitypolicy: missing session binding")
+	ErrExpiredAssertion = errors.New("identitypolicy: expired assertion")
+	ErrFutureAssertion  = errors.New("identitypolicy: assertion issued in the future")
 )
 
 const (
@@ -30,21 +34,27 @@ const (
 )
 
 const (
-	FieldAll                  = "*"
-	FieldService              = "service"
-	FieldTenant               = "tenant"
-	FieldDeployment           = "deployment"
-	FieldEnvironment          = "environment"
-	FieldWorkload             = "workload"
-	FieldAgent                = "agent"
-	FieldAgentPublicKey       = "agent_public_key"
-	FieldComputationID        = "computation_id"
-	FieldTaskID               = "task_id"
-	FieldThreadID             = "thread_id"
-	FieldDelegationID         = "delegation_id"
-	FieldScopes               = "scopes"
-	FieldResources            = "resources"
-	FieldAuthorizationDetails = "authorization_details"
+	FieldAll                   = "*"
+	FieldService               = "service"
+	FieldTenant                = "tenant"
+	FieldDeployment            = "deployment"
+	FieldEnvironment           = "environment"
+	FieldWorkload              = "workload"
+	FieldAgent                 = "agent"
+	FieldAgentPublicKey        = "agent_public_key"
+	FieldComputationID         = "computation_id"
+	FieldTaskID                = "task_id"
+	FieldThreadID              = "thread_id"
+	FieldDelegationID          = "delegation_id"
+	FieldScopes                = "scopes"
+	FieldResources             = "resources"
+	FieldAuthorizationDetails  = "authorization_details"
+	FieldLeafPublicKeyHash     = "leaf_public_key_sha256"
+	FieldRequestContextHash    = "request_context_sha256"
+	FieldAttestationBinderHash = "attestation_binder_sha256"
+	FieldNonce                 = "nonce"
+	FieldExpiresAt             = "expires_at"
+	FieldIssuedAt              = "issued_at"
 )
 
 const (
@@ -83,6 +93,23 @@ type Values struct {
 	AuthorizationDetails []string `json:"authorization_details,omitempty" yaml:"authorization_details,omitempty"`
 }
 
+// Binding ties an observed identity assertion to the accepted aTLS session.
+type Binding struct {
+	LeafPublicKeySHA256     string    `json:"leaf_public_key_sha256,omitempty" yaml:"leaf_public_key_sha256,omitempty"`
+	RequestContextSHA256    string    `json:"request_context_sha256,omitempty" yaml:"request_context_sha256,omitempty"`
+	AttestationBinderSHA256 string    `json:"attestation_binder_sha256,omitempty" yaml:"attestation_binder_sha256,omitempty"`
+	Nonce                   string    `json:"nonce,omitempty" yaml:"nonce,omitempty"`
+	IssuedAt                time.Time `json:"issued_at,omitempty" yaml:"issued_at,omitempty"`
+	ExpiresAt               time.Time `json:"expires_at,omitempty" yaml:"expires_at,omitempty"`
+}
+
+// Assertion contains observed identity values plus their session binding.
+type Assertion struct {
+	Issuer  string  `json:"issuer,omitempty" yaml:"issuer,omitempty"`
+	Values  Values  `json:"values" yaml:"values"`
+	Binding Binding `json:"binding" yaml:"binding"`
+}
+
 // Policy separates local expected values from observed peer values.
 type Policy struct {
 	Require  Requirements `json:"require" yaml:"require"`
@@ -97,6 +124,11 @@ func (p Policy) Enabled() bool {
 // Validate checks observed values against this policy.
 func (p Policy) Validate(observed Values) error {
 	return Validate(p, observed)
+}
+
+// ValidateAssertion checks a session-bound observed assertion against this policy.
+func (p Policy) ValidateAssertion(assertion Assertion, expectedBinding Binding, now time.Time) error {
+	return ValidateAssertion(p, assertion, expectedBinding, now)
 }
 
 // ValidationError reports the exact layer and field that failed validation.
@@ -238,6 +270,71 @@ func Validate(policy Policy, observed Values) error {
 		}
 	}
 
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
+}
+
+// ValidateAssertion checks the observed values and their session binding.
+func ValidateAssertion(policy Policy, assertion Assertion, expectedBinding Binding, now time.Time) error {
+	var errs ValidationErrors
+	if err := validateBinding(assertion.Binding, expectedBinding, now); err != nil {
+		errs = appendValidationErrors(errs, err)
+	}
+	if err := Validate(policy, assertion.Values); err != nil {
+		errs = appendValidationErrors(errs, err)
+	}
+	if len(errs) > 0 {
+		return errs
+	}
+	return nil
+}
+
+func validateBinding(observed, expected Binding, now time.Time) error {
+	var errs ValidationErrors
+	hasExpected := false
+	for _, f := range []struct {
+		name string
+		want string
+		got  string
+	}{
+		{FieldLeafPublicKeyHash, expected.LeafPublicKeySHA256, observed.LeafPublicKeySHA256},
+		{FieldRequestContextHash, expected.RequestContextSHA256, observed.RequestContextSHA256},
+		{FieldAttestationBinderHash, expected.AttestationBinderSHA256, observed.AttestationBinderSHA256},
+		{FieldNonce, expected.Nonce, observed.Nonce},
+	} {
+		if isEmpty(f.want) {
+			continue
+		}
+		hasExpected = true
+		if isUnsafe(f.want) {
+			errs = append(errs, validationError("binding", f.name, ErrUnsafeValue))
+			continue
+		}
+		if isEmpty(f.got) {
+			errs = append(errs, validationError("binding", f.name, ErrMissingBinding))
+			continue
+		}
+		if isUnsafe(f.got) {
+			errs = append(errs, validationError("binding", f.name, ErrUnsafeValue))
+			continue
+		}
+		if f.got != f.want {
+			errs = append(errs, validationError("binding", f.name, ErrMismatch))
+		}
+	}
+	if !hasExpected {
+		errs = append(errs, validationError("binding", FieldAll, ErrMissingExpected))
+	}
+	if observed.ExpiresAt.IsZero() {
+		errs = append(errs, validationError("binding", FieldExpiresAt, ErrMissingBinding))
+	} else if !now.IsZero() && now.After(observed.ExpiresAt) {
+		errs = append(errs, validationError("binding", FieldExpiresAt, ErrExpiredAssertion))
+	}
+	if !observed.IssuedAt.IsZero() && !now.IsZero() && observed.IssuedAt.After(now) {
+		errs = append(errs, validationError("binding", FieldIssuedAt, ErrFutureAssertion))
+	}
 	if len(errs) > 0 {
 		return errs
 	}

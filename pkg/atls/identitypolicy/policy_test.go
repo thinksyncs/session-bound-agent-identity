@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestPolicyEnabled(t *testing.T) {
@@ -547,6 +548,134 @@ func TestValidateSkipsUnrequiredLayers(t *testing.T) {
 
 	if err := Validate(policy, Values{}); err != nil {
 		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestValidateAssertionAcceptsSessionBoundIdentity(t *testing.T) {
+	now := time.Now()
+	policy := Policy{
+		Require:  Requirements{L2B: true, L3: true, L4: true, L5: true},
+		Expected: Values{Service: "payments", Agent: "agent-a", TaskID: "task-1", Scopes: []string{"orders:read"}},
+	}
+	expectedBinding := Binding{
+		LeafPublicKeySHA256:     "leaf-hash",
+		RequestContextSHA256:    "context-hash",
+		AttestationBinderSHA256: "binder-hash",
+	}
+	assertion := Assertion{
+		Values: Values{
+			Service: "payments",
+			Agent:   "agent-a",
+			TaskID:  "task-1",
+			Scopes:  []string{"orders:read", "audit:write"},
+		},
+		Binding: Binding{
+			LeafPublicKeySHA256:     "leaf-hash",
+			RequestContextSHA256:    "context-hash",
+			AttestationBinderSHA256: "binder-hash",
+			IssuedAt:                now.Add(-time.Minute),
+			ExpiresAt:               now.Add(time.Minute),
+		},
+	}
+
+	if err := ValidateAssertion(policy, assertion, expectedBinding, now); err != nil {
+		t.Fatalf("ValidateAssertion() error = %v", err)
+	}
+}
+
+func TestValidateAssertionRejectsBindingMismatch(t *testing.T) {
+	now := time.Now()
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments"},
+	}
+	assertion := Assertion{
+		Values: Values{Service: "payments"},
+		Binding: Binding{
+			LeafPublicKeySHA256:  "other-leaf",
+			RequestContextSHA256: "context-hash",
+			ExpiresAt:            now.Add(time.Minute),
+		},
+	}
+
+	err := ValidateAssertion(policy, assertion, Binding{
+		LeafPublicKeySHA256:  "leaf-hash",
+		RequestContextSHA256: "context-hash",
+	}, now)
+	if !errors.Is(err, ErrMismatch) {
+		t.Fatalf("ValidateAssertion() error = %v, want %v", err, ErrMismatch)
+	}
+}
+
+func TestValidateAssertionRejectsMissingBindingExpiry(t *testing.T) {
+	now := time.Now()
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments"},
+	}
+	assertion := Assertion{
+		Values: Values{Service: "payments"},
+		Binding: Binding{
+			LeafPublicKeySHA256:  "leaf-hash",
+			RequestContextSHA256: "context-hash",
+		},
+	}
+
+	err := ValidateAssertion(policy, assertion, Binding{
+		LeafPublicKeySHA256:  "leaf-hash",
+		RequestContextSHA256: "context-hash",
+	}, now)
+	if !errors.Is(err, ErrMissingBinding) {
+		t.Fatalf("ValidateAssertion() error = %v, want %v", err, ErrMissingBinding)
+	}
+}
+
+func TestValidateAssertionRejectsExpiredAssertion(t *testing.T) {
+	now := time.Now()
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments"},
+	}
+	assertion := Assertion{
+		Values: Values{Service: "payments"},
+		Binding: Binding{
+			LeafPublicKeySHA256:  "leaf-hash",
+			RequestContextSHA256: "context-hash",
+			ExpiresAt:            now.Add(-time.Minute),
+		},
+	}
+
+	err := ValidateAssertion(policy, assertion, Binding{
+		LeafPublicKeySHA256:  "leaf-hash",
+		RequestContextSHA256: "context-hash",
+	}, now)
+	if !errors.Is(err, ErrExpiredAssertion) {
+		t.Fatalf("ValidateAssertion() error = %v, want %v", err, ErrExpiredAssertion)
+	}
+}
+
+func TestValidateAssertionRejectsFutureIssueTime(t *testing.T) {
+	now := time.Now()
+	policy := Policy{
+		Require:  Requirements{L2B: true},
+		Expected: Values{Service: "payments"},
+	}
+	assertion := Assertion{
+		Values: Values{Service: "payments"},
+		Binding: Binding{
+			LeafPublicKeySHA256:  "leaf-hash",
+			RequestContextSHA256: "context-hash",
+			IssuedAt:             now.Add(time.Minute),
+			ExpiresAt:            now.Add(time.Hour),
+		},
+	}
+
+	err := ValidateAssertion(policy, assertion, Binding{
+		LeafPublicKeySHA256:  "leaf-hash",
+		RequestContextSHA256: "context-hash",
+	}, now)
+	if !errors.Is(err, ErrFutureAssertion) {
+		t.Fatalf("ValidateAssertion() error = %v, want %v", err, ErrFutureAssertion)
 	}
 }
 

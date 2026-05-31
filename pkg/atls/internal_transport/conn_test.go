@@ -126,34 +126,116 @@ func TestValidateIdentityPolicyRequiresObservedIdentitySource(t *testing.T) {
 }
 
 func TestValidateIdentityPolicyAcceptsObservedIdentity(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	binding := bindingForAssertion(t, validation)
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
 			Require:  identitypolicy.Requirements{L2B: true, L3: true},
 			Expected: identitypolicy.Values{Service: "payments", Agent: "agent-a"},
 		},
-		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error) {
-			return identitypolicy.Values{Service: "payments", Agent: "agent-a"}, nil
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values:  identitypolicy.Values{Service: "payments", Agent: "agent-a"},
+				Binding: binding,
+			}, nil
 		},
 	}
 
-	if err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil); err != nil {
+	if err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation); err != nil {
 		t.Fatalf("validateIdentityPolicy() error = %v", err)
 	}
 }
 
 func TestValidateIdentityPolicyRejectsObservedIdentityMismatch(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	binding := bindingForAssertion(t, validation)
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
 			Require:  identitypolicy.Requirements{L2B: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
-		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Values, error) {
-			return identitypolicy.Values{Service: "analytics"}, nil
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values:  identitypolicy.Values{Service: "analytics"},
+				Binding: binding,
+			}, nil
 		},
 	}
 
-	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, nil)
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
 	if !errors.Is(err, identitypolicy.ErrMismatch) {
 		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, identitypolicy.ErrMismatch)
 	}
+}
+
+func TestValidateIdentityPolicyRejectsUnboundAssertion(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L2B: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values: identitypolicy.Values{Service: "payments"},
+				Binding: identitypolicy.Binding{
+					LeafPublicKeySHA256:  "wrong-leaf",
+					RequestContextSHA256: "wrong-context",
+					ExpiresAt:            time.Now().Add(time.Hour),
+				},
+			}, nil
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
+	if !errors.Is(err, identitypolicy.ErrMismatch) {
+		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, identitypolicy.ErrMismatch)
+	}
+}
+
+func TestValidateIdentityPolicyRejectsMissingRequestContext(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	validation.Context = nil
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L2B: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values:  identitypolicy.Values{Service: "payments"},
+				Binding: bindingForAssertion(t, validationResultForIdentityPolicy(t)),
+			}, nil
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
+	if err == nil {
+		t.Fatal("validateIdentityPolicy() error = nil, want missing context error")
+	}
+}
+
+func validationResultForIdentityPolicy(t *testing.T) *ea.ValidationResult {
+	t.Helper()
+
+	cert := selfSignedCert(t)
+	leaf, err := x509.ParseCertificate(cert.Certificate[0])
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &ea.ValidationResult{
+		Context: []byte("identity-policy-request-context"),
+		Chain:   []*x509.Certificate{leaf},
+	}
+}
+
+func bindingForAssertion(t *testing.T, validation *ea.ValidationResult) identitypolicy.Binding {
+	t.Helper()
+
+	binding, err := expectedIdentityBinding(validation)
+	if err != nil {
+		t.Fatal(err)
+	}
+	binding.ExpiresAt = time.Now().Add(time.Hour)
+	return binding
 }

@@ -22,7 +22,7 @@ type ClientConfig = internaltransport.ClientConfig
 
 type ServerConfig = internaltransport.ServerConfig
 
-// ObservedIdentityFunc extracts observed identity values after aTLS validation.
+// ObservedIdentityFunc extracts a session-bound identity assertion after aTLS validation.
 type ObservedIdentityFunc = internaltransport.ObservedIdentityFunc
 
 type AuthenticatorRequest = ea.AuthenticatorRequest
