@@ -130,13 +130,6 @@ func NewVerifier(writer io.Writer) attestation.Verifier {
 	}
 }
 
-// VerifyEAT verifies an EAT token and extracts the binary report for verification.
-func (v verifier) VerifyEAT(eatToken []byte, teeNonce []byte, vTpmNonce []byte) error {
-	// Kept only for backward compatibility with legacy call sites.
-	// Current verification path uses VerifyWithCoRIM.
-	return fmt.Errorf("VerifyEAT is deprecated, use VerifyWithCoRIM")
-}
-
 func (v verifier) VerifyWithCoRIM(report []byte, manifest *corim.UnsignedCorim) error {
 	attestation := &attest.Attestation{}
 	if err := proto.Unmarshal(report, attestation); err != nil {
