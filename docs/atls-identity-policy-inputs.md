@@ -60,12 +60,14 @@ an EAT claim, an agent manifest, or an application policy engine.
 
 ## Policy shape
 
-The core rule is to keep expected values separate from observed values.
+The core rule is to keep expected values separate from observed values, and to
+bind observed values to the accepted aTLS session.
 
 - Expected values come from local policy, configuration, a trusted registry, or
   a policy engine.
-- Observed values come from attestation evidence, CoRIM metadata, EAT claims,
-  agent manifests, request metadata, or authorization tokens.
+- Observed values come from a session-bound identity assertion extracted from
+  attestation evidence, CoRIM metadata, EAT claims, agent manifests, request
+  metadata, or authorization tokens.
 - Verification compares observed values against expected values.
 - Observed values must not become expected values without a trusted local policy
   decision.
@@ -97,6 +99,43 @@ identity_policy:
     authorization_details: []
 ```
 
+A session-bound identity assertion can be shaped as follows:
+
+```yaml
+identity_assertion:
+  issuer: "manager-or-policy-engine"
+
+  values:
+    service: "payment-agent"
+    tenant: "tenant-a"
+    deployment: "prod"
+    environment: "asia-northeast1"
+    workload: "settlement-worker"
+    agent: "agent-a"
+    agent_public_key: "sha256:..."
+    computation_id: "cmp-..."
+    task_id: "task-..."
+    thread_id: "thread-..."
+    delegation_id: "delegation-..."
+    scopes:
+      - "orders:read"
+    resources:
+      - "orders"
+    authorization_details:
+      - "settlement"
+
+  binding:
+    leaf_public_key_sha256: "..."
+    request_context_sha256: "..."
+    attestation_binder_sha256: "..."
+    nonce: "..."
+    issued_at: "..."
+    expires_at: "..."
+```
+
+The assertion format is local to this package. The binding fields are what make
+the assertion a relay defense rather than a plain metadata check.
+
 An implementation can split this object across existing configuration, manager
 state, agent metadata, or an external policy engine. The important part is the
 source of authority, not the concrete serialization format.
@@ -106,8 +145,8 @@ source of authority, not the concrete serialization format.
 The production aTLS client hook is:
 
 - `atls.ClientConfig.IdentityPolicy` for local expected values.
-- `atls.ClientConfig.ObservedIdentity` for observed values extracted from a
-  trusted source.
+- `atls.ClientConfig.ObservedIdentity` for a session-bound observed identity
+  assertion extracted from a trusted source.
 
 The hook runs after exported-authenticator and attestation validation, but
 before the accepted aTLS connection is returned to the caller.
@@ -116,11 +155,25 @@ The expected values are owned by local policy. In practice, that means manager
 configuration, operator configuration, a trusted registry, or an authorization
 policy engine. Peer-provided values must not become expected values.
 
-The observed values are extracted by the caller-supplied `ObservedIdentity`
+The observed assertion is extracted by the caller-supplied `ObservedIdentity`
 callback. That callback should read from trusted evidence, CoRIM metadata, EAT
 claims, agent manifests, request metadata, or authorization tokens. If an
 identity policy is enabled without an observed-identity callback, the client
 fails closed.
+
+The aTLS client computes the expected session binding from the accepted
+exported authenticator: the leaf public key, the certificate request context,
+and the attestation binder when attestation is present. The observed assertion
+must carry matching binding values and a non-expired `expires_at` value before
+its identity fields are compared with local policy.
+
+This gives the profile two distinct defenses:
+
+- relay defense: the observed identity assertion must be tied to this accepted
+  aTLS session, not borrowed from another endpoint or connection.
+- diversion defense: the session-bound observed identity must match locally
+  expected service, tenant, deployment, workload, task, and authorization
+  policy.
 
 ## L2b: intended service, tenant, or deployment
 
@@ -201,11 +254,14 @@ For each layer that is required by policy:
 
 1. Load the local expected value for that layer.
 2. Reject if the expected value is missing or ambiguous.
-3. Extract the observed value from the trusted source for that layer.
-4. Reject if the observed value is missing.
-5. Compare the observed value with the expected value.
-6. Reject on mismatch.
-7. Continue to the next required layer.
+3. Extract the observed session-bound identity assertion from the trusted source.
+4. Reject if the assertion is not bound to the accepted aTLS session.
+5. Reject if the assertion is expired or missing freshness metadata.
+6. Extract the observed value from the assertion for that layer.
+7. Reject if the observed value is missing.
+8. Compare the observed value with the expected value.
+9. Reject on mismatch.
+10. Continue to the next required layer.
 
 For set-like values such as scopes or resources, the observed set must satisfy
 the local policy. A peer-provided scope list is not enough by itself.
@@ -270,14 +326,16 @@ computation state, and authorization decisions.
 ## Implementation status
 
 The reusable validator lives in `pkg/atls/identitypolicy`. It implements the
-expected-versus-observed comparison model described above, but it is not wired
-into the aTLS verifier by default.
+expected-versus-observed comparison model and session-bound assertion validation
+described above. The aTLS client transport calls it when
+`atls.ClientConfig.IdentityPolicy` is enabled.
 
 Callers are expected to:
 
 - build a local `Policy` from trusted deployment or authorization inputs,
-- extract observed `Values` from the appropriate CoCos layer,
-- call `identitypolicy.Validate`,
+- extract an observed `Assertion` from the appropriate CoCos layer,
+- call `identitypolicy.ValidateAssertion`, or provide the assertion through
+  `atls.ClientConfig.ObservedIdentity`,
 - and treat validation errors as fail-closed for layers required by policy.
 
 `identitypolicy.Validate` reports all layer and field failures found in one
@@ -286,7 +344,7 @@ still using `errors.Is` with the package sentinel errors.
 
 ## Suggested next step
 
-Decide which L2b through L5 inputs each CoCos deployment expects to enforce.
-Then wire `identitypolicy.Validate` at the layer that owns those inputs, such as
-manager configuration, agent metadata, computation state, or an authorization
-policy engine.
+Decide which L2b through L5 inputs each CoCos deployment expects to enforce and
+which component signs or otherwise authenticates the observed assertion. The
+source can be manager configuration, agent metadata, computation state, or an
+authorization policy engine, but it must not be raw peer-controlled metadata.
