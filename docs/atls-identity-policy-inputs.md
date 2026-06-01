@@ -232,8 +232,8 @@ session binding and local expected policy.
    verified grant or local attestation policy.
 4. Verify that the statement grant hash matches the verified Identity Grant.
 5. Verify that the statement audience matches the relying service or client.
-6. Reject arbitrary accepted endpoint keys that are not bound to the verified
-   grant, even when the underlying aTLS session is otherwise valid.
+6. Reject arbitrary accepted endpoint keys that are not explicitly bound by the
+   verified grant or local attestation policy to the same agent identity, even when the underlying aTLS session is otherwise valid.
 7. Compare the statement binding fields with the accepted aTLS session.
 8. Enforce replay policy for grant IDs, binding IDs, or nonces when one-shot use
    is required.
