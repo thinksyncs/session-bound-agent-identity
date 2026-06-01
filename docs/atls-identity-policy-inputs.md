@@ -140,6 +140,110 @@ An implementation can split this object across existing configuration, manager
 state, agent metadata, or an external policy engine. The important part is the
 source of authority, not the concrete serialization format.
 
+## Issuer model
+
+`identitypolicy.Assertion` is not a wire token. It is a verified internal
+representation returned by `atls.ClientConfig.ObservedIdentity`. Any wire token,
+manifest, EAT claim, CoRIM metadata, authorization token, or gateway statement
+must be authenticated before the callback returns an assertion.
+
+A production deployment should separate authority from session possession:
+
+- Identity Grant: signed or otherwise authenticated by the Manager or another
+  configured policy authority.
+- Session Binding Statement: signed by the accepted endpoint key, or by an agent
+  confirmation key named in the verified Identity Grant.
+
+The Agent is not the authority for service, tenant, deployment, task, scope, or
+resource values. An Agent-signed session binding is a holder-of-key proof, not
+an authority statement.
+
+### Identity Grant
+
+The Identity Grant authorizes the intended upper-layer subject. It can use a
+JWT/JWS, CWT/COSE, signed manifest, or another deployment-specific format. The
+format is outside this package; the required property is that the verifier can
+authenticate the issuer and extract trusted identity values.
+
+An Identity Grant should include the deployment-specific equivalent of:
+
+- issuer,
+- subject,
+- audience,
+- service, tenant, deployment, or environment,
+- workload or agent identity,
+- agent public key or confirmation key,
+- computation ID, task ID, thread ID, or delegation ID when known,
+- scopes, resources, or authorization details when required,
+- issued-at and expiration time,
+- and a unique grant ID.
+
+### Session Binding Statement
+
+The Session Binding Statement does not authorize identity or capability values.
+It only proves that the holder of the grant confirmation key bound the verified
+grant to the accepted aTLS session.
+
+A Session Binding Statement should include:
+
+- grant hash,
+- leaf public-key hash,
+- certificate request context hash,
+- attestation-binder hash when attestation is present,
+- audience or relying-service ID,
+- protocol name and version,
+- nonce or unique binding ID,
+- issued-at time,
+- and expiration time.
+
+The grant hash should be computed over an unambiguous byte string, for example:
+
+```text
+SHA-256("cocos.identity-grant.v1" || exact-signed-grant-bytes)
+```
+
+If a JSON-based format is used, the deployment must avoid ambiguous
+canonicalization. Hashing the exact signed bytes, or using canonical CBOR/COSE,
+is safer than hashing a re-serialized JSON object.
+
+### Verification order
+
+The `ObservedIdentity` callback should perform the external authentication work
+in this order:
+
+1. Verify the Identity Grant under a trusted Manager or policy-authority key.
+2. Check grant issuer, audience, expiration, grant ID, and required scope or
+   resource fields.
+3. Verify that the Session Binding Statement signature key matches the accepted endpoint key, or the grant
+   confirmation key.
+4. Verify that the statement grant hash matches the verified Identity Grant.
+5. Verify that the statement audience matches the relying service or client.
+6. Compare the statement binding fields with the accepted aTLS session.
+7. Enforce replay policy for grant IDs, binding IDs, or nonces when one-shot use
+   is required.
+8. Construct `identitypolicy.Assertion` only from the verified grant and binding
+   statement.
+9. Call `identitypolicy.ValidateAssertion` to compare the verified assertion
+   with local expected policy.
+
+`identitypolicy.ValidateAssertion` intentionally remains a comparator and
+binding freshness checker. It does not parse or verify wire tokens, signatures,
+grant formats, key rotation, revocation, or replay caches. Those checks belong
+to the component that implements `ObservedIdentity`.
+
+### Gateway mode
+
+If the Agent terminates the accepted aTLS session directly, the Agent can sign
+the Session Binding Statement over the accepted session binding values.
+
+If an ingress proxy or gateway terminates aTLS, the trust model is different:
+the gateway is the live TLS endpoint. In that mode, policy must explicitly trust
+the gateway and bind the gateway-to-agent route. The deployment can model this
+with gateway ID, gateway public key, allowed route, and agent route fields in
+the Identity Grant or in a separate gateway routing assertion. Without that
+extra routing assertion, a gateway-terminated session binding does not by itself
+prove that the intended Agent process handled the request.
+
 ## Production wiring
 
 The production aTLS client hook is:
@@ -344,7 +448,8 @@ still using `errors.Is` with the package sentinel errors.
 
 ## Suggested next step
 
-Decide which L2b through L5 inputs each CoCos deployment expects to enforce and
-which component signs or otherwise authenticates the observed assertion. The
-source can be manager configuration, agent metadata, computation state, or an
-authorization policy engine, but it must not be raw peer-controlled metadata.
+Decide which Manager or policy-authority keys are trusted for Identity Grants,
+which confirmation keys may sign Session Binding Statements, and which replay
+cache or nonce policy is required for task-level one-shot use. The source can be
+manager configuration, agent metadata, computation state, or an authorization
+policy engine, but it must not be raw peer-controlled metadata.
