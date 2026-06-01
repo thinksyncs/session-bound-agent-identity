@@ -38,7 +38,7 @@ source for the observed identity values.
 Out of scope for this note:
 
 - selecting a specific identity provider,
-- defining a new token format,
+- standardizing a concrete wire-token format,
 - changing the attestation evidence format,
 - changing the aTLS wire protocol,
 - and proving an end-to-end authorization model.
@@ -66,8 +66,8 @@ bind observed values to the accepted aTLS session.
 - Expected values come from local policy, configuration, a trusted registry, or
   a policy engine.
 - Observed values come from a session-bound identity assertion extracted from
-  attestation evidence, CoRIM metadata, EAT claims, agent manifests, request
-  metadata, or authorization tokens.
+  attestation evidence, CoRIM metadata, EAT claims, agent manifests,
+  authenticated or locally derived request metadata, or authorization tokens.
 - Verification compares observed values against expected values.
 - Observed values must not become expected values without a trusted local policy
   decision.
@@ -99,7 +99,8 @@ identity_policy:
     authorization_details: []
 ```
 
-A session-bound identity assertion can be shaped as follows:
+After external identity material has been authenticated, the verified internal
+`identitypolicy.Assertion` can be shaped as follows:
 
 ```yaml
 identity_assertion:
@@ -133,8 +134,12 @@ identity_assertion:
     expires_at: "..."
 ```
 
-The assertion format is local to this package. The binding fields are what make
-the assertion a relay defense rather than a plain metadata check.
+This assertion is not a wire format. It is a local representation used after the
+caller has authenticated the external identity material. `Assertion.Issuer` is
+informational to `identitypolicy.ValidateAssertion`; it is trusted only if the
+`ObservedIdentity` implementation has already verified the corresponding grant
+issuer and trust anchor. The binding fields are what make the assertion a relay
+defense rather than a plain metadata check.
 
 An implementation can split this object across existing configuration, manager
 state, agent metadata, or an external policy engine. The important part is the
@@ -151,8 +156,10 @@ A production deployment should separate authority from session possession:
 
 - Identity Grant: signed or otherwise authenticated by the Manager or another
   configured policy authority.
-- Session Binding Statement: signed by the accepted endpoint key, or by an agent
-  confirmation key named in the verified Identity Grant.
+- Session Binding Statement: signed by the agent confirmation key named in the
+  verified Identity Grant. The accepted endpoint key may be used only when the
+  verified grant or local attestation policy explicitly binds that endpoint key
+  to the same agent identity.
 
 The Agent is not the authority for service, tenant, deployment, task, scope, or
 resource values. An Agent-signed session binding is a holder-of-key proof, not
@@ -175,25 +182,28 @@ An Identity Grant should include the deployment-specific equivalent of:
 - agent public key or confirmation key,
 - computation ID, task ID, thread ID, or delegation ID when known,
 - scopes, resources, or authorization details when required,
+- issuer key ID or key version when needed for key rotation,
 - issued-at and expiration time,
 - and a unique grant ID.
 
 ### Session Binding Statement
 
 The Session Binding Statement does not authorize identity or capability values.
-It only proves that the holder of the grant confirmation key bound the verified
-grant to the accepted aTLS session.
+It only proves that the holder of the confirmation key named in the verified
+grant bound that grant to the accepted aTLS session. A generic accepted endpoint
+key is not sufficient unless the verified grant or local attestation policy
+explicitly binds that key to the same agent identity.
 
 A Session Binding Statement should include:
 
-- grant hash,
-- leaf public-key hash,
-- certificate request context hash,
-- attestation-binder hash when attestation is present,
-- audience or relying-service ID,
-- protocol name and version,
+- `grant_hash`,
+- `leaf_public_key_sha256`,
+- `request_context_sha256`,
+- `attestation_binder_sha256` when attestation is present,
+- `aud` or relying-service ID,
+- statement type, protocol name, and version,
 - nonce or unique binding ID,
-- issued-at time,
+- `iat` or issued-at time,
 - and expiration time.
 
 The grant hash should be computed over an unambiguous byte string, for example:
@@ -208,22 +218,28 @@ is safer than hashing a re-serialized JSON object.
 
 ### Verification order
 
-The `ObservedIdentity` callback should perform the external authentication work
-in this order:
+The overall verifier should perform the checks below. In the production aTLS
+client wiring, the `ObservedIdentity` callback performs external authentication
+and constructs the verified assertion, while
+`identitypolicy.ValidateAssertion` compares the assertion with the accepted aTLS
+session binding and local expected policy.
 
 1. Verify the Identity Grant under a trusted Manager or policy-authority key.
 2. Check grant issuer, audience, expiration, grant ID, and required scope or
    resource fields.
-3. Verify that the Session Binding Statement signature key matches the accepted endpoint key, or the grant
-   confirmation key.
+3. Verify that the Session Binding Statement signature key matches the
+   grant confirmation key, or another endpoint key explicitly authorized by the
+   verified grant or local attestation policy.
 4. Verify that the statement grant hash matches the verified Identity Grant.
 5. Verify that the statement audience matches the relying service or client.
-6. Compare the statement binding fields with the accepted aTLS session.
-7. Enforce replay policy for grant IDs, binding IDs, or nonces when one-shot use
+6. Reject arbitrary accepted endpoint keys that are not explicitly bound by the
+   verified grant or local attestation policy to the same agent identity, even when the underlying aTLS session is otherwise valid.
+7. Compare the statement binding fields with the accepted aTLS session.
+8. Enforce replay policy for grant IDs, binding IDs, or nonces when one-shot use
    is required.
-8. Construct `identitypolicy.Assertion` only from the verified grant and binding
+9. Construct `identitypolicy.Assertion` only from the verified grant and binding
    statement.
-9. Call `identitypolicy.ValidateAssertion` to compare the verified assertion
+10. Call `identitypolicy.ValidateAssertion` to compare the verified assertion
    with local expected policy.
 
 `identitypolicy.ValidateAssertion` intentionally remains a comparator and
@@ -234,7 +250,9 @@ to the component that implements `ObservedIdentity`.
 ### Gateway mode
 
 If the Agent terminates the accepted aTLS session directly, the Agent can sign
-the Session Binding Statement over the accepted session binding values.
+the Session Binding Statement over the accepted session binding values only when
+the verified Identity Grant names that Agent key, or explicitly binds the
+accepted endpoint key to the same agent identity.
 
 If an ingress proxy or gateway terminates aTLS, the trust model is different:
 the gateway is the live TLS endpoint. In that mode, policy must explicitly trust
@@ -243,6 +261,11 @@ with gateway ID, gateway public key, allowed route, and agent route fields in
 the Identity Grant or in a separate gateway routing assertion. Without that
 extra routing assertion, a gateway-terminated session binding does not by itself
 prove that the intended Agent process handled the request.
+
+A gateway routing assertion must not be treated as an Agent authority statement.
+It only authenticates the gateway's routing decision. The relying party still
+needs an Identity Grant for the intended Agent and, when required, an Agent-side
+holder-of-key proof for the gateway-to-agent hop.
 
 ## Production wiring
 
@@ -261,9 +284,9 @@ policy engine. Peer-provided values must not become expected values.
 
 The observed assertion is extracted by the caller-supplied `ObservedIdentity`
 callback. That callback should read from trusted evidence, CoRIM metadata, EAT
-claims, agent manifests, request metadata, or authorization tokens. If an
-identity policy is enabled without an observed-identity callback, the client
-fails closed.
+claims, agent manifests, authenticated or locally derived request metadata, or
+authorization tokens. If an identity policy is enabled without an
+observed-identity callback, the client fails closed.
 
 The aTLS client computes the expected session binding from the accepted
 exported authenticator: the leaf public key, the certificate request context,
