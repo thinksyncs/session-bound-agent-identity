@@ -83,29 +83,9 @@ func connect(cfg clients.ClientConfiguration) (*grpc.ClientConn, tls.Security, e
 			return nil, security, err
 		}
 
-		tlsConfig := result.Config.Clone()
-		tlsConfig.MinVersion = stdtls.VersionTLS13
-		tlsConfig.NextProtos = []string{"h2"}
-
-		atlsConfig := &atls.ClientConfig{
-			TLSConfig:         tlsConfig,
-			VerifyOptions:     atls.VerifyOptionsFromTLSConfig(tlsConfig),
-			AttestationPolicy: atls.VerificationPolicyFromEvidenceVerifier(atls.NewEvidenceVerifier(agcfg.AttestationPolicy)),
-		}
-		requestContext, err := agcfg.RequestContext()
+		atlsConfig, err := buildATLSClientConfig(agcfg, result.Config)
 		if err != nil {
 			return nil, security, err
-		}
-		if len(requestContext) > 0 {
-			req, err := atls.NewRequest(requestContext)
-			if err != nil {
-				return nil, security, err
-			}
-			atlsConfig.Request = req
-		} else {
-			atlsConfig.RequestBuilder = func() (*atls.AuthenticatorRequest, error) {
-				return atls.NewRandomRequest(32)
-			}
 		}
 
 		opts = append(opts,
@@ -136,6 +116,46 @@ func connect(cfg clients.ClientConfiguration) (*grpc.ClientConn, tls.Security, e
 		return nil, security, errors.Wrap(errGrpcConnect, err)
 	}
 	return conn, security, nil
+}
+
+func buildATLSClientConfig(agcfg clients.AttestedClientConfig, baseTLSConfig *stdtls.Config) (*atls.ClientConfig, error) {
+	tlsConfig := baseTLSConfig.Clone()
+	tlsConfig.MinVersion = stdtls.VersionTLS13
+	tlsConfig.NextProtos = []string{"h2"}
+
+	atlsConfig := &atls.ClientConfig{
+		TLSConfig:         tlsConfig,
+		VerifyOptions:     atls.VerifyOptionsFromTLSConfig(tlsConfig),
+		AttestationPolicy: atls.VerificationPolicyFromEvidenceVerifier(atls.NewEvidenceVerifier(agcfg.AttestationPolicy)),
+		IdentityPolicy:    agcfg.IdentityPolicy,
+		IdentityGrant:     agcfg.IdentityGrant,
+		IdentityBinding:   agcfg.IdentityBinding,
+		IdentityReplay:    agcfg.IdentityReplay,
+		IdentityLogger:    agcfg.IdentityLogger,
+	}
+	observedIdentity, err := agcfg.AGTPObservedIdentity()
+	if err != nil {
+		return nil, err
+	}
+	if observedIdentity != nil {
+		atlsConfig.ObservedIdentity = observedIdentity
+	}
+	requestContext, err := agcfg.RequestContext()
+	if err != nil {
+		return nil, err
+	}
+	if len(requestContext) > 0 {
+		req, err := atls.NewRequest(requestContext)
+		if err != nil {
+			return nil, err
+		}
+		atlsConfig.Request = req
+	} else {
+		atlsConfig.RequestBuilder = func() (*atls.AuthenticatorRequest, error) {
+			return atls.NewRandomRequest(32)
+		}
+	}
+	return atlsConfig, nil
 }
 
 func dialTarget(addr string) (string, string) {

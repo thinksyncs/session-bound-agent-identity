@@ -11,6 +11,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net"
 	"time"
 
@@ -42,6 +43,7 @@ type ClientConfig struct {
 	IdentityGrant     *identitypolicy.VerifiedGrant
 	IdentityBinding   *identitypolicy.VerifiedSessionBindingStatement
 	IdentityReplay    identitypolicy.ReplayCache
+	IdentityLogger    *slog.Logger
 	Request           *ea.AuthenticatorRequest
 	RequestBuilder    func() (*ea.AuthenticatorRequest, error)
 }
@@ -172,20 +174,25 @@ func validateIdentityPolicy(cfg *ClientConfig, st *tls.ConnectionState, validati
 	now := time.Now()
 	assertion, statement, err := observedIdentityAssertion(cfg, st, validation, now)
 	if err != nil {
+		logIdentityPolicyDebug(cfg.IdentityLogger, "source_failed", err)
 		return fmt.Errorf("atls: observed identity source failed: %w", err)
 	}
-	expectedBinding, err := expectedIdentityBinding(validation)
+	expectedBinding, err := ExpectedIdentityBinding(validation)
 	if err != nil {
+		logIdentityPolicyDebug(cfg.IdentityLogger, "binding_context_failed", err)
 		return err
 	}
 	if err := cfg.IdentityPolicy.ValidateAssertion(assertion, expectedBinding, now); err != nil {
+		logIdentityPolicyDebug(cfg.IdentityLogger, "validation_failed", err)
 		return fmt.Errorf("atls: identity policy validation failed: %w", err)
 	}
 	if statement != nil {
 		if err := identitypolicy.MarkSessionBindingUsed(cfg.IdentityReplay, *statement); err != nil {
+			logIdentityPolicyDebug(cfg.IdentityLogger, "replay_failed", err)
 			return fmt.Errorf("atls: identity replay check failed: %w", err)
 		}
 	}
+	logIdentityPolicyDebug(cfg.IdentityLogger, "accepted", nil)
 	return nil
 }
 
@@ -201,7 +208,7 @@ func observedIdentityAssertion(cfg *ClientConfig, st *tls.ConnectionState, valid
 	return assertion, cfg.IdentityBinding, err
 }
 
-func expectedIdentityBinding(validation *ea.ValidationResult) (identitypolicy.Binding, error) {
+func ExpectedIdentityBinding(validation *ea.ValidationResult) (identitypolicy.Binding, error) {
 	if validation == nil {
 		return identitypolicy.Binding{}, fmt.Errorf("atls: missing validation result")
 	}
@@ -226,6 +233,17 @@ func expectedIdentityBinding(validation *ea.ValidationResult) (identitypolicy.Bi
 		binding.AttestationBinderSHA256 = hex.EncodeToString(binderHash[:])
 	}
 	return binding, nil
+}
+
+func logIdentityPolicyDebug(logger *slog.Logger, reason string, err error) {
+	if logger == nil {
+		return
+	}
+	args := []any{"reason", reason}
+	if err != nil {
+		args = append(args, "error", err)
+	}
+	logger.Debug("aTLS identity policy check", args...)
 }
 
 func Server(tlsConn *tls.Conn, cfg *ServerConfig) (*Conn, error) {

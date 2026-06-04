@@ -27,10 +27,10 @@ var (
 )
 
 const (
-	LayerL2B = "L2b"
-	LayerL3  = "L3"
-	LayerL4  = "L4"
-	LayerL5  = "L5"
+	LayerL3 = "L3"
+	LayerL4 = "L4"
+	LayerL5 = "L5"
+	LayerL6 = "L6"
 )
 
 const (
@@ -64,15 +64,15 @@ const (
 
 // Requirements selects which identity-policy layers must be enforced.
 type Requirements struct {
-	L2B bool `json:"l2b" yaml:"l2b"`
-	L3  bool `json:"l3" yaml:"l3"`
-	L4  bool `json:"l4" yaml:"l4"`
-	L5  bool `json:"l5" yaml:"l5"`
+	L3 bool `json:"l3" yaml:"l3"`
+	L4 bool `json:"l4" yaml:"l4"`
+	L5 bool `json:"l5" yaml:"l5"`
+	L6 bool `json:"l6" yaml:"l6"`
 }
 
 // Enabled reports whether at least one identity-policy layer is required.
 func (r Requirements) Enabled() bool {
-	return r.L2B || r.L3 || r.L4 || r.L5
+	return r.L3 || r.L4 || r.L5 || r.L6
 }
 
 // Values contains local expected values or observed peer values.
@@ -232,8 +232,8 @@ func (e ValidationErrors) nonNil() ValidationErrors {
 func Validate(policy Policy, observed Values) error {
 	var errs ValidationErrors
 
-	if policy.Require.L2B {
-		if err := validateExactLayer(LayerL2B, policy.Expected, observed, []field{
+	if policy.Require.L3 {
+		if err := validateExactLayer(LayerL3, policy.Expected, observed, []field{
 			{FieldService, func(v Values) string { return v.Service }},
 			{FieldTenant, func(v Values) string { return v.Tenant }},
 			{FieldDeployment, func(v Values) string { return v.Deployment }},
@@ -243,8 +243,8 @@ func Validate(policy Policy, observed Values) error {
 		}
 	}
 
-	if policy.Require.L3 {
-		if err := validateExactLayer(LayerL3, policy.Expected, observed, []field{
+	if policy.Require.L4 {
+		if err := validateExactLayer(LayerL4, policy.Expected, observed, []field{
 			{FieldWorkload, func(v Values) string { return v.Workload }},
 			{FieldAgent, func(v Values) string { return v.Agent }},
 			{FieldAgentPublicKey, func(v Values) string { return v.AgentPublicKey }},
@@ -253,8 +253,8 @@ func Validate(policy Policy, observed Values) error {
 		}
 	}
 
-	if policy.Require.L4 {
-		if err := validateExactLayer(LayerL4, policy.Expected, observed, []field{
+	if policy.Require.L5 {
+		if err := validateExactLayer(LayerL5, policy.Expected, observed, []field{
 			{FieldComputationID, func(v Values) string { return v.ComputationID }},
 			{FieldTaskID, func(v Values) string { return v.TaskID }},
 			{FieldThreadID, func(v Values) string { return v.ThreadID }},
@@ -264,8 +264,8 @@ func Validate(policy Policy, observed Values) error {
 		}
 	}
 
-	if policy.Require.L5 {
-		if err := validateL5(policy.Expected, observed); err != nil {
+	if policy.Require.L6 {
+		if err := validateL6(policy.Expected, observed); err != nil {
 			errs = appendValidationErrors(errs, err)
 		}
 	}
@@ -381,29 +381,29 @@ func validateExactLayer(layer string, expected, observed Values, fields []field)
 	return nil
 }
 
-func validateL5(expected, observed Values) error {
+func validateL6(expected, observed Values) error {
 	var errs ValidationErrors
 	hasExpected := false
 	if len(expected.Scopes) > 0 {
 		hasExpected = true
-		if err := requireContainsAll(LayerL5, FieldScopes, expected.Scopes, observed.Scopes); err != nil {
+		if err := requireContainsAll(LayerL6, FieldScopes, expected.Scopes, observed.Scopes); err != nil {
 			errs = appendValidationErrors(errs, err)
 		}
 	}
 	if len(expected.Resources) > 0 {
 		hasExpected = true
-		if err := requireContainsAll(LayerL5, FieldResources, expected.Resources, observed.Resources); err != nil {
+		if err := requireContainsAll(LayerL6, FieldResources, expected.Resources, observed.Resources); err != nil {
 			errs = appendValidationErrors(errs, err)
 		}
 	}
 	if len(expected.AuthorizationDetails) > 0 {
 		hasExpected = true
-		if err := requireContainsAll(LayerL5, FieldAuthorizationDetails, expected.AuthorizationDetails, observed.AuthorizationDetails); err != nil {
+		if err := requireContainsAll(LayerL6, FieldAuthorizationDetails, expected.AuthorizationDetails, observed.AuthorizationDetails); err != nil {
 			errs = appendValidationErrors(errs, err)
 		}
 	}
 	if !hasExpected {
-		return validationError(LayerL5, FieldAll, ErrMissingExpected)
+		return validationError(LayerL6, FieldAll, ErrMissingExpected)
 	}
 	if len(errs) > 0 {
 		return errs

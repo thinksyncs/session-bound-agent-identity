@@ -4,11 +4,16 @@
 package clients
 
 import (
+	"crypto/tls"
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"log/slog"
 	"time"
 
+	"github.com/ultravioletrs/cocos/pkg/agtp"
+	"github.com/ultravioletrs/cocos/pkg/atls"
+	"github.com/ultravioletrs/cocos/pkg/atls/ea"
 	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 )
 
@@ -17,6 +22,7 @@ var (
 	_ ClientConfiguration = (*StandardClientConfig)(nil)
 
 	ErrInvalidAttestationRequestContext = errors.New("invalid attestation request context")
+	ErrInvalidIdentityJWTConfig         = errors.New("invalid identity JWT config")
 )
 
 type ClientConfiguration interface {
@@ -49,6 +55,11 @@ type AttestedClientConfig struct {
 	IdentityGrant             *identitypolicy.VerifiedGrant                   `env:"-"`
 	IdentityBinding           *identitypolicy.VerifiedSessionBindingStatement `env:"-"`
 	IdentityReplay            identitypolicy.ReplayCache                      `env:"-"`
+	IdentityLogger            *slog.Logger                                    `env:"-"`
+	IdentityGrantJWT          string                                          `env:"-"`
+	IdentityBindingJWT        string                                          `env:"-"`
+	IdentityGrantJWTOptions   agtp.JWTVerifyOptions                           `env:"-"`
+	IdentityBindingJWTOptions agtp.JWTVerifyOptions                           `env:"-"`
 }
 
 func (c AttestedClientConfig) Config() StandardClientConfig {
@@ -74,4 +85,45 @@ func (c AttestedClientConfig) RequestContext() ([]byte, error) {
 		return nil, fmt.Errorf("%w: decoded value is empty", ErrInvalidAttestationRequestContext)
 	}
 	return requestContext, nil
+}
+
+func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc, error) {
+	grantTokenSet := c.IdentityGrantJWT != ""
+	bindingTokenSet := c.IdentityBindingJWT != ""
+	if !grantTokenSet && !bindingTokenSet {
+		return nil, nil
+	}
+	if !grantTokenSet || !bindingTokenSet {
+		return nil, fmt.Errorf("%w: identity grant JWT and session binding JWT must both be set", ErrInvalidIdentityJWTConfig)
+	}
+	if c.IdentityGrant != nil || c.IdentityBinding != nil {
+		return nil, fmt.Errorf("%w: AGTP JWT tokens cannot be combined with pre-verified identity grant or binding", ErrInvalidIdentityJWTConfig)
+	}
+	if !c.IdentityPolicy.Enabled() {
+		return nil, fmt.Errorf("%w: identity policy is required for AGTP JWT validation", ErrInvalidIdentityJWTConfig)
+	}
+	if err := agtp.ValidateJWTVerifyOptions(c.IdentityGrantJWTOptions); err != nil {
+		return nil, fmt.Errorf("%w: identity grant JWT options: %w", ErrInvalidIdentityJWTConfig, err)
+	}
+	if err := agtp.ValidateJWTVerifyOptions(c.IdentityBindingJWTOptions); err != nil {
+		return nil, fmt.Errorf("%w: identity binding JWT options: %w", ErrInvalidIdentityJWTConfig, err)
+	}
+
+	return func(_ *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Assertion, error) {
+		expectedBinding, err := atls.IdentityBindingFromValidation(validation)
+		if err != nil {
+			return identitypolicy.Assertion{}, err
+		}
+		result, err := agtp.VerifySessionIdentityJWT(c.IdentityGrantJWT, c.IdentityBindingJWT, agtp.SessionIdentityJWTOptions{
+			Grant:           c.IdentityGrantJWTOptions,
+			SessionBinding:  c.IdentityBindingJWTOptions,
+			Policy:          c.IdentityPolicy,
+			ExpectedBinding: expectedBinding,
+			ReplayCache:     c.IdentityReplay,
+		})
+		if err != nil {
+			return identitypolicy.Assertion{}, err
+		}
+		return result.Assertion, nil
+	}, nil
 }

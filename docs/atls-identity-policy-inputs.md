@@ -7,21 +7,35 @@ The current aTLS implementation can be reviewed in layers. The lower layers are
 transport and attestation binding checks. The upper layers are deployment and
 agent policy checks.
 
-- L1: attestation or authenticator material is bound to the accepted TLS
+- L0: the accepted peer is on the expected live TLS channel.
+- L1: the attested platform or VM measurement is appraised.
+- L2: attestation or authenticator material is bound to the accepted TLS
   session.
-- L2a: the attested platform or VM measurement is appraised.
-- L2b: the attested platform is checked against the intended service, tenant,
+- L3: the attested platform is checked against the intended service, tenant,
   deployment, or environment.
-- L3: the accepted platform is checked against the intended workload, process,
+- L4: the accepted platform is checked against the intended workload, process,
   or agent.
-- L4: the accepted request or response is checked against the intended task,
+- L5: the accepted request or response is checked against the intended task,
   thread, context, or delegation.
-- L5: the accepted action is checked against the intended authorization or
+- L6: the accepted action is checked against the intended authorization or
   capability policy.
 
-L1 and L2a can be tested directly with implementation regressions. L2b through
-L5 need explicit policy inputs before the verifier or application layer can
+L0 through L2 can be tested directly with transport, attestation, and
+implementation regressions. L3 through L6 need explicit policy inputs before the
+verifier or application layer can
 enforce them consistently.
+
+This L0-L6 naming is used by both this note and the Go identity-policy API.
+
+| Layer | Verification target | Main failure class |
+| --- | --- | --- |
+| L0 | Live TLS channel | MITM or session confusion |
+| L1 | Attested platform validity | Fake, malformed, or untrusted platform evidence |
+| L2 | Attestation-to-channel binding | Relay, replay, or borrowed evidence |
+| L3 | Intended service, tenant, deployment, or environment | Diversion |
+| L4 | Intended workload, process, or agent | Same-machine wrong-agent |
+| L5 | Task, thread, context, or delegation binding | Cross-task or cross-thread confusion |
+| L6 | Authorization or capability binding | Confused deputy or privilege escalation |
 
 OIDC and OAuth are useful reference patterns for these upper layers. They are
 not required by this note. The important idea is that the verifier should compare
@@ -30,7 +44,7 @@ values as the policy.
 
 ## Scope
 
-This note records the policy inputs needed before L2b through L5 can be
+This note records the policy inputs needed before L3 through L6 can be
 enforced consistently. The aTLS client transport exposes an optional
 `atls.ClientConfig.IdentityPolicy` hook for callers that already have a trusted
 source for the observed identity values.
@@ -43,16 +57,98 @@ Out of scope for this note:
 - changing the aTLS wire protocol,
 - and proving an end-to-end authorization model.
 
+## Relationship to AGTP
+
+AGTP can be treated as the application-profile layer that runs after aTLS has
+established the lower-layer channel and attestation facts. In this split, aTLS
+keeps responsibility for L0 through L2:
+
+- L0: the live TLS channel is authenticated.
+- L1: the attested platform or VM evidence is appraised.
+- L2: the authenticator or attestation material is bound to the accepted TLS
+  session.
+
+AGTP can then carry or reference the upper-layer identity and policy material
+needed for L3 through L6:
+
+- L3: intended service, tenant, deployment, or environment.
+- L4: intended workload, process, or agent.
+- L5: intended task, thread, context, or delegation.
+- L6: authorization or capability policy.
+
+This keeps relay defense and diversion defense separate. Relay defense remains
+an aTLS/session-binding question at L2. Diversion and wrong-agent prevention
+need AGTP or another application profile to compare session-bound identity
+claims with local expected policy at L3 and L4. Task and capability checks then
+continue at L5 and L6.
+
+AGTP should not make peer-provided metadata authoritative. Its role is to carry
+authenticated policy inputs, such as an Identity Grant, and bind them to the
+accepted aTLS session through a Session Binding Statement. The verifier still
+compares those observed values against local expected values before treating the
+peer as the intended deployment, agent, task, or authorized actor.
+
+The initial implementation profile is:
+
+```text
+AGTP Identity Grant + aTLS + OAuth/OIDC-style semantics + JWT/JWS encoding
+```
+
+In this profile, OAuth and OIDC provide claim semantics and review vocabulary,
+while JWT/JWS provides the concrete signed-token encoding. This does not make
+AGTP a new OAuth or OIDC profile by itself. It only gives the aTLS relying party
+a compact way to authenticate L3 through L6 identity and authorization inputs
+before passing them to `identitypolicy`.
+
+The JWT/JWS profile is intentionally fail closed. The verifier uses locally
+configured issuer, audience, signing-method, and key-lookup policy. Tokens must
+carry the AGTP token type, AGTP profile version, expiration time, issued-at
+time, and JWT ID. The signing-method allow-list must not include `none`.
+Identity values carried in an Agent-provided token are not authoritative unless
+the token verifies under a locally trusted Manager or policy-authority key.
+
+CWT/COSE can be added later as a compact binary encoding profile. The security
+rules stay the same: the grant issuer must be trusted locally, the confirmation
+key must be named by the verified grant, and the session-binding statement must
+bind that exact grant to the accepted aTLS session.
+
+### Key rotation and revocation
+
+The JWT/JWS adapter verifies token signatures against caller-provided key
+lookup policy. It does not define how Manager keys are rotated, how old keys are
+retired, or how grants are revoked before `exp`.
+
+Deployments that use this profile should define:
+
+- a trusted issuer namespace for Manager or policy-authority keys,
+- key identifiers and key-version rules,
+- overlap windows for key rotation,
+- a revocation source for grants or issuer keys when early invalidation is
+  required,
+- maximum grant and session-binding lifetimes,
+- and replay-cache retention that is at least as long as the accepted
+  session-binding lifetime.
+
+Until those deployment rules exist, short grant lifetimes and fail-closed local
+key lookup are the conservative default. A token signed with an unknown,
+retired, or locally disabled key should be rejected.
+
+In implementation terms, AGTP can be introduced as a post-aTLS handshake before
+changing the aTLS wire protocol. The AGTP step would authenticate the grant,
+verify the session binding statement against the accepted aTLS session, enforce
+any replay policy, and then call the same `identitypolicy` validator used by the
+current Go API.
+
 ## OIDC and OAuth-style mapping
 
 OIDC and OAuth provide a useful vocabulary for local expected values:
 
 | Layer | Policy question | OIDC / OAuth-style analogue |
 | --- | --- | --- |
-| L2b | Is this the intended service, tenant, deployment, or environment? | issuer, audience, tenant, hosted domain, deployment claim, environment claim |
-| L3 | Is this the intended workload, process, or agent? | subject, client ID, workload identity, actor claim, confirmation key |
-| L4 | Is this the intended task, thread, context, or delegation? | nonce, state, transaction ID, request object, delegation token |
-| L5 | Is this action authorized for this peer and context? | scope, resource indicator, authorization details, policy decision, consent |
+| L3 | Is this the intended service, tenant, deployment, or environment? | issuer, audience, tenant, hosted domain, deployment claim, environment claim |
+| L4 | Is this the intended workload, process, or agent? | subject, client ID, workload identity, actor claim, confirmation key |
+| L5 | Is this the intended task, thread, context, or delegation? | nonce, state, transaction ID, request object, delegation token |
+| L6 | Is this action authorized for this peer and context? | scope, resource indicator, authorization details, policy decision, consent |
 
 These names are analogies, not normative requirements. A CoCos deployment could
 source the same expected values from configuration, a registry, CoRIM metadata,
@@ -77,10 +173,10 @@ A minimal policy object can be shaped as follows:
 ```yaml
 identity_policy:
   require:
-    l2b: false
     l3: false
     l4: false
     l5: false
+    l6: false
 
   expected:
     service: ""
@@ -167,23 +263,27 @@ an authority statement.
 
 ### Identity Grant
 
-The Identity Grant authorizes the intended upper-layer subject. It can use a
-JWT/JWS, CWT/COSE, signed manifest, or another deployment-specific format. The
-format is outside this package; the required property is that the verifier can
-authenticate the issuer and extract trusted identity values.
+The Identity Grant authorizes the intended upper-layer subject. The initial
+wire profile uses JWT/JWS and OAuth/OIDC-style claim names where they fit. Other
+encodings, such as CWT/COSE or a signed manifest, can be added later if they
+preserve the same authority and session-binding rules.
 
 An Identity Grant should include the deployment-specific equivalent of:
 
-- issuer,
-- subject,
-- audience,
+- AGTP token type (`agtp_type=agtp.identity-grant`),
+- AGTP profile version (`agtp_version=1`),
+- issuer (`iss`),
+- subject (`sub`),
+- audience (`aud`),
+- unique grant ID (`jti`),
 - service, tenant, deployment, or environment,
 - workload or agent identity,
-- agent public key or confirmation key,
+- agent public key or confirmation key (`cnf.kid` in the initial JWT/JWS
+  profile),
 - computation ID, task ID, thread ID, or delegation ID when known,
 - scopes, resources, or authorization details when required,
 - issuer key ID or key version when needed for key rotation,
-- issued-at and expiration time,
+- issued-at and expiration time (`iat`, `exp`),
 - and a unique grant ID.
 
 ### Session Binding Statement
@@ -196,6 +296,9 @@ explicitly binds that key to the same agent identity.
 
 A Session Binding Statement should include:
 
+- AGTP token type (`agtp_type=agtp.session-binding`),
+- AGTP profile version (`agtp_version=1`),
+- unique binding statement ID (`jti`),
 - `grant_hash`,
 - `leaf_public_key_sha256`,
 - `request_context_sha256`,
@@ -209,12 +312,16 @@ A Session Binding Statement should include:
 The grant hash should be computed over an unambiguous byte string, for example:
 
 ```text
-SHA-256("cocos.identity-grant.v1" || exact-signed-grant-bytes)
+SHA-256("agtp.identity-grant.jwt.v1" || NUL || exact-signed-grant-bytes)
 ```
 
 If a JSON-based format is used, the deployment must avoid ambiguous
 canonicalization. Hashing the exact signed bytes, or using canonical CBOR/COSE,
 is safer than hashing a re-serialized JSON object.
+
+The reusable JWT/JWS adapter in `pkg/agtp` follows this rule. It verifies the
+signed grant, computes the domain-separated hash over the exact compact JWT
+bytes, and converts the result into `identitypolicy.VerifiedGrant`.
 
 ### Verification order
 
@@ -297,12 +404,12 @@ its identity fields are compared with local policy.
 This gives the profile two distinct defenses:
 
 - relay defense: the observed identity assertion must be tied to this accepted
-  aTLS session, not borrowed from another endpoint or connection.
+  aTLS session at L2, not borrowed from another endpoint or connection.
 - diversion defense: the session-bound observed identity must match locally
-  expected service, tenant, deployment, workload, task, and authorization
-  policy.
+  expected deployment identity at L3. Workload, task, and authorization checks
+  continue at L4 through L6.
 
-## L2b: intended service, tenant, or deployment
+## L3: intended service, tenant, or deployment
 
 The verifier needs a local source of expected identity values. Examples include:
 
@@ -316,7 +423,7 @@ The verifier needs a local source of expected identity values. Examples include:
 The key question is whether a valid platform measurement is also tied to the
 intended service or deployment subject.
 
-## L3: intended workload, process, or agent
+## L4: intended workload, process, or agent
 
 Machine-level attestation may not be enough when several workloads or agents run
 on the same platform. The verifier or application layer may need expected values
@@ -332,7 +439,7 @@ such as:
 The key question is whether the accepted peer is the intended workload or agent,
 not only a workload on a valid attested machine.
 
-## L4: intended task, thread, context, or delegation
+## L5: intended task, thread, context, or delegation
 
 An accepted peer can still be used in the wrong application context. The
 application layer may need expected values such as:
@@ -348,7 +455,7 @@ application layer may need expected values such as:
 The key question is whether the accepted response is tied to the task or
 delegation that the relying party intended.
 
-## L5: authorization or capability policy
+## L6: authorization or capability policy
 
 Identity alone does not decide whether an action is allowed. The policy layer
 may need expected values such as:
@@ -370,10 +477,10 @@ it does not claim that all inputs already exist or are enforced today.
 
 | Layer | Candidate local expected value | Possible CoCos source |
 | --- | --- | --- |
-| L2b | Expected service, tenant, deployment, or environment | manager configuration, deployment registry, CoRIM metadata, EAT claim, operator policy |
-| L3 | Expected workload, process, or agent | agent manifest, workload ID, binary or config hash, agent public key, ingress routing policy |
-| L4 | Expected task, thread, context, or delegation | computation ID, request context, session state, delegation token, callback binding |
-| L5 | Expected authorization or capability | OAuth/OIDC-style policy, capability token, policy engine, user consent, tool policy |
+| L3 | Expected service, tenant, deployment, or environment | manager configuration, deployment registry, CoRIM metadata, EAT claim, operator policy |
+| L4 | Expected workload, process, or agent | agent manifest, workload ID, binary or config hash, agent public key, ingress routing policy |
+| L5 | Expected task, thread, context, or delegation | computation ID, request context, session state, delegation token, callback binding |
+| L6 | Expected authorization or capability | OAuth/OIDC-style policy, capability token, policy engine, user consent, tool policy |
 
 ## Validation algorithm
 
@@ -395,7 +502,7 @@ the local policy. A peer-provided scope list is not enough by itself.
 
 ## Fail-closed principle
 
-For L2b through L5, the safe default should be fail closed when an expected local
+For L3 through L6, the safe default should be fail closed when an expected local
 value is required but unavailable, ambiguous, or only peer supplied.
 
 Concrete policy rules should follow this shape:
@@ -437,7 +544,7 @@ escaping and CSRF protections at that layer.
 
 A small implementation can be staged without changing the aTLS wire protocol:
 
-1. Define a local policy input structure for L2b through L5 expected values.
+1. Define a local policy input structure for L3 through L6 expected values.
 2. Define extraction points for observed values.
 3. Add fail-closed validators for exact-match string fields.
 4. Add set-containment validation for scopes, resources, or authorization
@@ -446,7 +553,7 @@ A small implementation can be staged without changing the aTLS wire protocol:
    accepted aTLS peer as the intended deployment, agent, task, or authorized
    actor.
 
-The aTLS verifier can remain focused on L1 and L2a. L2b through L5 enforcement
+The aTLS verifier can remain focused on L0 through L2. L3 through L6 enforcement
 can live at the layer that has access to deployment policy, agent metadata,
 computation state, and authorization decisions.
 
@@ -473,6 +580,35 @@ a verified Session Binding Statement, and an optional replay cache directly on
 assertion against the accepted aTLS session before returning the connection. For
 the direct grant/statement path, replay-cache marking happens only after the
 session-binding and local policy comparison succeed.
+
+`pkg/agtp` provides the first concrete wire-token adapter for that direct path.
+It verifies AGTP Identity Grants and Session Binding Statements encoded as
+JWT/JWS, using locally configured issuer, audience, signing methods, and key
+lookup policy. The adapter does not choose the trusted Manager keys, rotate
+keys, perform revocation, or define deployment policy. Those remain caller
+responsibilities.
+
+The initial JWT/JWS adapter treats the grant `cnf.kid` value as the authorized
+session-binding signer key. The Session Binding Statement signer is taken from
+the protected JWS `kid` header and is later checked by `identitypolicy` against
+the verified grant. Thumbprint-based confirmation, such as `cnf.jkt`, can be
+added later once the deployment defines how key thumbprints map to local
+verification keys.
+
+The adapter also rejects tokens with the wrong AGTP token type, unsupported
+profile version, missing JWT ID, missing grant confirmation key, missing
+session-binding grant hash, missing required session-binding fields, or an
+unsafe signing-method allow-list. It does not perform key rotation,
+revocation, or replay-cache storage; those remain deployment responsibilities.
+
+For callers that want one fail-closed acceptance gate, `pkg/agtp` also exposes
+`VerifySessionIdentityJWT`. That helper verifies the Manager-signed Identity
+Grant, verifies the Session Binding Statement, checks that the binding signer is
+authorized by the verified grant, compares the resulting assertion with local
+expected `identitypolicy.Policy` values and the accepted aTLS session binding,
+and only then marks the binding nonce in the replay cache. This prevents a peer
+from making OAuth/OIDC-style claims authoritative by self-signing or simply
+presenting them as metadata.
 
 Callers are expected to:
 

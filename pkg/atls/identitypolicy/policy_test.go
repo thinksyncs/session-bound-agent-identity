@@ -42,10 +42,10 @@ func TestPolicyEnabled(t *testing.T) {
 func TestValidateAcceptsMatchingRequiredLayers(t *testing.T) {
 	policy := Policy{
 		Require: Requirements{
-			L2B: true,
-			L3:  true,
-			L4:  true,
-			L5:  true,
+			L3: true,
+			L4: true,
+			L5: true,
+			L6: true,
 		},
 		Expected: Values{
 			Service:              "payments",
@@ -90,10 +90,10 @@ func TestValidateAcceptsMatchingRequiredLayers(t *testing.T) {
 func TestValidateAcceptsSingleExpectedValuePerRequiredLayer(t *testing.T) {
 	policy := Policy{
 		Require: Requirements{
-			L2B: true,
-			L3:  true,
-			L4:  true,
-			L5:  true,
+			L3: true,
+			L4: true,
+			L5: true,
+			L6: true,
 		},
 		Expected: Values{
 			Service: "payments",
@@ -122,7 +122,7 @@ func TestValidateAcceptsSingleExpectedValuePerRequiredLayer(t *testing.T) {
 
 func TestValidateAcceptsObservedSetSupersetWithDuplicatesAndBlanks(t *testing.T) {
 	policy := Policy{
-		Require: Requirements{L5: true},
+		Require: Requirements{L6: true},
 		Expected: Values{
 			Scopes:               []string{"read:orders", "read:orders"},
 			Resources:            []string{"orders"},
@@ -144,8 +144,8 @@ func TestValidateAcceptsObservedSetSupersetWithDuplicatesAndBlanks(t *testing.T)
 func TestValidateAcceptsPrintablePolicyValues(t *testing.T) {
 	policy := Policy{
 		Require: Requirements{
-			L2B: true,
-			L5:  true,
+			L3: true,
+			L6: true,
 		},
 		Expected: Values{
 			Service:   "https://service.example.com/a?env=prod&tenant=a",
@@ -166,7 +166,7 @@ func TestValidateAcceptsPrintablePolicyValues(t *testing.T) {
 func TestValidateAcceptsMaxLengthValue(t *testing.T) {
 	value := strings.Repeat("a", MaxValueLength)
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: value},
 	}
 
@@ -177,7 +177,7 @@ func TestValidateAcceptsMaxLengthValue(t *testing.T) {
 
 func TestValidateRejectsMissingExpectedValue(t *testing.T) {
 	policy := Policy{
-		Require: Requirements{L2B: true},
+		Require: Requirements{L3: true},
 	}
 
 	err := Validate(policy, Values{Service: "payments"})
@@ -188,7 +188,7 @@ func TestValidateRejectsMissingExpectedValue(t *testing.T) {
 
 func TestValidateRejectsMissingObservedValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: "agent-a"},
 	}
 
@@ -201,14 +201,14 @@ func TestValidateRejectsMissingObservedValue(t *testing.T) {
 	if !errors.As(err, &validationErr) {
 		t.Fatalf("Validate() error = %T, want *ValidationError", err)
 	}
-	if validationErr.Layer != LayerL3 || validationErr.Field != "agent" {
+	if validationErr.Layer != LayerL4 || validationErr.Field != "agent" {
 		t.Fatalf("Validate() error layer/field = %s/%s", validationErr.Layer, validationErr.Field)
 	}
 }
 
 func TestValidateRejectsMismatchedObservedValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L4: true},
+		Require:  Requirements{L5: true},
 		Expected: Values{ComputationID: "cmp-1"},
 	}
 
@@ -220,7 +220,7 @@ func TestValidateRejectsMismatchedObservedValue(t *testing.T) {
 
 func TestValidateRejectsMissingScope(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{"read:orders", "write:orders"}},
 	}
 
@@ -230,9 +230,9 @@ func TestValidateRejectsMissingScope(t *testing.T) {
 	}
 }
 
-func TestValidateReportsAllL5Failures(t *testing.T) {
+func TestValidateReportsAllL6Failures(t *testing.T) {
 	policy := Policy{
-		Require: Requirements{L5: true},
+		Require: Requirements{L6: true},
 		Expected: Values{
 			Scopes:               []string{"read:orders"},
 			Resources:            []string{"orders"},
@@ -258,23 +258,23 @@ func TestValidateReportsAllL5Failures(t *testing.T) {
 	if len(validationErrs) != 3 {
 		t.Fatalf("Validate() error count = %d, want 3", len(validationErrs))
 	}
-	if !validationErrs.Has(LayerL5, FieldScopes, ErrMissingObserved) {
-		t.Fatalf("Validate() errors do not include L5 scopes missing observed value")
+	if !validationErrs.Has(LayerL6, FieldScopes, ErrMissingObserved) {
+		t.Fatalf("Validate() errors do not include L6 scopes missing observed value")
 	}
-	if !validationErrs.Has(LayerL5, FieldResources, ErrMismatch) {
-		t.Fatalf("Validate() errors do not include L5 resources mismatch")
+	if !validationErrs.Has(LayerL6, FieldResources, ErrMismatch) {
+		t.Fatalf("Validate() errors do not include L6 resources mismatch")
 	}
-	if !validationErrs.Has(LayerL5, FieldAuthorizationDetails, ErrMissingObserved) {
-		t.Fatalf("Validate() errors do not include L5 authorization details missing observed value")
+	if !validationErrs.Has(LayerL6, FieldAuthorizationDetails, ErrMissingObserved) {
+		t.Fatalf("Validate() errors do not include L6 authorization details missing observed value")
 	}
 }
 
 func TestValidateReportsAllLayerFailures(t *testing.T) {
 	policy := Policy{
 		Require: Requirements{
-			L2B: true,
-			L3:  true,
-			L5:  true,
+			L3: true,
+			L4: true,
+			L6: true,
 		},
 		Expected: Values{
 			Service: "payments",
@@ -302,20 +302,20 @@ func TestValidateReportsAllLayerFailures(t *testing.T) {
 	if len(validationErrs) != 4 {
 		t.Fatalf("Validate() error count = %d, want 4", len(validationErrs))
 	}
-	if !validationErrs.Has(LayerL2B, FieldService, ErrMismatch) {
-		t.Fatalf("Validate() errors do not include L2b service mismatch")
+	if !validationErrs.Has(LayerL3, FieldService, ErrMismatch) {
+		t.Fatalf("Validate() errors do not include L3 service mismatch")
 	}
-	if !validationErrs.Has(LayerL3, FieldAgent, ErrMissingObserved) {
-		t.Fatalf("Validate() errors do not include L3 agent missing observed value")
+	if !validationErrs.Has(LayerL4, FieldAgent, ErrMissingObserved) {
+		t.Fatalf("Validate() errors do not include L4 agent missing observed value")
 	}
-	if !validationErrs.Has(LayerL5, FieldScopes, nil) {
-		t.Fatalf("Validate() errors do not include L5 scopes failure")
+	if !validationErrs.Has(LayerL6, FieldScopes, nil) {
+		t.Fatalf("Validate() errors do not include L6 scopes failure")
 	}
 }
 
 func TestValidateRejectsBlankExpectedSetValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{"read:orders", " "}},
 	}
 
@@ -327,7 +327,7 @@ func TestValidateRejectsBlankExpectedSetValue(t *testing.T) {
 
 func TestValidateRejectsBlankOnlyExpectedSetValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{" "}},
 	}
 
@@ -342,7 +342,7 @@ func TestValidateRejectsBlankOnlyExpectedSetValue(t *testing.T) {
 
 func TestValidateRejectsBlankObservedSetValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{"read:orders"}},
 	}
 
@@ -354,7 +354,7 @@ func TestValidateRejectsBlankObservedSetValue(t *testing.T) {
 
 func TestValidateRejectsBlankExpectedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: " "},
 	}
 
@@ -366,7 +366,7 @@ func TestValidateRejectsBlankExpectedExactValue(t *testing.T) {
 
 func TestValidateRejectsBlankObservedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: "agent-a"},
 	}
 
@@ -378,7 +378,7 @@ func TestValidateRejectsBlankObservedExactValue(t *testing.T) {
 
 func TestValidateRejectsUnsafeExpectedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments\r\nx-forwarded-host: attacker"},
 	}
 
@@ -391,7 +391,7 @@ func TestValidateRejectsUnsafeExpectedExactValue(t *testing.T) {
 func TestValidateRejectsHTMLDelimiters(t *testing.T) {
 	value := `<script>alert("xss")</script>`
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: value},
 	}
 
@@ -403,7 +403,7 @@ func TestValidateRejectsHTMLDelimiters(t *testing.T) {
 
 func TestValidateRejectsUnsafeObservedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: "agent-a"},
 	}
 
@@ -415,7 +415,7 @@ func TestValidateRejectsUnsafeObservedExactValue(t *testing.T) {
 
 func TestValidateRejectsTooLongExpectedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: strings.Repeat("a", MaxValueLength+1)},
 	}
 
@@ -427,7 +427,7 @@ func TestValidateRejectsTooLongExpectedExactValue(t *testing.T) {
 
 func TestValidateRejectsTooLongObservedExactValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L3: true},
+		Require:  Requirements{L4: true},
 		Expected: Values{Agent: "agent-a"},
 	}
 
@@ -439,7 +439,7 @@ func TestValidateRejectsTooLongObservedExactValue(t *testing.T) {
 
 func TestValidateRejectsTooManyExpectedSetValues(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: repeatValues("scope", MaxSetValues+1)},
 	}
 
@@ -451,7 +451,7 @@ func TestValidateRejectsTooManyExpectedSetValues(t *testing.T) {
 
 func TestValidateRejectsTooManyObservedSetValues(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{"scope-0"}},
 	}
 
@@ -463,7 +463,7 @@ func TestValidateRejectsTooManyObservedSetValues(t *testing.T) {
 
 func TestValidateRejectsInvalidUTF8ObservedValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L4: true},
+		Require:  Requirements{L5: true},
 		Expected: Values{TaskID: "task-1"},
 	}
 
@@ -475,7 +475,7 @@ func TestValidateRejectsInvalidUTF8ObservedValue(t *testing.T) {
 
 func TestValidateRejectsUnsafeSetValue(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L5: true},
+		Require:  Requirements{L6: true},
 		Expected: Values{Scopes: []string{"read:orders"}},
 	}
 
@@ -487,7 +487,7 @@ func TestValidateRejectsUnsafeSetValue(t *testing.T) {
 
 func TestValidateErrorsDoNotEchoRawObservedValues(t *testing.T) {
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments"},
 	}
 
@@ -503,19 +503,19 @@ func TestValidateErrorsDoNotEchoRawObservedValues(t *testing.T) {
 func TestValidationErrorsHelpersSkipNilEntries(t *testing.T) {
 	errs := ValidationErrors{
 		nil,
-		validationError(LayerL4, FieldTaskID, ErrMismatch),
+		validationError(LayerL5, FieldTaskID, ErrMismatch),
 	}
 
-	if got := errs.Error(); got != "L4 task_id: identitypolicy: value mismatch" {
+	if got := errs.Error(); got != "L5 task_id: identitypolicy: value mismatch" {
 		t.Fatalf("ValidationErrors.Error() = %q", got)
 	}
 	if got := len(errs.Unwrap()); got != 1 {
 		t.Fatalf("ValidationErrors.Unwrap() length = %d, want 1", got)
 	}
-	if !errs.Has(LayerL4, FieldTaskID, ErrMismatch) {
+	if !errs.Has(LayerL5, FieldTaskID, ErrMismatch) {
 		t.Fatalf("ValidationErrors.Has() = false, want true")
 	}
-	if got := len(errs.ByLayer(LayerL4)); got != 1 {
+	if got := len(errs.ByLayer(LayerL5)); got != 1 {
 		t.Fatalf("ValidationErrors.ByLayer() length = %d, want 1", got)
 	}
 	if got := len(errs.ByField(FieldTaskID)); got != 1 {
@@ -554,7 +554,7 @@ func TestValidateSkipsUnrequiredLayers(t *testing.T) {
 func TestValidateAssertionAcceptsSessionBoundIdentity(t *testing.T) {
 	now := time.Now()
 	policy := Policy{
-		Require:  Requirements{L2B: true, L3: true, L4: true, L5: true},
+		Require:  Requirements{L3: true, L4: true, L5: true, L6: true},
 		Expected: Values{Service: "payments", Agent: "agent-a", TaskID: "task-1", Scopes: []string{"orders:read"}},
 	}
 	expectedBinding := Binding{
@@ -586,7 +586,7 @@ func TestValidateAssertionAcceptsSessionBoundIdentity(t *testing.T) {
 func TestValidateAssertionRejectsBindingMismatch(t *testing.T) {
 	now := time.Now()
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments"},
 	}
 	assertion := Assertion{
@@ -610,7 +610,7 @@ func TestValidateAssertionRejectsBindingMismatch(t *testing.T) {
 func TestValidateAssertionRejectsMissingBindingExpiry(t *testing.T) {
 	now := time.Now()
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments"},
 	}
 	assertion := Assertion{
@@ -633,7 +633,7 @@ func TestValidateAssertionRejectsMissingBindingExpiry(t *testing.T) {
 func TestValidateAssertionRejectsExpiredAssertion(t *testing.T) {
 	now := time.Now()
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments"},
 	}
 	assertion := Assertion{
@@ -657,7 +657,7 @@ func TestValidateAssertionRejectsExpiredAssertion(t *testing.T) {
 func TestValidateAssertionRejectsFutureIssueTime(t *testing.T) {
 	now := time.Now()
 	policy := Policy{
-		Require:  Requirements{L2B: true},
+		Require:  Requirements{L3: true},
 		Expected: Values{Service: "payments"},
 	}
 	assertion := Assertion{

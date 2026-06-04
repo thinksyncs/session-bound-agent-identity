@@ -114,6 +114,14 @@ func buildATLSClientConfig(agcfg *clients.AttestedClientConfig, baseTLSConfig *s
 		IdentityGrant:     agcfg.IdentityGrant,
 		IdentityBinding:   agcfg.IdentityBinding,
 		IdentityReplay:    agcfg.IdentityReplay,
+		IdentityLogger:    agcfg.IdentityLogger,
+	}
+	observedIdentity, err := agcfg.AGTPObservedIdentity()
+	if err != nil {
+		return nil, err
+	}
+	if observedIdentity != nil {
+		atlsConfig.ObservedIdentity = observedIdentity
 	}
 	requestContext, err := agcfg.RequestContext()
 	if err != nil {

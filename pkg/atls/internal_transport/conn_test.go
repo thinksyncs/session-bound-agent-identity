@@ -4,6 +4,7 @@
 package internaltransport
 
 import (
+	"bytes"
 	"crypto/ecdsa"
 	"crypto/elliptic"
 	"crypto/rand"
@@ -11,8 +12,10 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"errors"
+	"log/slog"
 	"math/big"
 	"net"
+	"strings"
 	"testing"
 	"time"
 
@@ -103,6 +106,95 @@ func TestServerAllowsIdentityWithoutTLSConfig(t *testing.T) {
 	defer cliRes.conn.Close()
 }
 
+func TestClientRejectsIdentityPolicyBeforeReturningConnOrAppData(t *testing.T) {
+	cert := selfSignedCert(t)
+	a, b := net.Pipe()
+
+	serverTLS := tls.Server(a, &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+	})
+	clientTLS := tls.Client(b, &tls.Config{
+		InsecureSkipVerify: true,
+		MinVersion:         tls.VersionTLS13,
+		MaxVersion:         tls.VersionTLS13,
+	})
+
+	type result struct {
+		conn *Conn
+		err  error
+	}
+	serverCh := make(chan error, 1)
+	clientCh := make(chan result, 1)
+
+	go func() {
+		conn, err := Server(serverTLS, &ServerConfig{Identity: cert})
+		if err != nil {
+			serverCh <- err
+			return
+		}
+		defer conn.Close()
+
+		buf := make([]byte, 1)
+		_ = conn.SetReadDeadline(time.Now().Add(200 * time.Millisecond))
+		n, err := conn.Read(buf)
+		if n > 0 {
+			serverCh <- errors.New("server received app data after failed identity policy")
+			return
+		}
+		if err == nil {
+			serverCh <- errors.New("server read returned without data or error")
+			return
+		}
+		serverCh <- nil
+	}()
+
+	go func() {
+		conn, err := Client(clientTLS, &ClientConfig{
+			TLSConfig: &tls.Config{
+				InsecureSkipVerify: true,
+				MinVersion:         tls.VersionTLS13,
+				MaxVersion:         tls.VersionTLS13,
+			},
+			IdentityPolicy: identitypolicy.Policy{
+				Require:  identitypolicy.Requirements{L3: true},
+				Expected: identitypolicy.Values{Service: "payments"},
+			},
+			ObservedIdentity: func(_ *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Assertion, error) {
+				binding, err := ExpectedIdentityBinding(validation)
+				if err != nil {
+					return identitypolicy.Assertion{}, err
+				}
+				binding.ExpiresAt = time.Now().Add(time.Hour)
+				return identitypolicy.Assertion{
+					Values:  identitypolicy.Values{Service: "analytics"},
+					Binding: binding,
+				}, nil
+			},
+		})
+		if conn != nil {
+			_, _ = conn.Write([]byte("x"))
+			_ = conn.Close()
+		} else {
+			_ = clientTLS.Close()
+		}
+		clientCh <- result{conn: conn, err: err}
+	}()
+
+	cliRes := <-clientCh
+	if cliRes.conn != nil {
+		t.Fatal("client returned a connection after identity policy failure")
+	}
+	if !errors.Is(cliRes.err, identitypolicy.ErrMismatch) {
+		t.Fatalf("client error = %v, want %v", cliRes.err, identitypolicy.ErrMismatch)
+	}
+
+	if err := <-serverCh; err != nil {
+		t.Fatalf("server app-data observation error = %v", err)
+	}
+}
+
 func TestValidateIdentityPolicySkipsDisabledPolicy(t *testing.T) {
 	cfg := &ClientConfig{}
 
@@ -114,7 +206,7 @@ func TestValidateIdentityPolicySkipsDisabledPolicy(t *testing.T) {
 func TestValidateIdentityPolicyRequiresObservedIdentitySource(t *testing.T) {
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 	}
@@ -125,12 +217,78 @@ func TestValidateIdentityPolicyRequiresObservedIdentitySource(t *testing.T) {
 	}
 }
 
+func TestValidateIdentityPolicyRejectsObservedIdentityError(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	sourceErr := errors.New("identity source unavailable")
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{}, sourceErr
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
+	if !errors.Is(err, sourceErr) {
+		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, sourceErr)
+	}
+}
+
+func TestValidateIdentityPolicyRejectsPartialDirectIdentitySource(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	binding := bindingForAssertion(t, validation)
+	grant := &identitypolicy.VerifiedGrant{
+		Issuer:          "manager-key-1",
+		Audience:        "client-a",
+		GrantHash:       "sha256:grant",
+		ConfirmationKey: "agent-confirmation-key",
+		Values:          identitypolicy.Values{Service: "payments"},
+		IssuedAt:        time.Now().Add(-time.Minute),
+		ExpiresAt:       time.Now().Add(time.Hour),
+	}
+	statement := &identitypolicy.VerifiedSessionBindingStatement{
+		GrantHash: "sha256:grant",
+		Audience:  "client-a",
+		SignerKey: "agent-confirmation-key",
+		Binding:   binding,
+	}
+
+	tests := []struct {
+		name      string
+		grant     *identitypolicy.VerifiedGrant
+		statement *identitypolicy.VerifiedSessionBindingStatement
+	}{
+		{name: "grant only", grant: grant},
+		{name: "statement only", statement: statement},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &ClientConfig{
+				IdentityPolicy: identitypolicy.Policy{
+					Require:  identitypolicy.Requirements{L3: true},
+					Expected: identitypolicy.Values{Service: "payments"},
+				},
+				IdentityGrant:   tt.grant,
+				IdentityBinding: tt.statement,
+			}
+
+			err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
+			if !errors.Is(err, ErrMissingObservedIdentity) {
+				t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, ErrMissingObservedIdentity)
+			}
+		})
+	}
+}
+
 func TestValidateIdentityPolicyAcceptsObservedIdentity(t *testing.T) {
 	validation := validationResultForIdentityPolicy(t)
 	binding := bindingForAssertion(t, validation)
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true, L3: true},
+			Require:  identitypolicy.Requirements{L3: true, L4: true},
 			Expected: identitypolicy.Values{Service: "payments", Agent: "agent-a"},
 		},
 		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
@@ -152,7 +310,7 @@ func TestValidateIdentityPolicyAcceptsVerifiedGrantAndBinding(t *testing.T) {
 	binding.Nonce = "identity-binding-nonce"
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true, L3: true},
+			Require:  identitypolicy.Requirements{L3: true, L4: true},
 			Expected: identitypolicy.Values{Service: "payments", Agent: "agent-a"},
 		},
 		IdentityGrant: &identitypolicy.VerifiedGrant{
@@ -184,7 +342,7 @@ func TestValidateIdentityPolicyRejectsVerifiedGrantReplay(t *testing.T) {
 	replayCache := newTransportReplayCache()
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		IdentityGrant: &identitypolicy.VerifiedGrant{
@@ -221,7 +379,7 @@ func TestValidateIdentityPolicyDoesNotConsumeReplayOnPolicyMismatch(t *testing.T
 	replayCache := newTransportReplayCache()
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		IdentityGrant: &identitypolicy.VerifiedGrant{
@@ -257,7 +415,7 @@ func TestValidateIdentityPolicyRejectsObservedIdentityMismatch(t *testing.T) {
 	binding := bindingForAssertion(t, validation)
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
@@ -274,11 +432,76 @@ func TestValidateIdentityPolicyRejectsObservedIdentityMismatch(t *testing.T) {
 	}
 }
 
+func TestValidateIdentityPolicyDebugLogsFailureWithoutValues(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	binding := bindingForAssertion(t, validation)
+	var logs bytes.Buffer
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityLogger: slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values:  identitypolicy.Values{Service: "analytics"},
+				Binding: binding,
+			}, nil
+		},
+	}
+
+	err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation)
+	if !errors.Is(err, identitypolicy.ErrMismatch) {
+		t.Fatalf("validateIdentityPolicy() error = %v, want %v", err, identitypolicy.ErrMismatch)
+	}
+	logText := logs.String()
+	for _, want := range []string{
+		"aTLS identity policy check",
+		"reason=validation_failed",
+		"L3 service",
+	} {
+		if !strings.Contains(logText, want) {
+			t.Fatalf("log output = %q, want %q", logText, want)
+		}
+	}
+	for _, leakedValue := range []string{"payments", "analytics"} {
+		if strings.Contains(logText, leakedValue) {
+			t.Fatalf("log output leaked identity value %q: %q", leakedValue, logText)
+		}
+	}
+}
+
+func TestValidateIdentityPolicyDebugLogsSuccess(t *testing.T) {
+	validation := validationResultForIdentityPolicy(t)
+	binding := bindingForAssertion(t, validation)
+	var logs bytes.Buffer
+	cfg := &ClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityLogger: slog.New(slog.NewTextHandler(&logs, &slog.HandlerOptions{Level: slog.LevelDebug})),
+		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
+			return identitypolicy.Assertion{
+				Values:  identitypolicy.Values{Service: "payments"},
+				Binding: binding,
+			}, nil
+		},
+	}
+
+	if err := validateIdentityPolicy(cfg, &tls.ConnectionState{}, validation); err != nil {
+		t.Fatalf("validateIdentityPolicy() error = %v", err)
+	}
+	if !strings.Contains(logs.String(), "reason=accepted") {
+		t.Fatalf("log output = %q, want accepted reason", logs.String())
+	}
+}
+
 func TestValidateIdentityPolicyRejectsUnboundAssertion(t *testing.T) {
 	validation := validationResultForIdentityPolicy(t)
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
@@ -304,7 +527,7 @@ func TestValidateIdentityPolicyRejectsMissingRequestContext(t *testing.T) {
 	validation.Context = nil
 	cfg := &ClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		ObservedIdentity: func(*tls.ConnectionState, *ea.ValidationResult) (identitypolicy.Assertion, error) {
@@ -338,7 +561,7 @@ func validationResultForIdentityPolicy(t *testing.T) *ea.ValidationResult {
 func bindingForAssertion(t *testing.T, validation *ea.ValidationResult) identitypolicy.Binding {
 	t.Helper()
 
-	binding, err := expectedIdentityBinding(validation)
+	binding, err := ExpectedIdentityBinding(validation)
 	if err != nil {
 		t.Fatal(err)
 	}

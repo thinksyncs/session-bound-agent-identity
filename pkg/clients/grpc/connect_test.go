@@ -5,10 +5,13 @@ package grpc
 import (
 	"crypto/rand"
 	"crypto/rsa"
+	stdtls "crypto/tls"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
 	"fmt"
+	"io"
+	"log/slog"
 	"math/big"
 	"os"
 	"strings"
@@ -18,6 +21,8 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/ultravioletrs/cocos/pkg/agtp"
+	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 	"github.com/ultravioletrs/cocos/pkg/clients"
 	"github.com/ultravioletrs/cocos/pkg/tls"
 )
@@ -204,6 +209,78 @@ func TestNewClient(t *testing.T) {
 	}
 }
 
+func TestBuildATLSClientConfigCopiesIdentityBindingInputs(t *testing.T) {
+	grant := &identitypolicy.VerifiedGrant{
+		Issuer:          "manager-key-1",
+		Audience:        "client-a",
+		GrantHash:       "sha256:grant",
+		ConfirmationKey: "agent-confirmation-key",
+		Values:          identitypolicy.Values{Service: "payments"},
+		IssuedAt:        time.Now().Add(-time.Minute),
+		ExpiresAt:       time.Now().Add(time.Hour),
+	}
+	binding := &identitypolicy.VerifiedSessionBindingStatement{
+		GrantHash: "sha256:grant",
+		Audience:  "client-a",
+		SignerKey: "agent-confirmation-key",
+		Binding: identitypolicy.Binding{
+			LeafPublicKeySHA256:  "leaf",
+			RequestContextSHA256: "ctx",
+			Nonce:                "nonce",
+			ExpiresAt:            time.Now().Add(time.Minute),
+		},
+	}
+	replay := newGRPCReplayCache()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	agcfg := clients.AttestedClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityGrant:   grant,
+		IdentityBinding: binding,
+		IdentityReplay:  replay,
+		IdentityLogger:  logger,
+	}
+
+	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})
+
+	require.NoError(t, err)
+	assert.Equal(t, agcfg.IdentityPolicy, atlsConfig.IdentityPolicy)
+	assert.Same(t, grant, atlsConfig.IdentityGrant)
+	assert.Same(t, binding, atlsConfig.IdentityBinding)
+	assert.Same(t, replay, atlsConfig.IdentityReplay)
+	assert.Same(t, logger, atlsConfig.IdentityLogger)
+}
+
+func TestBuildATLSClientConfigWiresAGTPObservedIdentity(t *testing.T) {
+	agcfg := clients.AttestedClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityGrantJWT:   "grant",
+		IdentityBindingJWT: "binding",
+		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "manager",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          grpcTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
+		},
+		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "agent-a",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          grpcTestKeyFunc(map[string][]byte{"agent-key": []byte("agent-secret")}),
+		},
+	}
+
+	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})
+
+	require.NoError(t, err)
+	require.NotNil(t, atlsConfig.ObservedIdentity)
+}
+
 func TestClientSecure(t *testing.T) {
 	tests := []struct {
 		name     string
@@ -242,6 +319,26 @@ func TestClientSecure(t *testing.T) {
 			c := &client{security: tt.secure}
 			assert.Equal(t, tt.expected, c.Secure())
 		})
+	}
+}
+
+type grpcReplayCache struct{}
+
+func newGRPCReplayCache() *grpcReplayCache {
+	return &grpcReplayCache{}
+}
+
+func (c *grpcReplayCache) MarkUsed(string, time.Time) error {
+	return nil
+}
+
+func grpcTestKeyFunc(keys map[string][]byte) agtp.KeyFunc {
+	return func(keyID string) (interface{}, error) {
+		key, ok := keys[keyID]
+		if !ok {
+			return nil, agtp.ErrMissingKeyID
+		}
+		return key, nil
 	}
 }
 

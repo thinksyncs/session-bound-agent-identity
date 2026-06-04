@@ -5,12 +5,15 @@ package http
 
 import (
 	stdtls "crypto/tls"
+	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/ultravioletrs/cocos/pkg/agtp"
 	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 	"github.com/ultravioletrs/cocos/pkg/clients"
 	"github.com/ultravioletrs/cocos/pkg/tls"
@@ -263,14 +266,16 @@ func TestBuildATLSClientConfigCopiesIdentityBindingInputs(t *testing.T) {
 		},
 	}
 	replay := newHTTPReplayCache()
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	agcfg := &clients.AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
-			Require:  identitypolicy.Requirements{L2B: true},
+			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
 		IdentityGrant:   grant,
 		IdentityBinding: binding,
 		IdentityReplay:  replay,
+		IdentityLogger:  logger,
 	}
 
 	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})
@@ -280,6 +285,35 @@ func TestBuildATLSClientConfigCopiesIdentityBindingInputs(t *testing.T) {
 	assert.Same(t, grant, atlsConfig.IdentityGrant)
 	assert.Same(t, binding, atlsConfig.IdentityBinding)
 	assert.Same(t, replay, atlsConfig.IdentityReplay)
+	assert.Same(t, logger, atlsConfig.IdentityLogger)
+}
+
+func TestBuildATLSClientConfigWiresAGTPObservedIdentity(t *testing.T) {
+	agcfg := &clients.AttestedClientConfig{
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityGrantJWT:   "grant",
+		IdentityBindingJWT: "binding",
+		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "manager",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          httpTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
+		},
+		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "agent-a",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          httpTestKeyFunc(map[string][]byte{"agent-key": []byte("agent-secret")}),
+		},
+	}
+
+	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})
+
+	assert.NoError(t, err)
+	assert.NotNil(t, atlsConfig.ObservedIdentity)
 }
 
 func TestCreateTransport_ATLSInvalidRequestContext(t *testing.T) {
@@ -318,6 +352,16 @@ func newHTTPReplayCache() *httpReplayCache {
 
 func (c *httpReplayCache) MarkUsed(string, time.Time) error {
 	return nil
+}
+
+func httpTestKeyFunc(keys map[string][]byte) agtp.KeyFunc {
+	return func(keyID string) (interface{}, error) {
+		key, ok := keys[keyID]
+		if !ok {
+			return nil, agtp.ErrMissingKeyID
+		}
+		return key, nil
+	}
 }
 
 func TestCreateTransport_BasicTLSError(t *testing.T) {

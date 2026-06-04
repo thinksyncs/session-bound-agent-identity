@@ -11,6 +11,7 @@ import (
 
 	"github.com/ultravioletrs/cocos/pkg/atls/ea"
 	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
+	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
 	internaltransport "github.com/ultravioletrs/cocos/pkg/atls/internal_transport"
 )
 
@@ -87,4 +88,10 @@ func VerifyOptionsFromTLSConfig(cfg *tls.Config) *x509.VerifyOptions {
 
 func VerificationPolicyFromEvidenceVerifier(v eaattestation.EvidenceVerifier) eaattestation.VerificationPolicy {
 	return eaattestation.VerificationPolicy{EvidenceVerifier: v}
+}
+
+// IdentityBindingFromValidation derives the identity-policy binding values from
+// the accepted aTLS validation result.
+func IdentityBindingFromValidation(validation *ea.ValidationResult) (identitypolicy.Binding, error) {
+	return internaltransport.ExpectedIdentityBinding(validation)
 }

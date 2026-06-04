@@ -43,7 +43,7 @@ func TestNewAssertionFromSessionBindingAcceptsGrantAgentPublicKey(t *testing.T) 
 	}
 
 	policy := Policy{
-		Require:  Requirements{L2B: true, L3: true, L4: true, L5: true},
+		Require:  Requirements{L3: true, L4: true, L5: true, L6: true},
 		Expected: Values{Service: "payments", Agent: "agent-a", TaskID: "task-1", Scopes: []string{"orders:read"}},
 	}
 	if err := ValidateAssertion(policy, assertion, statement.Binding, now); err != nil {
