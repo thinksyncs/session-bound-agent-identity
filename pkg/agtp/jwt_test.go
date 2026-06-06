@@ -63,6 +63,102 @@ func TestVerifyIdentityGrantJWTMapsClaims(t *testing.T) {
 	}
 }
 
+func TestVerifyIdentityGrantJWTAcceptsLocalKeySet(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	grant, err := VerifyIdentityGrantJWT(tokenString, JWTVerifyOptions{
+		ExpectedIssuer:   "manager",
+		ExpectedAudience: "client-a",
+		ValidMethods:     []string{"HS256"},
+		LocalKeys: []LocalKey{
+			{KeyID: "manager-key", Key: []byte("manager-secret")},
+		},
+		Now: now,
+	})
+	if err != nil {
+		t.Fatalf("VerifyIdentityGrantJWT() error = %v", err)
+	}
+	if grant.ConfirmationKey != "agent-key-1" {
+		t.Fatalf("grant confirmation key = %q, want agent-key-1", grant.ConfirmationKey)
+	}
+}
+
+func TestVerifyIdentityGrantJWTRejectsDisabledLocalKey(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	_, err := VerifyIdentityGrantJWT(tokenString, JWTVerifyOptions{
+		ExpectedIssuer:   "manager",
+		ExpectedAudience: "client-a",
+		ValidMethods:     []string{"HS256"},
+		LocalKeys: []LocalKey{
+			{KeyID: "manager-key", Key: []byte("manager-secret"), Disabled: true},
+		},
+		Now: now,
+	})
+	if !errors.Is(err, ErrDisabledKeyID) {
+		t.Fatalf("VerifyIdentityGrantJWT() error = %v, want %v", err, ErrDisabledKeyID)
+	}
+}
+
+func TestVerifyIdentityGrantJWTRejectsDisabledKeyFuncKey(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	_, err := VerifyIdentityGrantJWT(tokenString, JWTVerifyOptions{
+		ExpectedIssuer:   "manager",
+		ExpectedAudience: "client-a",
+		ValidMethods:     []string{"HS256"},
+		KeyFunc: testKeyFunc(map[string][]byte{
+			"manager-key": []byte("manager-secret"),
+		}),
+		DisabledKeyIDs: []string{"manager-key"},
+		Now:            now,
+	})
+	if !errors.Is(err, ErrDisabledKeyID) {
+		t.Fatalf("VerifyIdentityGrantJWT() error = %v, want %v", err, ErrDisabledKeyID)
+	}
+}
+
+func TestVerifyIdentityGrantJWTRejectsRevokedGrantID(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	_, err := VerifyIdentityGrantJWT(tokenString, JWTVerifyOptions{
+		ExpectedIssuer:   "manager",
+		ExpectedAudience: "client-a",
+		ValidMethods:     []string{"HS256"},
+		LocalKeys: []LocalKey{
+			{KeyID: "manager-key", Key: []byte("manager-secret")},
+		},
+		RevokedJWTIDs: []string{"grant-1"},
+		Now:           now,
+	})
+	if !errors.Is(err, ErrRevokedJWTID) {
+		t.Fatalf("VerifyIdentityGrantJWT() error = %v, want %v", err, ErrRevokedJWTID)
+	}
+}
+
+func TestVerifyIdentityGrantJWTRejectsAmbiguousKeySource(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	_, err := VerifyIdentityGrantJWT(tokenString, JWTVerifyOptions{
+		ExpectedIssuer:   "manager",
+		ExpectedAudience: "client-a",
+		ValidMethods:     []string{"HS256"},
+		KeyFunc:          testKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
+		LocalKeys: []LocalKey{
+			{KeyID: "manager-key", Key: []byte("manager-secret")},
+		},
+		Now: now,
+	})
+	if !errors.Is(err, ErrAmbiguousKeySource) {
+		t.Fatalf("VerifyIdentityGrantJWT() error = %v, want %v", err, ErrAmbiguousKeySource)
+	}
+}
+
 func TestVerifyIdentityGrantJWTRejectsMissingConfirmationKey(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	tokenString := signTestJWT(t, "manager-key", []byte("manager-secret"), jwt.MapClaims{

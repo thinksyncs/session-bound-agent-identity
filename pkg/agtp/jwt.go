@@ -19,12 +19,18 @@ import (
 
 var (
 	ErrMissingKeyFunc          = errors.New("agtp: missing JWT key function")
+	ErrMissingLocalKey         = errors.New("agtp: missing local JWT key")
 	ErrMissingValidMethods     = errors.New("agtp: missing allowed JWT signing methods")
 	ErrMissingExpectedIssuer   = errors.New("agtp: missing expected issuer")
 	ErrMissingExpectedAudience = errors.New("agtp: missing expected audience")
 	ErrMissingConfirmationKey  = errors.New("agtp: missing confirmation key")
 	ErrMissingKeyID            = errors.New("agtp: missing JWT key id")
+	ErrUnknownKeyID            = errors.New("agtp: unknown JWT key id")
+	ErrDisabledKeyID           = errors.New("agtp: disabled JWT key id")
+	ErrDuplicateKeyID          = errors.New("agtp: duplicate JWT key id")
+	ErrAmbiguousKeySource      = errors.New("agtp: ambiguous JWT key source")
 	ErrMissingJWTID            = errors.New("agtp: missing JWT id")
+	ErrRevokedJWTID            = errors.New("agtp: revoked JWT id")
 	ErrMissingSubject          = errors.New("agtp: missing subject")
 	ErrMissingGrantHash        = errors.New("agtp: missing grant hash")
 	ErrMissingBindingField     = errors.New("agtp: missing session binding field")
@@ -46,12 +52,22 @@ const (
 // KeyFunc resolves a JWT verification key by protected-header key id.
 type KeyFunc func(keyID string) (interface{}, error)
 
+// LocalKey is a locally configured JWT verification key.
+type LocalKey struct {
+	KeyID    string
+	Key      interface{}
+	Disabled bool
+}
+
 // JWTVerifyOptions contains local verification policy for AGTP JWT/JWS tokens.
 type JWTVerifyOptions struct {
 	ExpectedIssuer   string
 	ExpectedAudience string
 	ValidMethods     []string
 	KeyFunc          KeyFunc
+	LocalKeys        []LocalKey
+	DisabledKeyIDs   []string
+	RevokedJWTIDs    []string
 	Now              time.Time
 }
 
@@ -78,7 +94,10 @@ type SessionIdentityJWTResult struct {
 // ValidateJWTVerifyOptions checks local JWT verification policy before a
 // connection attempt uses it.
 func ValidateJWTVerifyOptions(opts JWTVerifyOptions) error {
-	_, err := parserOptions(opts)
+	if _, err := parserOptions(opts); err != nil {
+		return err
+	}
+	_, err := keyFuncForOptions(opts)
 	return err
 }
 
@@ -285,6 +304,10 @@ func parseJWT(tokenString string, claims jwt.Claims, opts JWTVerifyOptions) (*jw
 	if err != nil {
 		return nil, "", err
 	}
+	keyFunc, err := keyFuncForOptions(opts)
+	if err != nil {
+		return nil, "", err
+	}
 
 	var signerKey string
 	token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
@@ -293,7 +316,7 @@ func parseJWT(tokenString string, claims jwt.Claims, opts JWTVerifyOptions) (*jw
 			return nil, err
 		}
 		signerKey = keyID
-		return opts.KeyFunc(keyID)
+		return keyFunc(keyID)
 	}, parserOpts...)
 	if err != nil {
 		return nil, "", fmt.Errorf("agtp: verify JWT: %w", err)
@@ -301,12 +324,18 @@ func parseJWT(tokenString string, claims jwt.Claims, opts JWTVerifyOptions) (*jw
 	if !token.Valid {
 		return nil, "", errors.New("agtp: invalid JWT")
 	}
+	if isListed(jwtIDFromClaims(claims), opts.RevokedJWTIDs) {
+		return nil, "", ErrRevokedJWTID
+	}
 	return token, signerKey, nil
 }
 
 func parserOptions(opts JWTVerifyOptions) ([]jwt.ParserOption, error) {
-	if opts.KeyFunc == nil {
+	if opts.KeyFunc == nil && len(opts.LocalKeys) == 0 {
 		return nil, ErrMissingKeyFunc
+	}
+	if opts.KeyFunc != nil && len(opts.LocalKeys) > 0 {
+		return nil, ErrAmbiguousKeySource
 	}
 	if len(opts.ValidMethods) == 0 {
 		return nil, ErrMissingValidMethods
@@ -336,6 +365,48 @@ func parserOptions(opts JWTVerifyOptions) ([]jwt.ParserOption, error) {
 		}))
 	}
 	return parserOpts, nil
+}
+
+func keyFuncForOptions(opts JWTVerifyOptions) (KeyFunc, error) {
+	disabled := stringSet(opts.DisabledKeyIDs)
+	if opts.KeyFunc != nil {
+		return func(keyID string) (interface{}, error) {
+			if disabled[strings.TrimSpace(keyID)] {
+				return nil, ErrDisabledKeyID
+			}
+			return opts.KeyFunc(keyID)
+		}, nil
+	}
+
+	keys := make(map[string]interface{}, len(opts.LocalKeys))
+	for _, localKey := range opts.LocalKeys {
+		keyID := strings.TrimSpace(localKey.KeyID)
+		if keyID == "" {
+			return nil, ErrMissingKeyID
+		}
+		if _, ok := keys[keyID]; ok {
+			return nil, ErrDuplicateKeyID
+		}
+		if localKey.Disabled {
+			disabled[keyID] = true
+		}
+		if localKey.Key == nil {
+			return nil, ErrMissingLocalKey
+		}
+		keys[keyID] = localKey.Key
+	}
+
+	return func(keyID string) (interface{}, error) {
+		keyID = strings.TrimSpace(keyID)
+		if disabled[keyID] {
+			return nil, ErrDisabledKeyID
+		}
+		key, ok := keys[keyID]
+		if !ok {
+			return nil, ErrUnknownKeyID
+		}
+		return key, nil
+	}, nil
 }
 
 func validateProfileClaims(claims profileClaims, expectedType string) error {
@@ -370,6 +441,32 @@ func keyIDFromToken(token *jwt.Token) (string, error) {
 		return "", ErrMissingKeyID
 	}
 	return keyID, nil
+}
+
+func jwtIDFromClaims(claims jwt.Claims) string {
+	switch c := claims.(type) {
+	case *identityGrantClaims:
+		return c.ID
+	case *sessionBindingClaims:
+		return c.ID
+	default:
+		return ""
+	}
+}
+
+func stringSet(values []string) map[string]bool {
+	out := make(map[string]bool, len(values))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			out[value] = true
+		}
+	}
+	return out
+}
+
+func isListed(value string, values []string) bool {
+	return stringSet(values)[strings.TrimSpace(value)]
 }
 
 func appendScopeValues(values []string, spaceSeparated string) []string {

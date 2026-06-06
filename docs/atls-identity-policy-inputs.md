@@ -107,6 +107,19 @@ time, and JWT ID. The signing-method allow-list must not include `none`.
 Identity values carried in an Agent-provided token are not authoritative unless
 the token verifies under a locally trusted Manager or policy-authority key.
 
+This profile keeps three key roles separate:
+
+- TLS endpoint key: proves possession for the accepted TLS or exported
+  authenticator endpoint.
+- Agent binding key: signs the Session Binding Statement that binds a verified
+  grant to the accepted aTLS session.
+- Manager or policy-authority key: signs Identity Grants that authorize the
+  intended deployment, agent, task, or capability values.
+
+These keys may be related by deployment policy, but they must not be silently
+treated as the same key. In particular, the Manager key is a token-signing or
+policy-authority key, not a TLS endpoint key.
+
 CWT/COSE can be added later as a compact binary encoding profile. The security
 rules stay the same: the grant issuer must be trusted locally, the confirmation
 key must be named by the verified grant, and the session-binding statement must
@@ -123,8 +136,8 @@ Deployments that use this profile should define:
 - a trusted issuer namespace for Manager or policy-authority keys,
 - key identifiers and key-version rules,
 - overlap windows for key rotation,
-- a revocation source for grants or issuer keys when early invalidation is
-  required,
+- a revocation source for grants, Manager keys, or Agent binding keys when
+  early invalidation is required,
 - maximum grant and session-binding lifetimes,
 - and replay-cache retention that is at least as long as the accepted
   session-binding lifetime.
@@ -132,6 +145,39 @@ Deployments that use this profile should define:
 Until those deployment rules exist, short grant lifetimes and fail-closed local
 key lookup are the conservative default. A token signed with an unknown,
 retired, or locally disabled key should be rejected.
+
+Revocation has three separate targets:
+
+- grant revocation rejects a specific Identity Grant by `jti`;
+- Manager-key revocation rejects grants signed by a disabled issuer key or
+  `kid`;
+- Agent binding-key revocation rejects Session Binding Statements signed by a
+  compromised or retired confirmation key.
+
+Unknown, revoked, or stale keys fail closed. A deployment that relies on JWKS or
+another remote key set should define freshness, cache lifetime, and failure
+handling for that key source.
+
+### Initial production profile
+
+The recommended initial production profile is intentionally small:
+
+- Manager keys are configured locally by `kid`, algorithm, and public key.
+- Identity Grants are short-lived.
+- Optional local denylists cover revoked grant `jti` values and disabled
+  Manager-key `kid` values.
+- Unknown or disabled `kid` values fail closed.
+- `MemoryReplayCache` is suitable only for tests and single-process deployments.
+- Multi-instance deployments should use a shared replay cache, such as
+  Redis-compatible `SET NX EX` semantics keyed by the session-binding nonce or
+  binding statement ID.
+- Production identity policy has two modes: disabled or required. Required mode
+  fails closed when the policy, Identity Grant, Session Binding Statement,
+  trusted Manager key, expected binding, or replay check is missing or invalid.
+
+JWKS, DNS-AID, registry-based discovery, and centralized revocation APIs can be
+added later. They should not replace the local trust decision unless freshness,
+cache lifetime, revocation behavior, and fail-closed handling are specified.
 
 In implementation terms, AGTP can be introduced as a post-aTLS handshake before
 changing the aTLS wire protocol. The AGTP step would authenticate the grant,

@@ -28,6 +28,21 @@ func TestPolicyEnabled(t *testing.T) {
 			},
 			want: true,
 		},
+		{
+			name: "required mode",
+			policy: Policy{
+				Mode: ModeRequired,
+			},
+			want: true,
+		},
+		{
+			name: "disabled mode overrides requirements",
+			policy: Policy{
+				Mode:    ModeDisabled,
+				Require: Requirements{L3: true},
+			},
+			want: false,
+		},
 	}
 
 	for _, tt := range tests {
@@ -36,6 +51,24 @@ func TestPolicyEnabled(t *testing.T) {
 				t.Fatalf("Policy.Enabled() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestValidateRejectsRequiredModeWithoutRequirements(t *testing.T) {
+	policy := Policy{Mode: ModeRequired}
+
+	err := Validate(policy, Values{})
+	if !errors.Is(err, ErrMissingExpected) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrMissingExpected)
+	}
+}
+
+func TestValidateRejectsInvalidMode(t *testing.T) {
+	policy := Policy{Mode: Mode("permissive")}
+
+	err := Validate(policy, Values{})
+	if !errors.Is(err, ErrInvalidMode) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrInvalidMode)
 	}
 }
 

@@ -18,6 +18,7 @@ var (
 	ErrMissingExpected  = errors.New("identitypolicy: missing expected value")
 	ErrMissingObserved  = errors.New("identitypolicy: missing observed value")
 	ErrMismatch         = errors.New("identitypolicy: value mismatch")
+	ErrInvalidMode      = errors.New("identitypolicy: invalid mode")
 	ErrUnsafeValue      = errors.New("identitypolicy: unsafe value")
 	ErrValueTooLong     = errors.New("identitypolicy: value too long")
 	ErrTooManyValues    = errors.New("identitypolicy: too many values")
@@ -31,6 +32,15 @@ const (
 	LayerL4 = "L4"
 	LayerL5 = "L5"
 	LayerL6 = "L6"
+)
+
+// Mode selects how identity policy should be enforced.
+type Mode string
+
+const (
+	ModeDefault  Mode = ""
+	ModeDisabled Mode = "disabled"
+	ModeRequired Mode = "required"
 )
 
 const (
@@ -112,13 +122,33 @@ type Assertion struct {
 
 // Policy separates local expected values from observed peer values.
 type Policy struct {
+	Mode     Mode         `json:"mode,omitempty" yaml:"mode,omitempty"`
 	Require  Requirements `json:"require" yaml:"require"`
 	Expected Values       `json:"expected" yaml:"expected"`
 }
 
 // Enabled reports whether this policy should be enforced.
 func (p Policy) Enabled() bool {
+	switch p.Mode {
+	case ModeDisabled:
+		return false
+	case ModeRequired:
+		return true
+	case ModeDefault:
+	default:
+		return false
+	}
 	return p.Require.Enabled()
+}
+
+// ValidateMode checks whether this policy uses a supported production mode.
+func (p Policy) ValidateMode() error {
+	switch p.Mode {
+	case ModeDefault, ModeDisabled, ModeRequired:
+		return nil
+	default:
+		return ErrInvalidMode
+	}
 }
 
 // Validate checks observed values against this policy.
@@ -231,6 +261,12 @@ func (e ValidationErrors) nonNil() ValidationErrors {
 // Validate checks observed values against local expected policy values.
 func Validate(policy Policy, observed Values) error {
 	var errs ValidationErrors
+	if err := policy.ValidateMode(); err != nil {
+		errs = append(errs, validationError("policy", "mode", err))
+	}
+	if policy.Mode == ModeRequired && !policy.Require.Enabled() {
+		errs = append(errs, validationError("policy", FieldAll, ErrMissingExpected))
+	}
 
 	if policy.Require.L3 {
 		if err := validateExactLayer(LayerL3, policy.Expected, observed, []field{
