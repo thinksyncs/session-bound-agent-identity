@@ -108,6 +108,9 @@ func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc,
 	if err := agtp.ValidateJWTVerifyOptions(c.IdentityBindingJWTOptions); err != nil {
 		return nil, fmt.Errorf("%w: identity binding JWT options: %w", ErrInvalidIdentityJWTConfig, err)
 	}
+	if c.IdentityReplay == nil {
+		return nil, fmt.Errorf("%w: identity replay cache is required for AGTP JWT validation", ErrInvalidIdentityJWTConfig)
+	}
 
 	return func(_ *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Assertion, error) {
 		expectedBinding, err := atls.IdentityBindingFromValidation(validation)

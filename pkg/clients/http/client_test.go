@@ -308,6 +308,7 @@ func TestBuildATLSClientConfigWiresAGTPObservedIdentity(t *testing.T) {
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          httpTestKeyFunc(map[string][]byte{"agent-key": []byte("agent-secret")}),
 		},
+		IdentityReplay: newHTTPReplayCache(),
 	}
 
 	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})

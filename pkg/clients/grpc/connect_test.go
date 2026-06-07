@@ -273,6 +273,7 @@ func TestBuildATLSClientConfigWiresAGTPObservedIdentity(t *testing.T) {
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          grpcTestKeyFunc(map[string][]byte{"agent-key": []byte("agent-secret")}),
 		},
+		IdentityReplay: newGRPCReplayCache(),
 	}
 
 	atlsConfig, err := buildATLSClientConfig(agcfg, &stdtls.Config{})

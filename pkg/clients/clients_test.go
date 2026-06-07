@@ -482,6 +482,34 @@ func TestAGTPObservedIdentityRejectsMissingJWTOptions(t *testing.T) {
 	}
 }
 
+func TestAGTPObservedIdentityRejectsMissingReplayCache(t *testing.T) {
+	cfg := AttestedClientConfig{
+		IdentityGrantJWT:   "grant",
+		IdentityBindingJWT: "binding",
+		IdentityPolicy: identitypolicy.Policy{
+			Require:  identitypolicy.Requirements{L3: true},
+			Expected: identitypolicy.Values{Service: "payments"},
+		},
+		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "manager",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
+		},
+		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+			ExpectedIssuer:   "agent-a",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          clientTestKeyFunc(map[string][]byte{"agent-key-1": []byte("agent-secret")}),
+		},
+	}
+
+	_, err := cfg.AGTPObservedIdentity()
+	if !errors.Is(err, ErrInvalidIdentityJWTConfig) {
+		t.Fatalf("AGTPObservedIdentity() error = %v, want %v", err, ErrInvalidIdentityJWTConfig)
+	}
+}
+
 func validationResultForAGTP(t *testing.T) *ea.ValidationResult {
 	t.Helper()
 

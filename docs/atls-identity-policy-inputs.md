@@ -179,7 +179,7 @@ The required-mode profile has the following minimum requirements:
 | Unknown keys | Unknown, disabled, retired, or stale `kid` values fail closed. |
 | Session binding | Session Binding Statements are signed by the confirmation key named in the verified Identity Grant, or by another endpoint key explicitly authorized by that grant or local policy. |
 | aTLS binding | Session Binding Statements carry the accepted aTLS leaf-key hash, request-context hash, and a one-shot nonce. When attestation is present, they should also carry the attestation-binder hash. |
-| Replay | Single-process deployments may use `MemoryReplayCache`; multi-instance production deployments should use a shared replay cache with `SET NX EX`-style semantics. |
+| Replay | `AGTPObservedIdentity` requires a replay cache when AGTP identity tokens are configured. Single-process deployments may use `MemoryReplayCache`; multi-instance production deployments should use a shared replay cache with `SET NX EX`-style semantics. |
 | Error handling | Failure to check keys, revocation, session binding, replay, or local identity policy is an authentication failure, not a warning. |
 
 The initial JWT/JWS profile fixes the mandatory claim set below. A deployment
