@@ -696,10 +696,28 @@ Callers are expected to:
 pass. Callers can inspect `ValidationErrors` for per-field diagnostics, while
 still using `errors.Is` with the package sentinel errors.
 
-## Suggested next step
+## Implemented production profile
 
-Decide which Manager or policy-authority keys are trusted for Identity Grants,
-which confirmation keys may sign Session Binding Statements, and which replay
-cache or nonce policy is required for task-level one-shot use. The source can be
-manager configuration, agent metadata, computation state, or an authorization
-policy engine, but it must not be raw peer-controlled metadata.
+The initial production profile now has a fail-closed implementation path for
+AGTP JWT/JWS identity material. `AGTPObservedIdentity` requires both an Identity
+Grant and a Session Binding Statement, verifies them with locally configured
+JWT policy, and requires a replay cache before accepting AGTP identity tokens.
+
+The implemented profile covers:
+
+- trusted Manager or policy-authority key lookup for Identity Grants through
+  `JWTVerifyOptions`;
+- issuer, audience, signing-method, `kid`, expiration, issued-at, token type,
+  profile version, and `jti` checks;
+- confirmation-key binding through the Identity Grant `cnf.kid`;
+- Session Binding Statement signer authorization against the verified grant;
+- comparison with the accepted aTLS leaf key, request context, and optional
+  attestation binder;
+- local `identitypolicy.Policy` comparison for required L3 through L6 values;
+- and replay-cache enforcement before the observed identity is accepted.
+
+Deployment still chooses the source of trusted keys, expected policy values,
+revocation data, and distributed replay storage. Those sources can be manager
+configuration, agent metadata, computation state, an authorization policy
+engine, or a fail-closed registry integration. They must not be raw
+peer-controlled metadata.
