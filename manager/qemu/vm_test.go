@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/manager/vm/mocks"
-	pkgmanager "github.com/ultravioletrs/cocos/pkg/manager"
+	"github.com/thinksyncs/agtp-atls-profile/manager/vm/mocks"
+	pkgmanager "github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 )
 
 const testComputationID = "test-computation"

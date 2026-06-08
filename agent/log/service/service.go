@@ -6,8 +6,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/ultravioletrs/cocos/agent/cvms"
-	"github.com/ultravioletrs/cocos/agent/log"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

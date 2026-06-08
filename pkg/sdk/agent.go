@@ -17,10 +17,10 @@ import (
 	"time"
 
 	"github.com/absmach/supermq/pkg/errors"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/agent/api/grpc"
-	"github.com/ultravioletrs/cocos/agent/auth"
-	"github.com/ultravioletrs/cocos/pkg/progressbar"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/api/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/progressbar"
 	"google.golang.org/grpc/metadata"
 )
 

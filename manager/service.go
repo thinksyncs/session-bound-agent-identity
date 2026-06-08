@@ -20,10 +20,10 @@ import (
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/google/uuid"
-	"github.com/ultravioletrs/cocos/manager/qemu"
-	"github.com/ultravioletrs/cocos/manager/vm"
-	"github.com/ultravioletrs/cocos/pkg/attestation/corimgen"
-	"github.com/ultravioletrs/cocos/pkg/manager"
+	"github.com/thinksyncs/agtp-atls-profile/manager/qemu"
+	"github.com/thinksyncs/agtp-atls-profile/manager/vm"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 	"golang.org/x/crypto/sha3"
 )
 

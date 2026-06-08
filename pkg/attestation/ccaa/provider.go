@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	attestation_agent "github.com/ultravioletrs/cocos/internal/proto/attestation-agent"
+	attestation_agent "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

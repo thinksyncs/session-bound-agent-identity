@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	attestation_agent "github.com/ultravioletrs/cocos/internal/proto/attestation-agent"
-	"github.com/ultravioletrs/cocos/internal/proto/attestation-agent/mocks"
+	attestation_agent "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent"
+	"github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent/mocks"
 )
 
 // TestTeeAttestationSuccess tests successful TDX attestation.

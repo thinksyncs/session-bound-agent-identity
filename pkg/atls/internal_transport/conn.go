@@ -15,9 +15,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
-	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agtp-atls-profile/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
 )
 
 // ErrMissingObservedIdentity reports an enabled identity policy without a

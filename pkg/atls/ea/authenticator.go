@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
+	eaattestation "github.com/thinksyncs/agtp-atls-profile/pkg/atls/eaattestation"
 )
 
 var (

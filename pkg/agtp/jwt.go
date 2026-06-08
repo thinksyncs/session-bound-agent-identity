@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
 )
 
 var (

@@ -13,9 +13,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/ultravioletrs/cocos/cli"
-	"github.com/ultravioletrs/cocos/pkg/attestation/cmdconfig"
-	"github.com/ultravioletrs/cocos/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/cli"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/cmdconfig"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
 	cmd "github.com/virtee/sev-snp-measure-go/sevsnpmeasure/cmd"
 )
 

@@ -13,8 +13,8 @@ import (
 	"github.com/google/gce-tcb-verifier/proto/endorsement"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/attestation/azure"
-	"github.com/ultravioletrs/cocos/pkg/attestation/gcp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/azure"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/gcp"
 	"google.golang.org/protobuf/proto"
 )
 

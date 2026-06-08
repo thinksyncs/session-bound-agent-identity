@@ -6,7 +6,7 @@ package eat
 import (
 	"errors"
 
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 )
 
 // EATClaims represents the Entity Attestation Token claims following RFC 9711.

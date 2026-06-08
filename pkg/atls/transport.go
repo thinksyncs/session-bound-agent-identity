@@ -9,10 +9,10 @@ import (
 	"crypto/x509"
 	"net"
 
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
-	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
-	internaltransport "github.com/ultravioletrs/cocos/pkg/atls/internal_transport"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agtp-atls-profile/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
+	internaltransport "github.com/thinksyncs/agtp-atls-profile/pkg/atls/internal_transport"
 )
 
 type Conn = internaltransport.Conn

@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/ultravioletrs/cocos/agent/events"
-	logpb "github.com/ultravioletrs/cocos/agent/log"
-	logclient "github.com/ultravioletrs/cocos/pkg/clients/grpc/log"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events"
+	logpb "github.com/thinksyncs/agtp-atls-profile/agent/log"
+	logclient "github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/log"
 )
 
 type adapter struct {

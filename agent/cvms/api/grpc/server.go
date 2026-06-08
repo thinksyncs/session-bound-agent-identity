@@ -10,7 +10,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ultravioletrs/cocos/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"

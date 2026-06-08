@@ -14,7 +14,7 @@ import (
 	"os"
 	"sync"
 
-	"github.com/ultravioletrs/cocos/pkg/atls"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )

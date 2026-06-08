@@ -7,8 +7,8 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/ultravioletrs/cocos/agent/cvms"
-	"github.com/ultravioletrs/cocos/agent/events"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

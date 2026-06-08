@@ -6,10 +6,10 @@ import (
 	"context"
 
 	"github.com/absmach/supermq/pkg/errors"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/pkg/clients"
-	"github.com/ultravioletrs/cocos/pkg/clients/grpc"
-	"github.com/ultravioletrs/cocos/pkg/tls"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/tls"
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 

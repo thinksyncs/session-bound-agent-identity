@@ -6,13 +6,13 @@ import (
 	"context"
 
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/manager"
-	"github.com/ultravioletrs/cocos/pkg/attestation/cmdconfig"
-	"github.com/ultravioletrs/cocos/pkg/clients"
-	"github.com/ultravioletrs/cocos/pkg/clients/grpc"
-	"github.com/ultravioletrs/cocos/pkg/clients/grpc/agent"
-	managergrpc "github.com/ultravioletrs/cocos/pkg/clients/grpc/manager"
-	"github.com/ultravioletrs/cocos/pkg/sdk"
+	"github.com/thinksyncs/agtp-atls-profile/manager"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/cmdconfig"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/agent"
+	managergrpc "github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/manager"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/sdk"
 )
 
 var Verbose bool

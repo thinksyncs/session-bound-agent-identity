@@ -5,7 +5,7 @@ package generator
 import (
 	"crypto"
 
-	"github.com/ultravioletrs/cocos/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/corimgen"
 )
 
 // Legacy SNP Defaults (re-exported from corimgen).

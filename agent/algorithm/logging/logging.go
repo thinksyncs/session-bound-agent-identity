@@ -8,7 +8,7 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/ultravioletrs/cocos/agent/events"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events"
 )
 
 var (

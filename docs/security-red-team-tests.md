@@ -65,6 +65,29 @@ These cases cover the main intended failure classes for the AGTP identity hook:
 - relay or borrowed-evidence attempts against the accepted aTLS leaf key and
   request context.
 
+### `TestAGTPObservedIdentityRedTeamRejectsAgentThreats`
+
+This test exercises agent-specific semantic threats through the same live client
+hook. It binds a valid Manager grant and Agent session-binding statement to
+service, workload, task, delegation, scope, resource, and authorization policy,
+then mutates one boundary at a time.
+
+It checks:
+
+- impersonation by a peer-signed grant;
+- prompt-injection-shaped unsafe task context;
+- tool misuse through the wrong tool scope;
+- data exfiltration through the wrong resource target;
+- capability escalation through a stronger-than-authorized scope;
+- policy bypass through required mode without concrete checks;
+- confused-deputy behavior through the wrong delegation id;
+- a newly spawned agent key attempting to inherit a parent grant;
+- audit evasion through missing grant or binding ids.
+
+These cases treat identical machine, account, or session context as insufficient
+unless the semantic agent, task, delegation, capability, and audit bindings also
+match local policy.
+
 ### `TestAGTPObservedIdentityRedTeamRejectsReplay`
 
 This test calls the same observed-identity callback twice with the same valid

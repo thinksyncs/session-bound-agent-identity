@@ -5,7 +5,7 @@ package events
 import (
 	"encoding/json"
 
-	"github.com/ultravioletrs/cocos/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

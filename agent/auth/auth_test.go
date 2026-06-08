@@ -19,7 +19,7 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
 	"google.golang.org/grpc/metadata"
 )
 

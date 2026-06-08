@@ -7,11 +7,9 @@ package manager
 
 import (
 	"context"
-
-/*
-	attestationPolicy "github.com/ultravioletrs/cocos/scripts/attestation_policy/sev-snp"
-*/
-)
+	/*
+		attestationPolicy "github.com/thinksyncs/agtp-atls-profile/scripts/attestation_policy/sev-snp"
+	*/)
 
 func (ms *managerService) FetchAttestationPolicy(_ context.Context, _ string) ([]byte, error) {
 	// return attestationPolicy.AttestationPolicy, nil

@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/internal/proto/attestation-agent"
+	"github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 )
 

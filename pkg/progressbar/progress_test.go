@@ -13,8 +13,8 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/agent/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/mocks"
 )
 
 func TestNew(t *testing.T) {

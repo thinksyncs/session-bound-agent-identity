@@ -11,8 +11,8 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 )
 
 // NewService creates a new instance of Service. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

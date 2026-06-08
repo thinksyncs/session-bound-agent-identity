@@ -11,9 +11,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
-	"github.com/ultravioletrs/cocos/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/vtpm"
 )
 
 var _ agent.Service = (*loggingMiddleware)(nil)

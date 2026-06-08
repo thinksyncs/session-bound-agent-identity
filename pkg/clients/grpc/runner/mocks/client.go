@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/runner"
+	"github.com/thinksyncs/agtp-atls-profile/agent/runner"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

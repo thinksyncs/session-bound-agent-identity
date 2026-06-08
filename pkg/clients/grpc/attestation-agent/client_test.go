@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	aa "github.com/ultravioletrs/cocos/internal/proto/attestation-agent"
+	aa "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 )
 

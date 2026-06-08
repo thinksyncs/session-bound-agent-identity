@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/pkg/attestation/gcp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/gcp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

@@ -11,7 +11,7 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ultravioletrs/cocos/manager"
+	"github.com/thinksyncs/agtp-atls-profile/manager"
 )
 
 var _ manager.Service = (*loggingMiddleware)(nil)

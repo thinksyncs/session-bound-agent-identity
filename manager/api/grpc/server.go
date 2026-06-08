@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/ultravioletrs/cocos/manager"
+	"github.com/thinksyncs/agtp-atls-profile/manager"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

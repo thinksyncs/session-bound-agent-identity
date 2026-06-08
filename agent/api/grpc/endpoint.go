@@ -6,8 +6,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 )
 
 func algoEndpoint(svc agent.Service) endpoint.Endpoint {

@@ -24,7 +24,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/atls/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/mocks"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )

@@ -21,10 +21,10 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/agtp"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
-	"github.com/ultravioletrs/cocos/pkg/clients"
-	"github.com/ultravioletrs/cocos/pkg/tls"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/agtp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/tls"
 )
 
 func TestNewClient(t *testing.T) {

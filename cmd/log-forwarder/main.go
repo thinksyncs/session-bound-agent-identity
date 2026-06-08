@@ -13,11 +13,11 @@ import (
 
 	mglog "github.com/absmach/supermq/logger"
 	"github.com/caarlos0/env/v11"
-	"github.com/ultravioletrs/cocos/agent/cvms"
-	pb "github.com/ultravioletrs/cocos/agent/log"
-	"github.com/ultravioletrs/cocos/agent/log/service"
-	"github.com/ultravioletrs/cocos/pkg/clients"
-	cvmsgrpc "github.com/ultravioletrs/cocos/pkg/clients/grpc/cvm"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
+	pb "github.com/thinksyncs/agtp-atls-profile/agent/log"
+	"github.com/thinksyncs/agtp-atls-profile/agent/log/service"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
+	cvmsgrpc "github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/cvm"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )

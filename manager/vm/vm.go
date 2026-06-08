@@ -5,7 +5,7 @@ package vm
 import (
 	"log/slog"
 
-	pkgmanager "github.com/ultravioletrs/cocos/pkg/manager"
+	pkgmanager "github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 

@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package attestation_agent;
 
-option go_package = "github.com/ultravioletrs/cocos/internal/proto/attestation-agent;attestation_agent";
+option go_package = "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent;attestation_agent";
 
 // Get the primary evidence from the guest.
 message GetEvidenceRequest {
@@ -71,4 +71,3 @@ service AttestationAgentService {
     rpc BindInitData(BindInitDataRequest) returns (BindInitDataResponse) {};
     rpc GetTeeType(GetTeeTypeRequest) returns (GetTeeTypeResponse) {};
 }
-

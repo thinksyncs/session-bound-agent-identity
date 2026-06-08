@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/sdk/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/sdk/mocks"
 )
 
 const compResult = "Test computation result"

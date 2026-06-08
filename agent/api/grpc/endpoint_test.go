@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/agent/mocks"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 	"golang.org/x/crypto/sha3"
 )
 

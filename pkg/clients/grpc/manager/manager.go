@@ -3,9 +3,9 @@
 package manager
 
 import (
-	"github.com/ultravioletrs/cocos/manager"
-	"github.com/ultravioletrs/cocos/pkg/clients"
-	"github.com/ultravioletrs/cocos/pkg/clients/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/manager"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc"
 )
 
 // NewManagerClient creates new manager gRPC client instance.

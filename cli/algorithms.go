@@ -9,8 +9,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/agent/algorithm"
-	"github.com/ultravioletrs/cocos/agent/algorithm/python"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm/python"
 	"google.golang.org/grpc/metadata"
 )
 

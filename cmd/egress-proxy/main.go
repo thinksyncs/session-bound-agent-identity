@@ -13,11 +13,11 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/ultravioletrs/cocos/agent/cvms"
-	logpb "github.com/ultravioletrs/cocos/agent/log"
-	agentlogger "github.com/ultravioletrs/cocos/internal/logger"
-	logclient "github.com/ultravioletrs/cocos/pkg/clients/grpc/log"
-	"github.com/ultravioletrs/cocos/pkg/egress"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
+	logpb "github.com/thinksyncs/agtp-atls-profile/agent/log"
+	agentlogger "github.com/thinksyncs/agtp-atls-profile/internal/logger"
+	logclient "github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/log"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/egress"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -6,7 +6,7 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/ultravioletrs/cocos/pkg/manager"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 )
 
 type sm struct {

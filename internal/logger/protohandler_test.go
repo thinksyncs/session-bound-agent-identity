@@ -11,7 +11,7 @@ import (
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
 )
 
 type failedWriter struct{}

@@ -21,7 +21,7 @@ The `corimgen` package generates CoRIM attestation policies for confidential com
 ### Basic Usage (Unsigned)
 
 ```go
-import "github.com/ultravioletrs/cocos/pkg/attestation/corimgen"
+import "github.com/thinksyncs/agtp-atls-profile/pkg/attestation/corimgen"
 
 opts := corimgen.Options{
     Platform:    "snp",
@@ -41,7 +41,7 @@ import (
     "crypto/elliptic"
     "crypto/rand"
     
-    "github.com/ultravioletrs/cocos/pkg/attestation/corimgen"
+    "github.com/thinksyncs/agtp-atls-profile/pkg/attestation/corimgen"
 )
 
 // Generate signing key

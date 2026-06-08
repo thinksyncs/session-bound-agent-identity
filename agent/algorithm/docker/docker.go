@@ -15,9 +15,9 @@ import (
 	"github.com/docker/docker/api/types/image"
 	"github.com/docker/docker/api/types/mount"
 	"github.com/docker/docker/client"
-	"github.com/ultravioletrs/cocos/agent/algorithm"
-	"github.com/ultravioletrs/cocos/agent/algorithm/logging"
-	"github.com/ultravioletrs/cocos/agent/events"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm/logging"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events"
 )
 
 const (

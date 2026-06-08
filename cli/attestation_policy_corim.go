@@ -8,10 +8,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/pkg/attestation/azure"
-	"github.com/ultravioletrs/cocos/pkg/attestation/corimgen"
-	"github.com/ultravioletrs/cocos/pkg/attestation/gcp"
-	"github.com/ultravioletrs/cocos/pkg/attestation/generator"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/azure"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/gcp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/generator"
 )
 
 func (cli *CLI) NewCreateCoRIMCmd() *cobra.Command {

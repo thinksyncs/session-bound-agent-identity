@@ -7,9 +7,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/agent/auth"
-	"github.com/ultravioletrs/cocos/agent/auth/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth/mocks"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/metadata"
 )

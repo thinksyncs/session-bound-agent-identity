@@ -5,8 +5,8 @@ package grpc
 import (
 	"context"
 
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/agent/auth"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"

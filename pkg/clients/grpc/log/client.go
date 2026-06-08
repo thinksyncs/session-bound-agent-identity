@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	"github.com/ultravioletrs/cocos/agent/log"
+	"github.com/thinksyncs/agtp-atls-profile/agent/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/timestamppb"

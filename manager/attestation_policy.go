@@ -12,9 +12,9 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/ultravioletrs/cocos/manager/qemu"
-	"github.com/ultravioletrs/cocos/pkg/attestation/generator"
-	"github.com/ultravioletrs/cocos/pkg/attestation/igvmmeasure"
+	"github.com/thinksyncs/agtp-atls-profile/manager/qemu"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/generator"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/igvmmeasure"
 )
 
 func (ms *managerService) FetchAttestationPolicy(_ context.Context, computationId string) ([]byte, error) {

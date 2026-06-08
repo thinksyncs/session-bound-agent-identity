@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/absmach/supermq/pkg/errors"
-	"github.com/ultravioletrs/cocos/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"

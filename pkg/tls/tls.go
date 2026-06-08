@@ -10,7 +10,7 @@ import (
 	"os"
 
 	"github.com/absmach/supermq/pkg/errors"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 )
 
 // Security represents the type of TLS security configuration.

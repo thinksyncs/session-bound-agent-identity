@@ -12,7 +12,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	pb "github.com/ultravioletrs/cocos/agent/runner"
+	pb "github.com/thinksyncs/agtp-atls-profile/agent/runner"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )

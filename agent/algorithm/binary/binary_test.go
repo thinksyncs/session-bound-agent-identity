@@ -12,8 +12,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/algorithm/logging"
-	"github.com/ultravioletrs/cocos/agent/events/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm/logging"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events/mocks"
 )
 
 func TestNewAlgorithm(t *testing.T) {

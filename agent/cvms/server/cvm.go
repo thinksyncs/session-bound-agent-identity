@@ -10,9 +10,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/ultravioletrs/cocos/agent"
-	agentgrpc "github.com/ultravioletrs/cocos/agent/api/grpc"
-	"github.com/ultravioletrs/cocos/agent/auth"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	agentgrpc "github.com/thinksyncs/agtp-atls-profile/agent/api/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

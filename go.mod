@@ -1,4 +1,4 @@
-module github.com/ultravioletrs/cocos
+module github.com/thinksyncs/agtp-atls-profile
 
 go 1.26.0
 

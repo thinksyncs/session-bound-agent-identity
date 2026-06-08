@@ -12,8 +12,8 @@ import (
 	tpmpb "github.com/google/go-tpm-tools/proto/tpm"
 	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
-	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
-	cocosattestation "github.com/ultravioletrs/cocos/pkg/attestation"
+	eaattestation "github.com/thinksyncs/agtp-atls-profile/pkg/atls/eaattestation"
+	cocosattestation "github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 	"google.golang.org/protobuf/proto"
 )
 

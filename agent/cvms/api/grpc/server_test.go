@@ -10,7 +10,7 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )

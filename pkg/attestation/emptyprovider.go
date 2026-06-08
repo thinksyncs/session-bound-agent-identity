@@ -6,7 +6,7 @@ package attestation
 import (
 	"fmt"
 
-	cocosai "github.com/ultravioletrs/cocos"
+	cocosai "github.com/thinksyncs/agtp-atls-profile"
 )
 
 var _ Provider = (*EmptyProvider)(nil)

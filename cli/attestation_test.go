@@ -12,8 +12,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/attestation/vtpm"
-	"github.com/ultravioletrs/cocos/pkg/sdk/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/sdk/mocks"
 )
 
 func TestNewAttestationCmd(t *testing.T) {

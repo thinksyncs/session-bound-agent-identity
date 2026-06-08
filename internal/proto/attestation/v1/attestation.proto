@@ -2,7 +2,7 @@ syntax = "proto3";
 
 package attestation.v1;
 
-option go_package = "github.com/ultravioletrs/cocos/internal/proto/attestation/v1;attestation";
+option go_package = "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation/v1;attestation";
 
 service AttestationService {
   rpc FetchAttestation (AttestationRequest) returns (AttestationResponse);

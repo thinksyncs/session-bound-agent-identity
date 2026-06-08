@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
 )
 
 type CertificateProvider struct {

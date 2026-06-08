@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	aa "github.com/ultravioletrs/cocos/internal/proto/attestation-agent"
+	aa "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

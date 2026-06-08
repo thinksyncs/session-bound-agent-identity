@@ -19,8 +19,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
 )
 
 func selfSignedCert(t *testing.T) tls.Certificate {

@@ -9,8 +9,8 @@ import (
 	mglog "github.com/absmach/supermq/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/events/mocks"
-	"github.com/ultravioletrs/cocos/pkg/manager"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 )
 
 func TestStdoutWrite(t *testing.T) {

@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/agent/algorithm/logging"
-	"github.com/ultravioletrs/cocos/agent/events/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm/logging"
+	"github.com/thinksyncs/agtp-atls-profile/agent/events/mocks"
 )
 
 // TestNewAlgorithm tests the NewAlgorithm function.

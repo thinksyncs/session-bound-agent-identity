@@ -11,10 +11,10 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/ultravioletrs/cocos/pkg/agtp"
-	"github.com/ultravioletrs/cocos/pkg/atls"
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
-	"github.com/ultravioletrs/cocos/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/agtp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/identitypolicy"
 )
 
 var (

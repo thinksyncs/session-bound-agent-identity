@@ -9,8 +9,8 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/cvms"
-	"github.com/ultravioletrs/cocos/agent/cvms/api/grpc/storage"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms/api/grpc/storage"
 )
 
 // NewStorage creates a new instance of Storage. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

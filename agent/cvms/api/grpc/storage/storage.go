@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ultravioletrs/cocos/agent/cvms"
+	"github.com/thinksyncs/agtp-atls-profile/agent/cvms"
 )
 
 // Message represents a pending message with its timestamp.

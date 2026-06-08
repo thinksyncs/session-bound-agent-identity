@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
 )
 
 // TestAgentConfigToProxyConfig tests conversion from AgentConfig to ProxyConfig.

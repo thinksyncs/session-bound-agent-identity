@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ultravioletrs/cocos/agent/statemachine"
+	"github.com/thinksyncs/agtp-atls-profile/agent/statemachine"
 )
 
 type MockState int

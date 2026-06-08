@@ -5,7 +5,7 @@ package tracing
 import (
 	"context"
 
-	"github.com/ultravioletrs/cocos/manager"
+	"github.com/thinksyncs/agtp-atls-profile/manager"
 	"go.opentelemetry.io/otel/trace"
 )
 

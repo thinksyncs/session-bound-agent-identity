@@ -12,10 +12,10 @@ import (
 	"fmt"
 
 	"github.com/absmach/certs/sdk"
-	"github.com/ultravioletrs/cocos/pkg/atls/ea"
-	eaattestation "github.com/ultravioletrs/cocos/pkg/atls/eaattestation"
-	cocosattestation "github.com/ultravioletrs/cocos/pkg/attestation"
-	attestationclient "github.com/ultravioletrs/cocos/pkg/clients/grpc/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agtp-atls-profile/pkg/atls/eaattestation"
+	cocosattestation "github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
+	attestationclient "github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/attestation"
 )
 
 // CertificateProvider is kept for compatibility with existing cocos call sites.

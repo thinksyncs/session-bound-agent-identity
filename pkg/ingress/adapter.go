@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package ingress
 
-import "github.com/ultravioletrs/cocos/agent"
+import "github.com/thinksyncs/agtp-atls-profile/agent"
 
 // AgentConfigToProxyConfig converts agent.AgentConfig to ProxyConfig.
 func AgentConfigToProxyConfig(cfg agent.AgentConfig) ProxyConfig {

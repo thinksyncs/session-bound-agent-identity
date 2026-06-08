@@ -12,8 +12,8 @@ import (
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/internal"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/internal"
 	"google.golang.org/grpc/metadata"
 )
 

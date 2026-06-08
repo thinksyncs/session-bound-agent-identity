@@ -7,7 +7,7 @@ import (
 
 	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/pkg/clients"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients"
 )
 
 func TestNewManagerClient(t *testing.T) {

@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/agent"
-	"github.com/ultravioletrs/cocos/internal"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	"github.com/thinksyncs/agtp-atls-profile/internal"
 	"golang.org/x/crypto/sha3"
 )
 

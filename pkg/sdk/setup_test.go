@@ -10,9 +10,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ultravioletrs/cocos/agent"
-	agentgrpc "github.com/ultravioletrs/cocos/agent/api/grpc"
-	"github.com/ultravioletrs/cocos/agent/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
+	agentgrpc "github.com/thinksyncs/agtp-atls-profile/agent/api/grpc"
+	"github.com/thinksyncs/agtp-atls-profile/agent/mocks"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/test/bufconn"
 )

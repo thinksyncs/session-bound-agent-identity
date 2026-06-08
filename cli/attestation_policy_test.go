@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/ultravioletrs/cocos/pkg/attestation/gcp"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation/gcp"
 	"google.golang.org/protobuf/proto"
 )
 

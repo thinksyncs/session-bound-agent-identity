@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent/statemachine"
+	"github.com/thinksyncs/agtp-atls-profile/agent/statemachine"
 )
 
 // NewStateMachine creates a new instance of StateMachine. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

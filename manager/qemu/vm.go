@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/gofrs/uuid"
-	"github.com/ultravioletrs/cocos/internal"
-	"github.com/ultravioletrs/cocos/manager/vm"
-	"github.com/ultravioletrs/cocos/pkg/manager"
+	"github.com/thinksyncs/agtp-atls-profile/internal"
+	"github.com/thinksyncs/agtp-atls-profile/manager/vm"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/manager"
 )
 
 const (

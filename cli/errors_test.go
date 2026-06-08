@@ -10,8 +10,8 @@ import (
 	mgerrors "github.com/absmach/supermq/pkg/errors"
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/ultravioletrs/cocos/agent/auth"
-	"github.com/ultravioletrs/cocos/pkg/clients/grpc/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent/auth"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/clients/grpc/agent"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

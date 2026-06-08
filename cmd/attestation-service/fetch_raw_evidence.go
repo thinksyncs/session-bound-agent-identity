@@ -7,7 +7,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	attestationpb "github.com/ultravioletrs/cocos/internal/proto/attestation/v1"
+	attestationpb "github.com/thinksyncs/agtp-atls-profile/internal/proto/attestation/v1"
 )
 
 func (s *service) FetchRawEvidence(ctx context.Context, req *attestationpb.AttestationRequest) (*attestationpb.RawEvidenceResponse, error) {

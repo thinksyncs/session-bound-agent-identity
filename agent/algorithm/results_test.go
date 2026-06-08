@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ultravioletrs/cocos/agent/algorithm"
-	"github.com/ultravioletrs/cocos/internal"
+	"github.com/thinksyncs/agtp-atls-profile/agent/algorithm"
+	"github.com/thinksyncs/agtp-atls-profile/internal"
 )
 
 func TestZipDirectory(t *testing.T) {

@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/pkg/sdk/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/sdk/mocks"
 )
 
 func TestCLI_NewIMAMeasurementsCmd(t *testing.T) {

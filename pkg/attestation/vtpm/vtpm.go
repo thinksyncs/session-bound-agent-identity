@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
-	"github.com/ultravioletrs/cocos/pkg/attestation"
+	"github.com/thinksyncs/agtp-atls-profile/pkg/attestation"
 	"github.com/veraison/corim/comid"
 	"github.com/veraison/corim/corim"
 	"golang.org/x/crypto/sha3"

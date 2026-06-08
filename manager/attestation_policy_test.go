@@ -9,9 +9,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/ultravioletrs/cocos/manager/qemu"
-	"github.com/ultravioletrs/cocos/manager/vm"
-	"github.com/ultravioletrs/cocos/manager/vm/mocks"
+	"github.com/thinksyncs/agtp-atls-profile/manager/qemu"
+	"github.com/thinksyncs/agtp-atls-profile/manager/vm"
+	"github.com/thinksyncs/agtp-atls-profile/manager/vm/mocks"
 	"github.com/veraison/corim/corim"
 )
 

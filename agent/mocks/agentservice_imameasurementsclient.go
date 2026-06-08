@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/ultravioletrs/cocos/agent"
+	"github.com/thinksyncs/agtp-atls-profile/agent"
 	"google.golang.org/grpc/metadata"
 )
 
