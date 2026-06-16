@@ -27,6 +27,9 @@ on:
       - "docs/security-red-team-tests.md"
       - "docs/live-red-team-report.md"
 
+permissions:
+  contents: read
+
 jobs:
   live-red-team:
     runs-on: ubuntu-latest

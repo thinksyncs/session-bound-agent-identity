@@ -6,7 +6,7 @@ config BR2_PACKAGE_CC_ATTESTATION_AGENT
 	help
 	  Confidential Containers attestation-agent for TEE attestation.
 	  
-	  Optional backend for the Cocos AI attestation service that
+	  Optional backend for the Cocos attestation service that
 	  provides KBS protocol support for remote attestation and
 	  encrypted secret provisioning.
 	  

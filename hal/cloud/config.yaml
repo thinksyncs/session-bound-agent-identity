@@ -56,7 +56,7 @@ write_files:
   - path: /etc/systemd/system/cocos-agent.service
     content: |
       [Unit]
-      Description=Cocos AI agent
+      Description=Cocos agent
       After=network.target
       Before=docker.service
 

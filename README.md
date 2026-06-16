@@ -1,7 +1,7 @@
 # Hardware-Aware TLS Identity Binding Profile
 
-This repository defines a small security profile for binding a TLS 1.3 session
-to hardware-attestation evidence and application identity policy.
+This repository defines a small security-hardening profile for binding a TLS
+1.3 session to hardware-attestation evidence and application identity policy.
 
 Hardware-aware TLS here means ordinary TLS 1.3 plus post-handshake platform
 attestation and session binding. It is not pre-TLS platform authentication.
@@ -13,12 +13,14 @@ The main specification and single source of truth is `docs/SSOT.md`. It defines 
 layer names, semantic-reference rules, and verification order used by the rest
 of the repository.
 
-The profile is meant to make relay, diversion, wrong-agent, replay, and
-binding-parameter failures easier to review. AGTP / Agent2Agent is one
-reference target; see the
-[Agent2Agent GitHub repository](https://github.com/a2aproject/A2A). The same
-checks can also be reused by other application protocols with similar
-identity-binding needs.
+The profile makes relay, diversion, wrong-agent, replay, and
+binding-parameter failures concrete. The layer split is one decomposition, not
+the only possible taxonomy. AGTP / Agent2Agent is one reference target; see the
+[Agent2Agent GitHub repository](https://github.com/a2aproject/A2A). The
+[nomoticai/agtp](https://github.com/nomoticai/agtp) repository was also used as
+an implementation reference for AGTP-facing profile feedback. The same checks
+can also be reused by other application protocols with similar identity-binding
+needs.
 
 ## Why This Profile Exists
 
@@ -29,8 +31,8 @@ boundary.
 
 This profile splits those questions into L0-L7 layers. Each risk maps to the
 first layer where a binding is missing, ambiguous, stale, or peer-controlled.
-The result is a reviewable set of rules and negative test vectors, instead of a
-single broad claim that "the peer is authenticated."
+The result is a compact set of security-hardening rules and negative test
+vectors, instead of a single broad claim that "the peer is authenticated."
 
 ## Specification Overview
 
@@ -115,7 +117,8 @@ first appears.
   for application profiles
 - `docs/agtp-security-profile-mapping.md`: profile validation state machine and
   error mapping
-- `docs/agtp-security-profile-feedback.md`: high-priority AGTP feedback checklist
+- `docs/agtp-security-profile-feedback.md`: high-priority AGTP security-profile
+  feedback
 - `docs/live-red-team-report.md`: current live-style red-team coverage and LRTT
   backlog
 - `docs/static-diversion-policy.md`: static service / tenant diversion policy
@@ -145,20 +148,24 @@ It covers:
 
 The vectors are profile-level vectors. They do not define AGTP core syntax.
 
-## Relationship to Cocos
+## Implementation Provenance
 
-This work grew out of review work around
-[Cocos](https://github.com/ultravioletrs/cocos) hardware-attested TLS. Cocos is
-related implementation experience and a source of concrete requirements, not
-the scope of this repository.
+This repository is forked from
+[ultravioletrs/cocos.git](https://github.com/ultravioletrs/cocos.git). This
+work uses Cocos hardware-attested TLS as related implementation experience and
+as a source of concrete requirements. Cocos itself is not the scope of this
+security profile.
 
-## Relationship to AGTP
+## Reference Protocol Notes
 
 AGTP is a natural reference target; see the
-[Agent2Agent GitHub repository](https://github.com/a2aproject/A2A). This
-repository stays at the security-profile and test-vector layer. AGTP, or any
-similar application protocol, may carry identity and policy material, but it
-must not make peer-controlled metadata authoritative.
+[Agent2Agent GitHub repository](https://github.com/a2aproject/A2A) and
+[nomoticai/agtp](https://github.com/nomoticai/agtp). This repository stays at
+the security-profile and test-vector layer. AGTP, or any similar application
+protocol, may carry identity and policy material, but it does not by itself
+provide all of the semantic binding, canonical-reference, replay, and
+local-policy checks needed here. This profile adds those checks as security
+hardening and must not make peer-controlled metadata authoritative.
 
 ## Verification
 

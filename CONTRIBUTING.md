@@ -1,87 +1,45 @@
-# Contributing to CoCos
+# Contributing
 
-The following is a set of guidelines to contribute to CoCos and its libraries, which are
-hosted on the [Ultraviolet Organization](https://github.com/ultravioletrs) on GitHub.
+Thanks for considering a contribution. This repository is focused on the
+hardware-aware TLS identity-binding profile, its Go implementation helpers, and
+the accompanying security test vectors.
 
-This project adheres to the [Contributor Covenant 1.2](http://contributor-covenant.org/version/1/2/0).
-By participating, you are expected to uphold this code. Please report unacceptable behavior to
-[abuse@ultraviolet.rs](mailto:abuse@ultraviolet.rs).
+## Issues
 
-## Reporting issues
+Open an issue when behavior is unclear, a security boundary is missing, or a
+test vector does not match the profile. Include:
 
-Reporting issues are a great way to contribute to the project. We are perpetually grateful about a well-written,
-thorough bug report.
+- the affected file, package, or vector;
+- the expected behavior;
+- the observed behavior;
+- the smallest reproduction or failing test, when available.
 
-Before raising a new issue, check [our issue
-list](https://github.com/ultravioletrs/cocos/issues) to determine if it already contains the
-problem that you are facing.
+## Pull Requests
 
-A good bug report shouldn't leave others needing to chase you for more information. Please be as detailed as possible. The following questions might serve as a template for writing a detailed
-report:
+Keep pull requests focused. A good pull request changes one behavior, document
+section, or test surface at a time.
 
-- What were you trying to achieve?
-- What are the expected results?
-- What are the received results?
-- What are the steps to reproduce the issue?
-- In what environment did you encounter the issue?
+Use concise Conventional Commit messages:
 
-## Pull requests
-
-Good pull requests (e.g. patches, improvements, new features) are a fantastic help. They should
-remain focused in scope and avoid unrelated commits.
-
-**Please ask first** before embarking on any significant pull request (e.g. implementing new features,
-refactoring code etc.), otherwise you risk spending a lot of time working on something that the
-maintainers might not want to merge into the project.
-
-Please adhere to the coding conventions used throughout the project. If in doubt, consult the
-[Effective Go](https://golang.org/doc/effective_go.html) style guide.
-
-To contribute to the project, [fork](https://help.github.com/articles/fork-a-repo/) it,
-clone your fork repository, and configure the remotes:
-
-```
-git clone https://github.com/<your-username>/cocos.git
-cd cocos
-git remote add upstream https://github.com/ultravioletrs/cocos.git
+```text
+<type>(optional scope): <summary>
 ```
 
-If your cloned repository is behind the upstream commits, then get the latest changes from upstream:
+Common types are `feat`, `fix`, `docs`, `test`, `refactor`, `chore`, `ci`,
+`build`, and `perf`.
 
-```
-git checkout master
-git pull --rebase upstream main
-```
+Before opening a pull request, run the relevant checks. For profile and identity
+changes, start with:
 
-Create a new topic branch from `master` using the naming convention `COCOS-[issue-number]`
-to help us keep track of your contribution scope:
-
-```
-git checkout -b COCOS-[issue-number]
+```sh
+go test ./pkg/agtp ./pkg/atls/identitypolicy
+go test ./pkg/clients ./pkg/clients/http ./pkg/clients/grpc
 ```
 
-Commit your changes in logical chunks. When you are ready to commit, make sure
-to write a Good Commit Message™. Consult the [Erlang's contributing guide](https://github.com/erlang/otp/wiki/Writing-good-commit-messages)
-if you're unsure of what constitutes a Good Commit Message™. Use [interactive rebase](https://help.github.com/articles/about-git-rebase)
-to group your commits into logical units of work before making it public.
+Some client tests open local loopback listeners. Restricted sandboxes may need a
+less constrained local environment for those tests.
 
-Note that every commit you make must be signed. By signing off your work you indicate that you
-are accepting the [Developer Certificate of Origin](https://developercertificate.org/).
+## Documentation
 
-Use your real name (sorry, no pseudonyms or anonymous contributions). If you set your `user.name`
-and `user.email` git configs, you can sign your commit automatically with `git commit -s`.
-
-Locally merge (or rebase) the upstream development branch into your topic branch:
-
-```
-git pull --rebase upstream main
-```
-
-Push your topic branch up to your fork:
-
-```
-git push origin COCOS-[issue-number]
-```
-
-[Open a Pull Request](https://help.github.com/articles/using-pull-requests/) with a clear title
-and detailed description.
+`docs/SSOT.md` is the source of truth for the security profile. Keep derived
+notes, reports, and test-vector descriptions aligned with it.

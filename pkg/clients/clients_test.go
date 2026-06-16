@@ -1003,6 +1003,47 @@ func TestAGTPObservedIdentityRedTeamRejectsAttestationBinderMismatch(t *testing.
 	}
 }
 
+func TestAGTPObservedIdentityRedTeamRejectsMissingAttestationBinder(t *testing.T) {
+	validation := validationResultForAGTPWithAttestationBinder(t, []byte("accepted-attestation-binder"))
+	fixture := newClientTestAGTPFixture(t, validation)
+	grantToken := fixture.issueGrant(t, nil)
+	bindingToken := fixture.issueBinding(t, grantToken, map[string]any{
+		"attestation_binder_sha256": "",
+	})
+	cfg := fixture.config(grantToken, bindingToken)
+
+	observedIdentity, err := cfg.AGTPObservedIdentity()
+	if err != nil {
+		t.Fatalf("AGTPObservedIdentity() error = %v", err)
+	}
+	_, err = observedIdentity(&tls.ConnectionState{}, fixture.validation)
+	if !errors.Is(err, identitypolicy.ErrMissingBinding) {
+		t.Fatalf("observed identity error = %v, want %v", err, identitypolicy.ErrMissingBinding)
+	}
+}
+
+func TestAGTPObservedIdentityRedTeamRejectsManagerKeyAsBindingKey(t *testing.T) {
+	fixture := newClientTestAGTPFixture(t, nil)
+	grantToken := fixture.manager.issueIdentityGrant(t, fixture.now, map[string]any{
+		"service": "payments",
+		"cnf":     map[string]any{"kid": "manager-key"},
+	})
+	bindingToken := fixture.manager.issueSessionBinding(t, fixture.now, agtp.IdentityGrantHash(grantToken), fixture.binding, nil)
+	cfg := fixture.config(grantToken, bindingToken)
+	cfg.IdentityBindingJWTOptions.KeyFunc = clientTestKeyFunc(map[string][]byte{
+		"manager-key": []byte("manager-secret"),
+	})
+
+	observedIdentity, err := cfg.AGTPObservedIdentity()
+	if err != nil {
+		t.Fatalf("AGTPObservedIdentity() error = %v", err)
+	}
+	_, err = observedIdentity(&tls.ConnectionState{}, fixture.validation)
+	if !errors.Is(err, identitypolicy.ErrUnauthorizedBindingKey) {
+		t.Fatalf("observed identity error = %v, want %v", err, identitypolicy.ErrUnauthorizedBindingKey)
+	}
+}
+
 func TestAGTPObservedIdentityRedTeamRejectsGrantSubstitution(t *testing.T) {
 	fixture := newClientTestAGTPFixture(t, nil)
 	grantToken := fixture.issueGrant(t, nil)

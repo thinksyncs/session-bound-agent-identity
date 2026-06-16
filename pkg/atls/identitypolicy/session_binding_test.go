@@ -63,6 +63,20 @@ func TestNewAssertionFromSessionBindingRejectsArbitraryEndpointKey(t *testing.T)
 	}
 }
 
+func TestNewAssertionFromSessionBindingRejectsIssuerKeyAsBindingKey(t *testing.T) {
+	now := time.Now()
+	grant := testVerifiedGrant(now)
+	grant.IssuerKey = "manager-key-1"
+	grant.ConfirmationKey = "manager-key-1"
+	statement := testSessionBindingStatement(now)
+	statement.SignerKey = "manager-key-1"
+
+	_, err := NewAssertionFromSessionBinding(grant, statement, now)
+	if !errors.Is(err, ErrUnauthorizedBindingKey) {
+		t.Fatalf("NewAssertionFromSessionBinding() error = %v, want %v", err, ErrUnauthorizedBindingKey)
+	}
+}
+
 func TestNewAssertionFromSessionBindingRejectsGrantWithoutBindingKey(t *testing.T) {
 	now := time.Now()
 	grant := testVerifiedGrant(now)

@@ -19,6 +19,9 @@ on:
       - "agent/agent.proto"
       - "agent/*.pb.go"
 
+permissions:
+  contents: read
+
 jobs:
   checkproto:
     runs-on: ubuntu-latest

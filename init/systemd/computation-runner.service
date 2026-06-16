@@ -1,5 +1,5 @@
 [Unit]
-Description=Cocos AI Computation Runner
+Description=Cocos Computation Runner
 After=network.target log-forwarder.service
 Before=cocos-agent.service
 Requires=log-forwarder.service

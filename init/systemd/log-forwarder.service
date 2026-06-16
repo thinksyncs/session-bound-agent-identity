@@ -1,5 +1,5 @@
 [Unit]
-Description=Cocos AI Log Forwarder
+Description=Cocos Log Forwarder
 After=network.target
 Before=cocos-agent.service
 

@@ -5,6 +5,9 @@ on:
     tags:
       - "*"
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -28,7 +31,7 @@ jobs:
           df -h
 
       - name: Maximize build space
-        uses: easimon/maximize-build-space@master
+        uses: easimon/maximize-build-space@v10
         with:
           root-reserve-mb: 35000
           swap-size-mb: 1024

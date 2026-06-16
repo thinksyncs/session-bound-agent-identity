@@ -1,5 +1,5 @@
 [Unit]
-Description=Cocos AI agent
+Description=Cocos agent
 After=network.target attestation-service.service log-forwarder.service computation-runner.service egress-proxy.service coco-keyprovider.service
 Requires=log-forwarder.service computation-runner.service egress-proxy.service coco-keyprovider.service
 Before=docker.service

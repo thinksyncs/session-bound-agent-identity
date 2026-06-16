@@ -3,8 +3,9 @@
 This architecture note covers the key split for hardware-aware TLS identity
 binding: TLS and attestation establish lower-layer facts, while application
 policy decides whether those facts describe the intended peer. AGTP is one
-reference target, not the owner of this profile. Terminology, layers, and
-verification order are defined in `docs/SSOT.md`.
+reference target, not the owner of this security-hardening profile. The layer
+split is one decomposition; terminology, layers, and verification order are
+defined in `docs/SSOT.md`.
 
 Hardware-aware TLS means ordinary TLS 1.3 plus a post-handshake
 platform-attestation and session-binding gate. TLS establishes the encrypted

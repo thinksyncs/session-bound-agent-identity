@@ -1,120 +1,212 @@
-# SSOT: Hardware-Aware TLS Identity Binding Profile (Draft v0.1.0)
+# Hardware-Aware TLS Identity Binding Profile
 
-This draft defines identity inputs that sit above basic TLS channel binding.
-It is a profile specification, not a production bug report or a final standard.
+Draft v0.1.1
 
-This file is the single normative source of truth for the profile in this
-repository. Other documents are explanatory, historical, implementation notes,
-or test reports; when they disagree with this file, update this file first and
-then align the dependent document.
+## Abstract
+
+This profile binds upper-layer identity and authorization material to an
+accepted TLS 1.3 session and to post-handshake platform-attestation facts. It is
+application-protocol neutral at L0 through L2. Agent2Agent / AGTP is the first
+reference target for the upper layers, not a replacement for the trust model
+described here.
+
+The core rule is simple: a verifier accepts a peer only when the peer's
+authenticated identity, session binding, freshness state, and local policy all
+refer to the same intended session, platform, service, agent, task, and
+authority boundary.
+
+## 1. Status
+
+This is a repository security-hardening profile. It is not an IETF consensus
+document and it does not define a new TLS handshake, a new attestation evidence
+format, a new identity provider, or a new application core protocol.
+
+Within this repository, this Markdown file is the normative source for the
+profile. Rendered specifications, notes, reports, and tests are derived from it
+unless they explicitly say otherwise.
+
+The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT",
+"SHOULD", "SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and
+"OPTIONAL" are to be interpreted as described in BCP 14, RFC 2119 and RFC 8174
+when, and only when, they appear in all capitals.
+
+## 2. Terms
 
 Hardware-aware TLS means ordinary TLS 1.3 plus post-handshake platform
 attestation and session binding. Platform attestation does not replace the TLS
 handshake and does not authenticate the platform before a TLS channel exists.
-The older shorthand `aTLS` appears only for existing
-[Cocos](https://github.com/ultravioletrs/cocos) implementation code paths,
-package names, or historical terms.
 
-The profile is organized in layers. The lower layers cover transport and
-attestation binding. The upper layers cover deployment and agent policy.
+The older shorthand `aTLS` is reserved for existing Cocos implementation code
+paths, package names, or historical text. New profile text should use
+"hardware-aware TLS" unless it refers to that legacy surface.
 
-- L0: the accepted peer is on the expected live TLS channel.
-- L1: the attested platform or VM measurement is appraised.
-- L2: attestation or authenticator material is bound to the accepted TLS
-  session.
-- L3: the attested platform is checked against the intended service, tenant,
-  deployment, or environment.
-- L4: the accepted platform is checked against the intended workload, process,
-  or agent.
-- L5: the accepted request or response is checked against the intended task,
-  thread, context, or delegation.
-- L6: the accepted action is checked against the intended authorization or
-  capability policy.
+Identity Grant means an authority statement issued by a Manager or another
+locally trusted policy authority. It authorizes upper-layer identity, task, and
+authorization values.
 
-L0 through L2 can be tested directly with transport, attestation, and
-implementation regressions. L3 through L6 need explicit policy inputs before the
-verifier or application layer can enforce them consistently.
+Session Binding Statement means a holder-of-key proof that binds one verified
+Identity Grant to one accepted TLS or exported-authenticator session. It does
+not authorize service, tenant, task, scope, resource, or capability values.
 
-The L0-L6 names are local to this profile and the Go identity-policy API. They
-are not an IETF-defined taxonomy.
+Expected values are verifier-local policy inputs. Observed values are values
+extracted from authenticated grants, session-bound statements, attestation
+claims, trusted manifests, or locally derived request state. Observed values do
+not become expected values without a trusted local policy decision.
+
+## 3. Scope
+
+This profile covers the checks needed before an application treats an accepted
+TLS peer as the intended platform, service, agent, task, or authorized actor.
+It focuses on fail-closed binding across three classes of facts:
+
+1. accepted TLS and post-handshake attestation facts;
+2. authenticated identity and authorization material;
+3. verifier-local expected policy.
+
+Out of scope:
+
+- selecting a specific identity provider;
+- standardizing a concrete wire-token format;
+- changing attestation evidence formats;
+- changing lower-layer TLS or post-handshake attestation wire protocols;
+- proving a complete end-to-end authorization model;
+- defining generic OAuth, OIDC, JWT, JWS, CWT, or COSE behavior except where
+  this profile relies on them for fail-closed acceptance.
+
+A requirement belongs in this profile when omitting it could cause any of these
+acceptance failures:
+
+- a binding from the wrong live TLS or attestation session is accepted;
+- the right platform is accepted for the wrong service, tenant, agent, task, or
+  authority boundary;
+- replay, stale state, missing state, or required-mode downgrade is accepted;
+- peer-selected metadata becomes verifier policy;
+- a security result, authorization decision, or verification result is reused
+  outside the session or request for which it was produced.
+
+## 4. Relationship to existing specifications
+
+Most building blocks are already standardized. This profile composes them and
+adds repository-specific fail-closed requirements for identity, session binding,
+replay, canonical references, local policy comparison, and cache safety.
+
+| Area | Existing specification | Profile decision |
+| --- | --- | --- |
+| Normative keywords | BCP 14: RFC 2119 and RFC 8174 | Keywords apply to this repository profile only. |
+| OAuth roles and authorization vocabulary | RFC 6749 and RFC 9396 | Manager, Agent, relying party, `scope`, `resource`, and `authorization_details` are mapped by this profile. |
+| JWT/JWS syntax and safety | RFC 7519, RFC 7515, and RFC 8725 | The two-token Identity Grant plus Session Binding Statement model, `agtp_type`, `agtp_version`, `grant_hash`, and the mandatory claim set are profile choices. |
+| Proof-of-possession pattern | RFC 7800 and RFC 8705 | The Agent confirmation-key rule follows the PoP pattern. The exact Session Binding Statement claims are profile-specific. |
+| TLS channel binding and exported authenticators | RFC 9266 and RFC 9261 | The profile consumes accepted lower-layer binding facts. It does not define a new TLS exporter or exported-authenticator format. |
+| Remote attestation roles | RFC 9334 | The attestation-binder hash, accepted-evidence policy, and L1/L2 wiring are profile details. |
+| CWT/COSE | RFC 8392 and RFC 9052 | CWT/COSE is an alternative encoding for the same semantics, not a different trust model. |
+| HTTP response caching | RFC 9111 | Response-cache vocabulary is reused. Security-state objects and verification results are not cacheable acceptance evidence. |
+| OIDC | OpenID Connect Core | OIDC is vocabulary only. This profile does not require OIDC. |
+| L0-L6, Identity Grant, Session Binding Statement, canonical references | Not standardized as one combined profile | These are local names for fail-closed identity binding. |
+
+## 5. Threat model
+
+The attacker can observe, replay, reorder, or relay network messages. The
+attacker can provide malicious application metadata. The attacker can run
+another Agent on the same machine or in the same deployment environment.
+
+In the Alice-side example, malware may influence peer-provided metadata or try
+to reuse old grants or binding statements. It does not fully control Alice's
+verifier process, local policy store, OS sandbox, keychain, or trusted Manager
+key configuration.
+
+The lower layers are assumed to implement TLS 1.3 validation,
+exported-authenticator validation, and platform-evidence appraisal correctly.
+This profile defines the identity and policy material that must be bound to
+those lower-layer facts before the application accepts the peer as the intended
+Agent.
+
+Out of scope for this threat model:
+
+- a fully compromised verifier process or local policy store;
+- a malicious or compromised trusted Manager or policy authority;
+- compromise of all local secret storage, OS isolation, or keychain controls;
+- denial of service;
+- side-channel leakage outside the identity-binding path.
+
+| Threat | Required design consequence |
+| --- | --- |
+| Network relay or borrowed attestation | Bind the verified grant to the accepted TLS session, including endpoint-key hash, request-context hash, and attestation-binder hash when present. |
+| Replay of old grants or bindings | Use `iat`, `exp`, unique IDs, and one-shot nonce or binding state. Required-mode deployments fail closed when replay state is unavailable. |
+| Same-machine wrong-Agent | Keep Manager keys and Agent confirmation keys in separate trust domains. Accept only a Session Binding Statement signed by the grant-authorized confirmation key or by a key explicitly authorized by local policy. |
+| Peer-provided metadata injection | Build accepted identity only from authenticated grants, session-bound statements, and local expected policy. |
+| Service, tenant, deployment, task, or capability diversion | Compare L3 through L6 values against local expected values. Required layers fail closed when expected values are missing or ambiguous. |
+| Token substitution between grant and binding | Carry a domain-separated `grant_hash` over the exact signed grant bytes. Reject mismatched grant and binding pairs. |
+| Key rotation, stale key, or revocation failure | Reject unknown, stale, retired, or revoked Manager keys, Agent binding keys, and grant IDs. Remote key sources need freshness and failure behavior. |
+| Cache confusion or cross-authority leakage | Do not reuse identity tokens, binding statements, attestation evidence, authorization decisions, or verification results as acceptance evidence. |
+| Gateway route confusion | In gateway-terminated deployments, authenticate the gateway-to-Agent route. Gateway session binding alone proves only the gateway endpoint. |
+| Semantic alias or fuzzy-match confusion | Use canonical identifiers for decision-sensitive semantic values. Fuzzy matching, alias repair, or model interpretation is not an acceptance authority. |
+
+If Alice's verifier, local expected-policy source, or trusted key store is fully
+compromised, token design alone cannot recover security. Those cases require
+host isolation, policy-file integrity, secret isolation, process isolation, and
+operational controls outside this profile.
+
+## 6. Layer model
+
+The layer model separates lower-layer session and attestation binding from
+upper-layer deployment, agent, task, and authorization policy. Other profiles
+may collapse, rename, or extend these layers if they preserve the same
+fail-closed checks.
 
 | Layer | Verification target | Main failure class |
 | --- | --- | --- |
 | L0 | Live TLS channel | MITM or session confusion |
 | L1 | Attested platform validity | Fake, malformed, or untrusted platform evidence |
-| L2 | Attestation-to-channel binding | Relay, replay, or borrowed evidence |
-| L3 | Intended service, tenant, deployment, or environment | Service / tenant diversion |
-| L4 | Intended workload, process, or agent | Same-machine wrong-agent |
-| L5 | Task, thread, context, or delegation binding | Cross-task or context diversion |
-| L6 | Authorization or capability binding | Confused deputy or privilege escalation |
+| L2 | Attestation-to-channel or authenticator-to-channel binding | Relay, replay, or borrowed evidence |
+| L3 | Intended service, tenant, deployment, or environment | Service or tenant diversion |
+| L4 | Intended workload, process, or agent | Same-machine wrong-Agent |
+| L5 | Intended task, thread, context, or delegation | Cross-task or context diversion |
+| L6 | Intended authorization or capability policy | Confused deputy or privilege escalation |
 
-OIDC and OAuth are useful reference patterns for these upper layers. They are
-not required by this note. The important idea is that the verifier should compare
-peer claims against locally expected values, rather than treating peer-supplied
-values as the policy.
+L0 through L2 can be tested with transport, attestation, and implementation
+regressions. L3 through L6 require explicit policy inputs before a verifier or
+application layer can enforce them consistently.
 
-## Terminology and Status
+## 7. Application-protocol boundary
 
-This is a draft security profile for implementation review and possible future
-Internet-Draft work. It is not an IETF consensus document.
+TLS and the hardware-aware profile are responsible for L0 through L2:
 
-The key words "MUST", "MUST NOT", "REQUIRED", "SHALL", "SHALL NOT", "SHOULD",
-"SHOULD NOT", "RECOMMENDED", "NOT RECOMMENDED", "MAY", and "OPTIONAL" in this
-document are to be interpreted as described in BCP 14, RFC 2119 and RFC 8174,
-when, and only when, they appear in all capitals, as shown here.
+- authenticating the live TLS channel;
+- appraising attested platform or VM evidence;
+- binding authenticator or attestation material to the accepted TLS session.
 
-## Scope
+An application profile carries or references the upper-layer identity and
+policy material needed for L3 through L6:
 
-L3 through L6 need explicit policy inputs before the verifier can enforce them
-consistently. The client transport exposes an optional
-`atls.ClientConfig.IdentityPolicy` hook for callers that already have a trusted
-source for observed identity values.
+- intended service, tenant, deployment, or environment;
+- intended workload, process, or Agent;
+- intended task, thread, context, or delegation;
+- authorization or capability policy.
 
-Out of scope for this note:
-
-- selecting a specific identity provider,
-- standardizing a concrete wire-token format,
-- changing the attestation evidence format,
-- changing the lower-layer TLS or post-handshake attestation wire protocol,
-- and proving an end-to-end authorization model.
-
-## Relationship to Application Protocols and AGTP
-
-This profile is application-protocol neutral at the lower layers. AGTP /
-Agent2Agent is one reference target; see the
-[Agent2Agent GitHub repository](https://github.com/a2aproject/A2A). AGTP can
-carry or reference upper-layer identity and policy material after TLS has
-established the live channel and the post-handshake hardware-attestation gate
-has verified the attestation and session-binding facts.
-
-In this split, TLS and the hardware-aware profile keep responsibility for L0
-through L2:
-
-- L0: the live TLS channel is authenticated.
-- L1: the attested platform or VM evidence is appraised.
-- L2: the authenticator or attestation material is bound to the accepted TLS
-  session.
-
-An application profile, including an AGTP profile, can then carry or reference
-the upper-layer identity and policy material needed for L3 through L6:
-
-- L3: intended service, tenant, deployment, or environment.
-- L4: intended workload, process, or agent.
-- L5: intended task, thread, context, or delegation.
-- L6: authorization or capability policy.
-
-This keeps relay defense and diversion defense separate. Relay defense remains
-a session-binding question at L2. Diversion and wrong-agent prevention
-need an application profile to compare session-bound identity
-claims with local expected policy at L3 and L4. Task and capability checks then
+Relay defense remains an L2 session-binding question. Diversion and wrong-Agent
+prevention require L3 and L4 policy comparison. Task and capability checks then
 continue at L5 and L6.
 
-When AGTP is used with this profile, peer-provided metadata is not
-authoritative. AGTP can carry authenticated policy inputs, such as an Identity
-Grant, and bind them to the accepted TLS session through a Session Binding
-Statement. The verifier still compares observed values with local expected
-values before accepting the peer as the intended deployment, agent, task, or
-authorized actor.
+Current application-protocol drafts do not by themselves provide all semantic
+binding needed for service, tenant, Agent, task, capability, canonical-reference,
+replay, and local-policy checks. The application protocol may carry
+authenticated policy inputs, such as an Identity Grant, and bind them to the
+accepted TLS session through a Session Binding Statement. The verifier still
+compares the resulting observed values with local expected values before
+accepting the peer.
+
+| Review item | Question | Profile requirement | Negative-test anchor |
+| --- | --- | --- | --- |
+| SP-01 | Is identity material bound to the accepted TLS and attestation session? | Verify the Session Binding Statement against endpoint key, request/exporter context, attestation binder when present, and replay state. | `hwtls-id-profile-relay-001`; attestation-binder mismatch |
+| SP-02 | Which values are local policy and which are peer claims? | Compare service, tenant, deployment, agent, task, scope, resource, and authorization values against local expected policy. | `hwtls-id-profile-diversion-001`; `hwtls-id-profile-wrong-agent-001`; `hwtls-id-profile-binding-confusion-001` |
+| SP-03 | Which freshness values are one-shot? | Reject repeated Session Binding Statement IDs, nonces, or task-binding values when one-shot use is required. | `hwtls-id-profile-replay-001` |
+| SP-04 | What happens when grant or binding material is missing, unsupported, substituted, or partly verified? | Required mode fails closed. Neither Identity Grant nor Session Binding Statement is sufficient alone. | `hwtls-id-profile-downgrade-001`; nested-token substitution |
+| SP-05 | Which responses are safe for shared caching? | Treat caller-dependent responses as `private` with adequate partitioning or `no-store`. Do not cache security inputs or verification results as acceptance evidence. | caller-dependent cache leak |
+| SP-06 | Are semantic references canonical? | Reject non-canonical, ambiguous, fuzzy-matched, or receiver-repaired decision values. | semantic alias confusion |
+| SP-07 | Are Manager and Agent keys separated? | Reject Manager keys used as Agent confirmation keys and Agent keys used as Manager signing keys. | key-role confusion |
+| SP-08 | Is gateway routing authenticated? | In gateway mode, bind the gateway endpoint and the gateway-to-Agent route separately. | gateway route confusion |
+
+## 8. Authority and key separation
 
 One implementation profile used in this repository is:
 
@@ -123,237 +215,166 @@ Identity Grant + hardware-aware TLS + OAuth/OIDC-style semantics + JWT/JWS encod
 ```
 
 OAuth and OIDC provide claim semantics and review vocabulary. JWT/JWS provides
-the signed-token encoding. This keeps the relying party's L3 through L6
-identity and authorization inputs compact and verifiable before they reach
-`identitypolicy`.
+one signed-token encoding. CWT/COSE provides a compact binary encoding for the
+same trust model.
 
-The JWT/JWS profile is intentionally fail closed. The verifier uses locally
-configured issuer, audience, signing-method, and key-lookup policy. Tokens must
-carry the AGTP token type, AGTP profile version, expiration time, issued-at
-time, and JWT ID. The signing-method allow-list must not include `none`.
-Identity values carried in an Agent-provided token are not authoritative unless
-the token verifies under a locally trusted Manager or policy-authority key.
+The profile keeps three key roles separate:
 
-This profile keeps three key roles separate:
-
-- TLS endpoint key: proves possession for the accepted TLS or exported
-  authenticator endpoint.
-- Agent binding key: signs the Session Binding Statement that binds a verified
-  grant to the accepted TLS session.
-- Manager or policy-authority key: signs Identity Grants that authorize the
-  intended deployment, agent, task, or capability values.
-
-These keys may be related by deployment policy, but they must not be silently
-treated as the same key. In particular, the Manager key is a token-signing or
-policy-authority key, not a TLS endpoint key.
-
-For same-machine wrong-agent resistance, Manager keys and Agent confirmation
-keys are separate trust domains. Manager signing keys MUST NOT be accepted as
-Agent confirmation keys. Agent confirmation keys MUST NOT be accepted as Manager
-or policy-authority signing keys. A deployment may explicitly authorize an
-endpoint key for session binding, but that authorization must come from the
-verified grant or local policy; it must not be inferred from the TLS session
-alone.
-
-CWT/COSE is available as a compact binary encoding profile for the same
-Identity Grant and Session Binding Statement model. The security rules stay the
-same: the grant issuer must be trusted locally, the confirmation key must be
-named by the verified grant, and the session-binding statement must bind that
-exact grant to the accepted TLS session. The CWT profile uses standard CWT
-registered claims for issuer, subject, audience, expiration, issued-at, and
-token ID (`cti`), and it requires the COSE `kid` used for key lookup to be
-protected.
-
-### Key rotation and revocation
-
-The JWT/JWS and CWT/COSE adapters verify token signatures against
-caller-provided key lookup policy. They do not define how Manager keys are
-rotated, how old keys are retired, or how grants are revoked before `exp`.
-
-Deployments that use this profile should define:
-
-- a trusted issuer namespace for Manager or policy-authority keys,
-- key identifiers and key-version rules,
-- overlap windows for key rotation,
-- a revocation source for grants, Manager keys, or Agent binding keys when
-  early invalidation is required,
-- maximum grant and session-binding lifetimes,
-- and replay-cache retention that is at least as long as the accepted
-  session-binding lifetime.
-
-Until those deployment rules exist, short grant lifetimes and fail-closed local
-key lookup are the conservative default. A token signed with an unknown,
-retired, or locally disabled key should be rejected.
-
-Revocation has three separate targets:
-
-- grant revocation rejects a specific Identity Grant by JWT `jti` or CWT `cti`;
-- Manager-key revocation rejects grants signed by a disabled issuer key or
-  `kid`;
-- Agent binding-key revocation rejects Session Binding Statements signed by a
-  compromised or retired confirmation key.
-
-Unknown, revoked, or stale keys fail closed. A deployment that relies on JWKS or
-another remote key set should define freshness, cache lifetime, and failure
-handling for that key source.
-
-### Initial production profile
-
-The initial production profile is intentionally small. It is a local
-implementation profile for fail-closed deployment behavior, not a new IETF
-standard profile.
-
-Production identity policy has two modes: disabled or required. In required
-mode, the client must fail closed when any required policy input is missing,
-untrusted, expired, replayed, or inconsistent with the accepted TLS session.
-In particular, the client must not treat peer-provided metadata as expected
-policy.
-
-The required-mode profile has the following minimum requirements:
-
-| Area | Requirement |
+| Key role | Purpose |
 | --- | --- |
-| Manager trust | Manager or policy-authority verification keys are configured locally by `kid`, algorithm, issuer, audience, and public key, or loaded through an equivalent fail-closed key source. |
-| Key separation | Manager or policy-authority signing keys and Agent confirmation keys are separate trust domains. They MUST NOT be accepted interchangeably. |
-| Grant lifetime | Identity Grants are short-lived and carry `iat`, `exp`, and a unique `jti`. |
-| Grant revocation | A deployment can reject revoked grant `jti` values and disabled Manager-key `kid` values before `exp`. |
-| Unknown keys | Unknown, disabled, retired, or stale `kid` values fail closed. |
-| Session binding | Session Binding Statements are signed by the confirmation key named in the verified Identity Grant, or by another endpoint key explicitly authorized by that grant or local policy. |
-| Session binding | Session Binding Statements carry the accepted TLS endpoint-key hash, request-context hash, and a one-shot nonce. When attestation is present, they should also carry the attestation-binder hash. |
-| Replay | `AGTPObservedIdentity` requires a replay cache when AGTP identity tokens are configured. Single-process deployments may use `MemoryReplayCache`; multi-instance production deployments should use a shared replay cache with `SET NX EX`-style semantics. |
-| Error handling | Failure to check keys, revocation, session binding, replay, or local identity policy is an authentication failure, not a warning. |
+| TLS endpoint key | Proves possession for the accepted TLS or exported-authenticator endpoint. |
+| Agent binding key | Signs the Session Binding Statement that binds a verified grant to the accepted TLS session. |
+| Manager or policy-authority key | Signs Identity Grants that authorize intended deployment, Agent, task, or capability values. |
 
-The initial JWT/JWS profile fixes the mandatory claim set below. A deployment
-may add claims, but it must not remove these checks when identity policy is
-required.
+These keys may be related by deployment policy, but they MUST NOT be treated as
+the same key by default. The Manager key is a token-signing or policy-authority
+key, not a TLS endpoint key.
 
-| Token | Mandatory claims |
-| --- | --- |
-| Identity Grant | `agtp_type`, `agtp_version`, `iss`, `aud`, `sub`, `jti`, `iat`, `exp`, `cnf.kid` |
-| Session Binding Statement | `agtp_type`, `agtp_version`, `aud`, `jti`, `iat`, `exp`, `grant_hash`, `leaf_public_key_sha256`, `request_context_sha256`, `nonce` |
+Manager signing keys MUST NOT be accepted as Agent confirmation keys. Agent
+confirmation keys MUST NOT be accepted as Manager or policy-authority signing
+keys. A deployment MAY explicitly authorize an endpoint key for session binding,
+but that authorization must come from the verified grant or from local policy;
+it must not be inferred from the TLS session alone.
 
-The profile keeps direct-Agent and gateway-terminated deployments separate:
+The JWS protected header `kid` is only a key-selection hint. Acceptance also
+requires issuer, audience, algorithm allow-list, key status, key use, profile
+version, token type, time validity, and local policy checks. The signing-method
+allow-list MUST NOT include `none`.
 
-- Direct-Agent profile: the Agent terminates the TLS session and performs the
-  hardware-aware profile checks before signing the Session Binding Statement
-  with the confirmation key named by the verified Identity Grant.
-- Gateway-routed profile: the gateway terminates the TLS session and performs
-  the hardware-aware profile checks. The deployment must also authenticate the
-  gateway-to-Agent route before treating the intended Agent as accepted.
-  Gateway session binding alone proves the gateway endpoint, not the final
-  Agent process.
+## 9. Identity Grant
 
-JWKS, DNS-AID, registry-based discovery, centralized revocation APIs, and
-Redis-compatible replay stores can be added as production integrations. They do
-not replace the local trust decision unless freshness, cache lifetime,
-revocation behavior, and fail-closed handling are specified.
+An Identity Grant authorizes the intended upper-layer subject. The initial wire
+profile uses JWT/JWS and OAuth/OIDC-style claim names where they fit. Other
+encodings, including CWT/COSE or a signed manifest, are acceptable only if they
+preserve the same authority, freshness, canonicalization, and session-binding
+rules.
 
-In implementation terms, AGTP can be introduced as a post-attestation profile
-step before changing the lower-layer TLS or attestation wire protocol. The AGTP
-step authenticates the grant, verifies the session binding statement against
-the accepted TLS session, enforces replay policy, and then calls the same
-`identitypolicy` validator used by the current Go API.
+An Identity Grant contains the deployment-specific equivalent of:
 
-## Normalized reference values
+- profile token type, `agtp_type=agtp.identity-grant` in the current JWT/JWS
+  implementation;
+- profile version, `agtp_version=1` in the current JWT/JWS implementation;
+- issuer, `iss`;
+- subject, `sub`;
+- audience, `aud`;
+- unique grant ID, `jti` for JWT/JWS or `cti` for CWT/COSE;
+- issued-at time, `iat`;
+- expiration time, `exp`;
+- Agent confirmation key, `cnf.kid` in the initial JWT/JWS profile;
+- optional explicitly authorized endpoint keys;
+- service, tenant, deployment, or environment values when L3 is required;
+- workload, process, or Agent identity when L4 is required;
+- computation, task, thread, or delegation IDs when L5 is required;
+- canonical intent, capability, or ontology references when those values are
+  decision-sensitive;
+- scopes, resources, or authorization details when L6 is required;
+- issuer key ID or key version when needed for key rotation.
 
-Some L5 and L6 inputs are semantic references rather than raw labels. This
-profile names three common examples:
+The Agent is not the authority for service, tenant, deployment, task, scope,
+resource, or capability values. Those values are accepted only when they appear
+in a grant verified under a locally trusted Manager or policy-authority key and
+then pass local policy comparison.
 
-- `ontologyId`: the stable identifier for the vocabulary or policy namespace
-  used to interpret semantic references.
-- `intentRef`: the stable identifier for the intended task, intent, or action
-  family.
-- `capabilityRef`: the stable identifier for an authorization capability or
-  resource-action class.
+## 10. Session Binding Statement
 
-These values are profile reference identifiers. They are not natural-language
-prompts, display names, or peer-selected aliases.
+A Session Binding Statement proves that the holder of the confirmation key named
+in the verified grant bound that exact grant to the accepted TLS or
+exported-authenticator session. It does not authorize identity or capability
+values.
 
-Clients MUST NOT send free-form natural-language intent, context, or capability
-text as decision-authoritative profile values. Free-form text MAY be sent as
-descriptive metadata.
+A generic accepted endpoint key is not sufficient unless the verified grant or
+local attestation policy explicitly binds that key to the same Agent identity.
 
-Decision-sensitive semantic values MUST be represented as canonical
-identifiers. Receivers MUST validate those identifiers deterministically against
-receiver-side policy, task state, trusted registry or profile data, signed
-profile data, or the underlying interaction/security protocol.
+A Session Binding Statement contains the deployment-specific equivalent of:
 
-Receivers MUST NOT normalize peer-provided decision-sensitive semantic values
-during the final acceptance path. In particular, a receiver MUST NOT turn a
-peer-provided alias, display label, natural-language phrase, case variant, or
-URI variant into an accepted canonical identifier. The receiver compares
-already-canonical identifiers against already-normalized expected values; if a
-value is not canonical for the applicable profile or registry version, the
-receiver rejects it.
+- profile token type, `agtp_type=agtp.session-binding` in the current JWT/JWS
+  implementation;
+- profile version, `agtp_version=1` in the current JWT/JWS implementation;
+- unique binding statement ID, `jti`;
+- audience or relying-service ID, `aud`;
+- issued-at time, `iat`;
+- expiration time, `exp`;
+- `grant_hash`;
+- `leaf_public_key_sha256`;
+- `request_context_sha256`;
+- `attestation_binder_sha256` when accepted attestation-to-channel evidence is
+  present;
+- one-shot nonce or unique binding value.
 
-Receivers MUST NOT use model-based or fuzzy semantic matching as the final
-authority for authorization, routing, execution, task acceptance, or rejection.
+Binding means receiver-verifiable linkage to the accepted session and accepted
+evidence. The statement does not need to embed a TLS session identifier when the
+verifier can deterministically compare endpoint-key, exporter or request
+context, attestation-binder, nonce, and replay fields.
 
-### Client-side normalization obligation
+The grant hash is computed over an unambiguous byte string. For the initial
+encodings:
 
-The relying client, Manager, or local policy authority must resolve aliases and
-produce normalized reference values before those values are used in an Identity
-Grant, Session Binding Statement, local expected policy, or authorization
-decision. The peer may present observed values, but it must not decide the
-verifier's expected `intentRef`, `capabilityRef`, or `ontologyId`.
+```text
+SHA-256("agtp.identity-grant.jwt.v1" || NUL || exact-signed-grant-bytes)
+SHA-256("agtp.identity-grant.cwt.v1" || NUL || exact-signed-grant-bytes)
+```
 
-Normalization is therefore an issuance-time or local-policy operation, not a
-receiver-side repair step for peer-provided decision values. A receiver may
-validate syntax, profile version, and registry version, but it must not
-canonicalize a non-canonical peer value into an accepted value.
+For JSON-based formats, the verifier SHOULD hash the exact signed bytes. It
+MUST NOT compute `grant_hash` by re-serializing JSON in the acceptance path.
+Canonical CBOR/COSE is acceptable when the encoding profile defines the
+canonical form.
 
-Alias handling is part of local policy:
+When accepted attestation evidence includes an attestation-to-channel binder,
+`attestation_binder_sha256` is REQUIRED in the Session Binding Statement and
+must match the accepted binder. When no such binder exists in the lower-layer
+session, the field is absent unless deployment policy requires it.
 
-- an alias must resolve to exactly one normalized reference at the relevant
-  registry or policy version;
-- a missing alias, unsupported registry version, or ambiguous alias fails
-  closed;
-- case folding, Unicode normalization, URI normalization, or prefix expansion is
-  allowed only when the referenced identifier scheme defines it;
-- otherwise, normalized references are compared as exact strings;
-- set-like fields, such as scopes, resources, and authorization details, use
-  the configured set mode after normalization.
+## 11. Verification model
 
-Verifier-side acceptance must not depend on fuzzy matching, prompt similarity,
-model interpretation, or natural-language equivalence. If a deployment needs
-human-readable labels, those labels should be carried as diagnostics or UI
-metadata, not as authorization-critical reference values.
+The verifier performs authority checks, session-binding checks, replay checks,
+and policy comparison in that order. The final accepted assertion is built only
+from verified material.
 
-## OIDC and OAuth-style mapping
+1. Verify the Identity Grant under a trusted Manager or policy-authority key.
+2. Check grant issuer, audience, profile version, token type, algorithm, key
+   status, expiration, issued-at time, grant ID, and required scope or resource
+   fields.
+3. Verify the Session Binding Statement signature.
+4. Check that the statement signer is the grant confirmation key or another
+   endpoint key explicitly authorized by the verified grant or local policy.
+5. Verify that `grant_hash` matches the exact verified Identity Grant bytes.
+6. Verify that the statement audience matches the relying service or client.
+7. Reject arbitrary accepted endpoint keys that are not explicitly bound to the
+   same Agent identity by the verified grant or local attestation policy.
+8. Compare the statement binding fields with the accepted TLS or
+   exported-authenticator session.
+9. Enforce replay policy for grant IDs, binding IDs, task-binding values, and
+   nonces when one-shot use is required.
+10. Construct the internal assertion only from the verified grant and binding
+    statement.
+11. Compare the assertion with local expected policy for every required layer.
 
-OIDC and OAuth provide a useful vocabulary for local expected values:
+`identitypolicy.ValidateAssertion` remains a comparator and binding freshness
+checker. It does not parse wire tokens, verify signatures, select keys, rotate
+keys, check revocation, or own replay storage. Those checks belong to the
+component that authenticates external identity material before it returns an
+observed assertion.
 
-| Layer | Policy question | OIDC / OAuth-style analogue |
-| --- | --- | --- |
-| L3 | Is this the intended service, tenant, deployment, or environment? | issuer, audience, tenant, hosted domain, deployment claim, environment claim |
-| L4 | Is this the intended workload, process, or agent? | subject, client ID, workload identity, actor claim, confirmation key |
-| L5 | Is this the intended task, thread, context, or delegation? | nonce, state, transaction ID, request object, delegation token |
-| L6 | Is this action authorized for this peer and context? | scope, resource indicator, authorization details, policy decision, consent |
+## 12. Policy model
 
-These names are analogies, not normative requirements. A deployment could source
-the same expected values from configuration, a registry, CoRIM metadata, an EAT
-claim, an agent manifest, or an application policy engine.
+Expected values and observed values stay separate.
 
-## Policy shape
-
-The core rule is to keep expected values separate from observed values, and to
-bind observed values to the accepted TLS session.
-
-- Expected values come from local policy, configuration, a trusted registry, or
-  a policy engine.
-- Observed values come from a session-bound identity assertion extracted from
-  attestation evidence, CoRIM metadata, EAT claims, agent manifests,
-  authenticated or locally derived request metadata, or authorization tokens.
+- Expected values come from local policy, operator configuration, a trusted
+  registry, a Manager, computation state, or a policy engine.
+- Observed values come from a session-bound assertion built from authenticated
+  grants, Session Binding Statements, attestation evidence, CoRIM metadata, EAT
+  claims, agent manifests, authenticated request metadata, or authorization
+  tokens.
 - Verification compares observed values against expected values.
-- Observed values must not become expected values without a trusted local policy
-  decision.
+- Required layers fail closed when an expected value is missing, ambiguous, or
+  only peer supplied.
 
 A minimal policy object can be shaped as follows:
 
 ```yaml
 identity_policy:
-  mode: "disabled"
-  set_mode: "contains_all"
+  mode: "disabled"        # disabled | required
+  set_mode: "contains_all" # contains_all | exact
 
   require:
     l3: false
@@ -381,8 +402,8 @@ identity_policy:
     authorization_details: []
 ```
 
-After external identity material has been authenticated, the verified internal
-`identitypolicy.Assertion` can be shaped as follows:
+After external identity material has been authenticated, the verifier can build
+an internal assertion:
 
 ```yaml
 identity_assertion:
@@ -400,12 +421,15 @@ identity_assertion:
     task_id: "task-..."
     thread_id: "thread-..."
     delegation_id: "delegation-..."
+    intent_ref: "intent:monthly-settlement"
+    capability_ref: "capability:orders-read"
+    ontology_id: "ontology:payments:v1"
     scopes:
       - "orders:read"
     resources:
       - "orders"
     authorization_details:
-      - "settlement"
+      - "purpose:monthly-settlement"
 
   binding:
     leaf_public_key_sha256: "..."
@@ -416,482 +440,460 @@ identity_assertion:
     expires_at: "..."
 ```
 
-This assertion is not a wire format. It is a local representation used after the
-caller has authenticated the external identity material. `Assertion.Issuer` is
-informational to `identitypolicy.ValidateAssertion`; it is trusted only if the
-`ObservedIdentity` implementation has already verified the corresponding grant
-issuer and trust anchor. The binding fields are what make the assertion a relay
-defense rather than a plain metadata check.
+This assertion is not a wire format. It is a local representation used after
+the caller has authenticated external identity material. `Assertion.Issuer` is
+informational unless the observed-identity implementation has already verified
+the corresponding issuer and trust anchor.
 
-An implementation can split this object across existing configuration, manager
-state, agent metadata, or an external policy engine. The important part is the
-source of authority, not the concrete serialization format.
+## 13. L3 through L6 policy fields
 
-## Issuer model
+| Layer | Required question | Common expected values |
+| --- | --- | --- |
+| L3 | Is this the intended service, tenant, deployment, or environment? | service, tenant, deployment, environment, region, CoRIM or EAT deployment claims |
+| L4 | Is this the intended workload, process, or Agent? | workload ID, Agent ID, process or binary hash, config or policy hash, Agent public key, routing target |
+| L5 | Is this the intended task, thread, context, or delegation? | computation ID, task ID, thread ID, request context, delegation ID, callback binding, one-shot task state |
+| L6 | Is the action authorized for this peer and context? | scope, resource, authorization details, capability token, policy decision, user consent, tool policy |
 
-`identitypolicy.Assertion` is not a wire token. It is a verified internal
-representation returned by `atls.ClientConfig.ObservedIdentity`. Any wire token,
-manifest, EAT claim, CoRIM metadata, authorization token, or gateway statement
-must be authenticated before the callback returns an assertion.
+OIDC and OAuth-style names are useful analogies:
 
-A production deployment should separate authority from session possession:
+| Layer | OAuth/OIDC-style analogue |
+| --- | --- |
+| L3 | issuer, audience, tenant, hosted domain, deployment claim, environment claim |
+| L4 | subject, client ID, workload identity, actor claim, confirmation key |
+| L5 | nonce, state, transaction ID, request object, delegation token |
+| L6 | scope, resource indicator, authorization details, policy decision, consent |
 
-- Identity Grant: signed or otherwise authenticated by the Manager or another
-  configured policy authority.
-- Session Binding Statement: signed by the agent confirmation key named in the
-  verified Identity Grant. The accepted endpoint key may be used only when the
-  verified grant or local attestation policy explicitly binds that endpoint key
-  to the same agent identity.
+These analogies are not normative requirements. A deployment can source the
+same expected values from configuration, a registry, CoRIM metadata, an EAT
+claim, an agent manifest, or an application policy engine.
 
-The Agent is not the authority for service, tenant, deployment, task, scope, or
-resource values. An Agent-signed session binding is a holder-of-key proof, not
-an authority statement.
+## 14. Canonical semantic references
 
-### Identity Grant
+Some L5 and L6 inputs are semantic references rather than raw labels:
 
-The Identity Grant authorizes the intended upper-layer subject. The initial
-wire profile uses JWT/JWS and OAuth/OIDC-style claim names where they fit. Other
-encodings, such as CWT/COSE or a signed manifest, can be added later if they
-preserve the same authority and session-binding rules.
+- `ontologyId`: stable identifier for the vocabulary or policy namespace;
+- `intentRef`: stable identifier for the intended task, intent, or action
+  family;
+- `capabilityRef`: stable identifier for an authorization capability or
+  resource-action class.
 
-An Identity Grant should include the deployment-specific equivalent of:
+These values are profile reference identifiers. They are not natural-language
+prompts, display names, or peer-selected aliases.
 
-- AGTP token type (`agtp_type=agtp.identity-grant`),
-- AGTP profile version (`agtp_version=1`),
-- issuer (`iss`),
-- subject (`sub`),
-- audience (`aud`),
-- unique grant ID (`jti`),
-- service, tenant, deployment, or environment,
-- workload or agent identity,
-- agent public key or confirmation key (`cnf.kid` in the initial JWT/JWS
-  profile),
-- computation ID, task ID, thread ID, or delegation ID when known,
-- canonical intent, capability, or ontology reference when those references are
-  decision-sensitive,
-- scopes, resources, or authorization details when required,
-- issuer key ID or key version when needed for key rotation,
-- issued-at and expiration time (`iat`, `exp`),
-- and a unique grant ID.
+Decision-sensitive semantic values MUST be canonical before they appear in an
+Identity Grant, Session Binding Statement, local expected policy, or
+authorization decision. The relying client, Manager, or local policy authority
+resolves aliases before issuance or local policy comparison.
 
-### Session Binding Statement
+Receivers MUST validate canonical identifiers deterministically against
+receiver-side policy, task state, trusted registry data, signed profile data, or
+the underlying interaction/security protocol.
 
-The Session Binding Statement does not authorize identity or capability values.
-It only proves that the holder of the confirmation key named in the verified
-grant bound that grant to the accepted TLS session. A generic accepted endpoint
-key is not sufficient unless the verified grant or local attestation policy
-explicitly binds that key to the same agent identity.
+Receivers MUST NOT normalize peer-provided decision-sensitive values during the
+final acceptance path. They MUST NOT turn a peer-provided alias, display label,
+natural-language phrase, case variant, URI variant, or model interpretation into
+an accepted canonical identifier.
 
-A Session Binding Statement should include:
+Alias handling is part of local policy:
 
-- AGTP token type (`agtp_type=agtp.session-binding`),
-- AGTP profile version (`agtp_version=1`),
-- unique binding statement ID (`jti`),
-- `grant_hash`,
-- `leaf_public_key_sha256`,
-- `request_context_sha256`,
-- `attestation_binder_sha256` when attestation is present,
-- `aud` or relying-service ID,
-- statement type, protocol name, and version,
-- nonce or unique binding ID,
-- `iat` or issued-at time,
-- and expiration time.
+- an alias resolves to exactly one normalized reference at the relevant registry
+  or policy version;
+- a missing alias, unsupported registry version, or ambiguous alias fails
+  closed;
+- case folding, Unicode normalization, URI normalization, or prefix expansion is
+  allowed only when the referenced identifier scheme defines it;
+- otherwise, normalized references are compared as exact strings;
+- set-like fields, such as scopes, resources, and authorization details, use the
+  configured set mode after normalization.
 
-The grant hash should be computed over an unambiguous byte string, for example:
+Free-form natural-language intent, context, or capability text MAY be carried
+as descriptive metadata. It MUST NOT be decision-authoritative profile data.
 
-```text
-SHA-256("agtp.identity-grant.jwt.v1" || NUL || exact-signed-grant-bytes)
-SHA-256("agtp.identity-grant.cwt.v1" || NUL || exact-signed-grant-bytes)
-```
+## 15. Production profile
 
-If a JSON-based format is used, the deployment must avoid ambiguous
-canonicalization. Hashing the exact signed bytes, or using canonical CBOR/COSE,
-is safer than hashing a re-serialized JSON object.
+Production identity policy has two modes: disabled or required.
 
-The reusable JWT/JWS and CWT/COSE adapters in `pkg/agtp` follow this rule. They
-verify the signed grant, compute the domain-separated hash over the exact signed
-token bytes, and convert the result into `identitypolicy.VerifiedGrant`.
+In disabled mode, the transport does not enforce L3 through L6 identity policy.
+L0 through L2 lower-layer checks still apply according to the configured TLS and
+attestation profile.
 
-### Verification order
+In required mode, the client fails closed when any required policy input is
+missing, untrusted, expired, replayed, non-canonical, unsupported, revoked, or
+inconsistent with the accepted TLS session. Peer-provided metadata is never
+used as expected policy.
 
-The overall verifier should perform the checks below. In the production client
-wiring, the `ObservedIdentity` callback performs external authentication and
-constructs the verified assertion, while `identitypolicy.ValidateAssertion`
-compares the assertion with the accepted TLS session binding and local expected
-policy.
+| Area | Required-mode behavior |
+| --- | --- |
+| Manager trust | Manager or policy-authority verification keys are configured locally by `kid`, algorithm, issuer, audience, key use, and public key, or loaded through an equivalent fail-closed key source. |
+| Algorithm safety | The token `alg` must match local key policy. `none` is forbidden. Algorithm confusion is a hard failure. |
+| Key separation | Manager signing keys and Agent confirmation keys are separate trust domains and MUST NOT be accepted interchangeably. |
+| Grant lifetime | Identity Grants are short-lived and carry `iat`, `exp`, and a unique `jti` or `cti`. |
+| Grant revocation | Deployments that require early invalidation reject revoked grant IDs and disabled Manager-key IDs before expiration. |
+| Unknown keys | Unknown, disabled, retired, stale, wrong-use, or mismatched key IDs fail closed. |
+| Session-binding signer | Session Binding Statements are signed by the confirmation key named in the verified grant, or by another key explicitly authorized by that grant or local policy. |
+| Session-binding fields | Session Binding Statements carry accepted endpoint-key hash, request/exporter-context hash, one-shot nonce, and attestation-binder hash when attestation binding is present. |
+| Replay | JWT/CWT identity acceptance requires replay protection for binding nonces or one-shot IDs. Multi-instance production deployments use shared atomic insert-with-expiry semantics, such as `SET NX EX`. |
+| Local policy | Required L3 through L6 values are compared against local expected policy. Missing expected values fail closed. |
+| Error handling | Failure to check keys, revocation, session binding, replay, canonicalization, or local identity policy is an authentication failure, not a warning. |
 
-1. Verify the Identity Grant under a trusted Manager or policy-authority key.
-2. Check grant issuer, audience, expiration, grant ID, and required scope or
-   resource fields.
-3. Verify that the Session Binding Statement signature key matches the
-   grant confirmation key, or another endpoint key explicitly authorized by the
-   verified grant or local attestation policy.
-4. Verify that the statement grant hash matches the verified Identity Grant.
-5. Verify that the statement audience matches the relying service or client.
-6. Reject arbitrary accepted endpoint keys that are not explicitly bound by the
-   verified grant or local attestation policy to the same agent identity, even
-   when the underlying TLS session is otherwise valid.
-7. Compare the statement binding fields with the accepted TLS session.
-8. Enforce replay policy for grant IDs, binding IDs, or nonces when one-shot use
-   is required.
-9. Construct `identitypolicy.Assertion` only from the verified grant and binding
-   statement.
-10. Call `identitypolicy.ValidateAssertion` to compare the verified assertion
-   with local expected policy.
+The initial mandatory JWT/JWS claim set is:
 
-`identitypolicy.ValidateAssertion` intentionally remains a comparator and
-binding freshness checker. It does not parse or verify wire tokens, signatures,
-grant formats, key rotation, revocation, or replay caches. Those checks belong
-to the component that implements `ObservedIdentity`.
+| Token | Mandatory claims |
+| --- | --- |
+| Identity Grant | `agtp_type`, `agtp_version`, `iss`, `aud`, `sub`, `jti`, `iat`, `exp`, `cnf.kid` |
+| Session Binding Statement | `agtp_type`, `agtp_version`, `aud`, `jti`, `iat`, `exp`, `grant_hash`, `leaf_public_key_sha256`, `request_context_sha256`, `nonce`; also `attestation_binder_sha256` when attestation binding is present |
 
-### Gateway mode
+When identity is accepted from JWT/JWS material, the Session Binding Statement
+JWT is REQUIRED. The Identity Grant JWT authenticates authority and semantics;
+it does not prove that the authorized Agent key is present on the current TLS or
+exported-authenticator session. The verifier accepts identity only after the
+Session Binding Statement JWT is verified, linked to the exact signed Identity
+Grant JWT, compared with the accepted session binding, checked for freshness and
+replay, and compared with local expected policy.
 
-If the Agent terminates the accepted TLS session directly, the Agent can sign
-the Session Binding Statement over the accepted session binding values only when
-the verified Identity Grant names that Agent key, or explicitly binds the
-accepted endpoint key to the same agent identity.
+CWT/COSE is a compact binary encoding for the same model. The grant issuer must
+be trusted locally, the confirmation key must be named by the verified grant,
+the COSE `kid` used for key lookup must be protected, and the binding statement
+must bind the exact grant to the accepted session.
 
-If an ingress proxy or gateway terminates TLS, the trust model is different:
-the gateway is the live TLS endpoint. In that mode, policy must explicitly trust
-the gateway and bind the gateway-to-agent route. The deployment can model this
-with gateway ID, gateway public key, allowed route, and agent route fields in
-the Identity Grant or in a separate gateway routing assertion. Without that
-extra routing assertion, a gateway-terminated session binding does not by itself
-prove that the intended Agent process handled the request.
+## 16. Freshness, replay, key rotation, and revocation
 
-A gateway routing assertion must not be treated as an Agent authority statement.
-It only authenticates the gateway's routing decision. The relying party still
-needs an Identity Grant for the intended Agent and, when required, an Agent-side
-holder-of-key proof for the gateway-to-agent hop.
+JWT/JWS and CWT/COSE adapters verify signatures against caller-provided key
+lookup policy. They do not define how Manager keys are rotated, how old keys are
+retired, how grants are revoked before expiration, or where replay state is
+stored. Deployments own those decisions.
 
-## Production wiring
+Deployments using this profile define:
+
+- a trusted issuer namespace for Manager or policy-authority keys;
+- key identifiers, key-use rules, and key-version rules;
+- overlap windows for key rotation;
+- revocation sources for grants, Manager keys, or Agent binding keys when early
+  invalidation is required;
+- maximum grant and session-binding lifetimes;
+- clock-skew tolerance;
+- replay-cache key shape;
+- replay-cache retention at least as long as the accepted session-binding
+  lifetime.
+
+Revocation has three separate targets:
+
+- grant revocation rejects a specific Identity Grant by JWT `jti` or CWT `cti`;
+- Manager-key revocation rejects grants signed by a disabled issuer key or
+  `kid`;
+- Agent binding-key revocation rejects Session Binding Statements signed by a
+  compromised or retired confirmation key.
+
+Unknown, revoked, stale, wrong-use, or ambiguous keys fail closed. A deployment
+that relies on JWKS or another remote key set must define freshness, cache
+lifetime, pinning or trust anchors, and failure behavior for that key source.
+
+Replay state is marked only after signature validation, session-binding
+comparison, freshness checks, and local policy comparison succeed. Failed
+attempts may be logged or rate-limited, but they do not consume a one-shot
+nonce unless deployment policy deliberately chooses that anti-probing behavior.
+
+## 17. Application response-cache semantics
+
+Response caching and security-state caching are different things.
+
+Response caching stores endpoint results for reuse. Replay caches store one-shot
+freshness state. Verified Identity Grants, Session Binding Statements,
+attestation evidence, authorization decisions, and prior verification results
+MUST NOT be cached as acceptance evidence for a later session or request.
+
+Application response-cache controls, if used, follow RFC 9111's split between
+shared and private caches, freshness, and response controls. The default for
+profile-sensitive endpoints is `no-store`.
+
+| Directive | Meaning |
+| --- | --- |
+| `no-store` | A cache MUST NOT store the response. This is REQUIRED for identity tokens, Session Binding Statements, attestation evidence, capability grants, authorization decisions, and responses containing session-bound or caller-sensitive data. |
+| `public` | A shared cache MAY store the response only when the response is invariant across Agent ID, principal, tenant, authority scope, policy grant, mTLS certificate identity, and session context. |
+| `private` | A shared cache MUST NOT store the response. An agent-local or principal-local cache MAY store it only inside the relevant identity or policy partition. |
+| `max-age` | Response freshness lifetime. It does not extend token, grant, binding, revocation, attestation, or local policy lifetimes. |
+| `vary` | Identity, policy, or request fields that partition a cached response when the response can differ by caller or authority context. |
+
+`public` is a strong assertion. A public response must not depend on caller
+identity, scope, principal, tenant, policy grant, mTLS certificate, attestation
+result, session binding, task state, or any other verifier-local policy input.
+
+Private cache hits do not bypass current security checks. A verifier still
+authenticates the current Identity Grant, verifies the current Session Binding
+Statement, checks replay state, and compares local policy before using a cached
+response. Cache hit is a performance result, not an authorization result.
+
+## 18. Deployment topologies
+
+### 18.1 Direct-Agent mode
+
+In direct-Agent mode, the Agent terminates the TLS session and performs the
+hardware-aware profile checks. The Agent signs the Session Binding Statement
+with the confirmation key named by the verified Identity Grant, or with an
+endpoint key explicitly authorized by the grant or local policy.
+
+### 18.2 Gateway-routed mode
+
+In gateway-routed mode, the gateway terminates the TLS session and performs the
+hardware-aware profile checks. The gateway is the live TLS endpoint. Gateway
+session binding proves the gateway endpoint, not the final Agent process.
+
+The deployment must also authenticate the gateway-to-Agent route before treating
+the intended Agent as accepted. That can be modeled with gateway ID, gateway
+public key, allowed route, and Agent route fields in the Identity Grant, or with
+a separate gateway routing assertion.
+
+A gateway routing assertion is not an Agent authority statement. It authenticates
+the gateway's routing decision. The relying party still needs an Identity Grant
+for the intended Agent and, when required, an Agent-side holder-of-key proof for
+the gateway-to-Agent hop.
+
+## 19. Implementation hooks
 
 The production client hook is:
 
-- `atls.ClientConfig.IdentityPolicy` for local expected values.
-- `atls.ClientConfig.ObservedIdentity` for a session-bound observed identity
-  assertion extracted from a trusted source.
+- `atls.ClientConfig.IdentityPolicy` for local expected values;
+- `atls.ClientConfig.ObservedIdentity` for a session-bound observed assertion
+  extracted from a trusted source.
 
 The hook runs after exported-authenticator and attestation validation, but
 before the accepted TLS connection is returned to the caller.
 
-The expected values are owned by local policy. In practice, that means manager
-configuration, operator configuration, a trusted registry, or an authorization
-policy engine. Peer-provided values must not become expected values.
+The client computes expected session binding from the accepted exported
+authenticator: the leaf public key, the certificate request context, and the
+attestation binder when attestation is present. The observed assertion must
+carry matching binding values and a non-expired `expires_at` value before its
+identity fields are compared with local policy.
 
-The observed assertion is extracted by the caller-supplied `ObservedIdentity`
-callback. That callback should read from trusted evidence, CoRIM metadata, EAT
-claims, agent manifests, authenticated or locally derived request metadata, or
-authorization tokens. If an identity policy is enabled without an
-observed-identity callback, the client fails closed.
+The profile gives the client two defenses:
 
-The client computes the expected session binding from the accepted
-exported authenticator: the leaf public key, the certificate request context,
-and the attestation binder when attestation is present. The observed assertion
-must carry matching binding values and a non-expired `expires_at` value before
-its identity fields are compared with local policy.
+- relay defense: the observed assertion is tied to this accepted TLS session at
+  L2;
+- diversion defense: the session-bound observed identity matches locally
+  expected deployment, Agent, task, and authorization values at L3 through L6.
 
-This gives the profile two distinct defenses:
+## 20. Validation algorithm
 
-- relay defense: the observed identity assertion must be tied to this accepted
-  TLS session at L2, not borrowed from another endpoint or connection.
-- diversion defense: the session-bound observed identity must match locally
-  expected deployment identity at L3. Workload, task, and authorization checks
-  continue at L4 through L6.
+For each layer required by policy:
 
-## L3: intended service, tenant, or deployment
-
-The verifier needs a local source of expected identity values. Examples include:
-
-- service identity,
-- tenant identity,
-- deployment or environment identity,
-- region or location, if relevant,
-- CoRIM or evidence fields that represent these values,
-- and the local policy source for the expected values.
-
-The key question is whether a valid platform measurement is also tied to the
-intended service or deployment subject.
-
-## L4: intended workload, process, or agent
-
-Machine-level attestation may not be enough when several workloads or agents run
-on the same platform. The verifier or application layer may need expected values
-such as:
-
-- workload ID,
-- agent ID,
-- process or binary hash,
-- config or policy hash,
-- agent public key,
-- and routing target or ingress identity.
-
-The key question is whether the accepted peer is the intended workload or agent,
-not only a workload on a valid attested machine.
-
-## L5: intended task, thread, context, or delegation
-
-An accepted peer can still be used in the wrong application context. The
-application layer may need expected values such as:
-
-- computation ID,
-- task ID,
-- thread or conversation ID,
-- request context,
-- delegation token,
-- callback or ingress binding,
-- and locally tracked one-shot state.
-
-The key question is whether the accepted response is tied to the task or
-delegation that the relying party intended.
-
-## L6: authorization or capability policy
-
-Identity alone does not decide whether an action is allowed. The policy layer
-may need expected values such as:
-
-- OAuth scope or authorization detail,
-- capability token,
-- resource indicator,
-- user consent record,
-- policy-engine decision,
-- and tool or data-access policy.
-
-The key question is whether the accepted peer is authorized for the requested
-action in the current context.
-
-## Possible input sources
-
-The table below lists candidate input sources. It is intentionally descriptive;
-it does not claim that all inputs already exist or are enforced today.
-
-| Layer | Candidate local expected value | Possible source |
-| --- | --- | --- |
-| L3 | Expected service, tenant, deployment, or environment | manager configuration, deployment registry, CoRIM metadata, EAT claim, operator policy |
-| L4 | Expected workload, process, or agent | agent manifest, workload ID, binary or config hash, agent public key, ingress routing policy |
-| L5 | Expected task, thread, context, or delegation | computation ID, request context, session state, delegation token, callback binding |
-| L6 | Expected authorization or capability | OAuth/OIDC-style policy, capability token, policy engine, user consent, tool policy |
-
-## Validation algorithm
-
-For each layer that is required by policy:
-
-1. Load the local expected value for that layer.
-2. Reject if the expected value is missing or ambiguous.
-3. Extract the observed session-bound identity assertion from the trusted source.
+1. Load the local expected value.
+2. Reject if the expected value is missing, ambiguous, non-canonical, or only
+   peer supplied.
+3. Extract the observed session-bound assertion from an authenticated source.
 4. Reject if the assertion is not bound to the accepted TLS session.
 5. Reject if the assertion is expired or missing freshness metadata.
-6. Extract the observed value from the assertion for that layer.
-7. Reject if the observed value is missing.
+6. Extract the observed value for the required layer.
+7. Reject if the observed value is missing or non-canonical.
 8. Compare the observed value with the expected value.
 9. Reject on mismatch.
 10. Continue to the next required layer.
 
 For set-like values such as scopes, resources, or authorization details, the
-observed set must satisfy the local policy. The default `contains_all` mode
-accepts an observed set only when it contains every locally required value.
-The stricter `exact` mode also rejects extra observed values. A peer-provided
-scope list is not enough by itself.
+observed set must satisfy local policy. The default `contains_all` mode accepts
+an observed set only when it contains every locally required value. The stricter
+`exact` mode also rejects extra observed values. A peer-provided scope list is
+not enough by itself.
 
-## Fail-closed principle
+## 21. Error handling and diagnostics
 
-For L3 through L6, the safe default should be fail closed when an expected local
-value is required but unavailable, ambiguous, or only peer supplied.
+Validation failures preserve the layer, field, and error class. Callers can
+distinguish local policy configuration errors from missing peer claims,
+mismatched values, stale keys, replay, unsupported profile versions, and binding
+mismatches.
 
-Concrete policy rules should follow this shape:
+Aggregated validation errors remain inspectable by layer and field so callers
+can fail closed while still reporting actionable diagnostics.
 
-- The expected value comes from local configuration, a trusted registry, an
-  attestation policy, or a policy engine.
-- The received claim is compared against that local expected value.
-- Missing expected values do not silently relax the check.
-- Peer-provided values are never promoted into expected values without a trusted
-  policy decision.
+The validator rejects unsafe identity-policy values, including invalid UTF-8,
+control characters such as CRLF, and HTML delimiter characters. It limits
+individual values to 1024 bytes and set-like fields to 128 values. Validation
+errors report only layer, field, and error class; they do not echo raw peer
+values. HTTP or HTML presentation layers still need normal output escaping and
+CSRF protections.
 
-When a deployment wants strict authorization, it should set `set_mode: exact`.
-That makes L6 fail closed if a verified grant carries extra scopes, resources,
-or authorization details beyond the local expected set.
-- A mismatch is a hard failure for flows that require that layer.
-
-## Error handling
-
-Validation failures should preserve the layer, field, and error class. Callers
-can then distinguish local policy configuration errors from missing peer claims
-or mismatched values.
-
-For example:
-
-- missing local expected value: configuration or policy setup problem
-- missing observed value: peer evidence, metadata, or token did not carry the
-  required claim
-- mismatch: peer supplied a claim, but it did not match local policy
-
-Aggregated validation errors should remain inspectable by layer and field so
-callers can fail closed while still reporting actionable diagnostics.
-
-The validator also rejects unsafe identity-policy values, including invalid
-UTF-8, control characters such as CRLF, and HTML delimiter characters. It also
-limits individual values to 1024 bytes and set-like fields to 128 values. This
-protects log, header, and diagnostic paths from accepting values that could be
-reused for injection or resource-exhaustion attacks. Validation errors
-intentionally report only layer, field, and error class; they do not echo raw
-peer values. Any HTTP or HTML presentation layer must still use normal output
-escaping and CSRF protections at that layer.
-
-## Minimal implementation path
+## 22. Minimal implementation path
 
 A small implementation can be staged without changing the lower-layer TLS or
 post-handshake attestation wire protocol:
 
 1. Define a local policy input structure for L3 through L6 expected values.
 2. Define extraction points for observed values.
-3. Add fail-closed validators for exact-match string fields.
-4. Add set-containment validation for scopes, resources, or authorization
-   details.
-5. Wire the validators at the application or manager layer before treating an
-   accepted peer as the intended deployment, agent, task, or authorized
-   actor.
+3. Authenticate the observed identity material before constructing an internal
+   assertion.
+4. Add fail-closed validators for exact-match string fields.
+5. Add set-containment or exact-set validation for scopes, resources, and
+   authorization details.
+6. Add replay-cache support for one-shot binding nonces or IDs.
+7. Wire validation before treating an accepted peer as the intended deployment,
+   Agent, task, or authorized actor.
 
 The lower-layer verifier can remain focused on L0 through L2. L3 through L6
-enforcement can live at the layer that has access to deployment policy, agent
-metadata, computation state, and authorization decisions.
+enforcement belongs at the layer that has deployment policy, Agent metadata,
+computation state, and authorization decisions.
 
-## Implementation status
+## 23. Implementation status
 
 The reusable validator lives in `pkg/atls/identitypolicy`. It implements the
 expected-versus-observed comparison model and session-bound assertion validation
-described above. The client transport calls it when
+described in this profile. The client transport calls it when
 `atls.ClientConfig.IdentityPolicy` is enabled.
 
-The same package also provides a helper for the post-authentication step:
-`identitypolicy.NewAssertionFromSessionBinding` builds an internal `Assertion`
-from an already-authenticated Identity Grant and an already-verified Session
-Binding Statement. It does not parse wire tokens or verify signatures; it only
-checks that the statement is tied to the grant, audience, allowed confirmation
-key, and minimum session-binding fields before the assertion is compared with
-the accepted TLS session. `identitypolicy.SessionBindingOptions` can also
+The same package provides `identitypolicy.NewAssertionFromSessionBinding` for
+the post-authentication step. It builds an internal `Assertion` from an already
+authenticated Identity Grant and an already-verified Session Binding Statement.
+It does not parse wire tokens or verify signatures. Before policy comparison,
+the statement must be tied to the grant, audience, allowed confirmation key, and
+minimum session-binding fields. `identitypolicy.SessionBindingOptions` can
 attach a replay cache for one-shot binding nonces.
 
-The client config supports both integration styles. Callers can provide a
-custom `ObservedIdentity` callback, or they can pass a verified Identity Grant,
-a verified Session Binding Statement, and an optional replay cache directly on
+The client config supports two integration styles. Callers can provide a custom
+`ObservedIdentity` callback, or they can pass a verified Identity Grant, a
+verified Session Binding Statement, and an optional replay cache directly on
 `atls.ClientConfig`. In both cases, the transport validates the resulting
 assertion against the accepted TLS session before returning the connection. For
-the direct grant/statement path, replay-cache marking happens only after the
+the direct grant/statement path, replay-cache marking happens only after
 session-binding and local policy comparison succeed.
 
-`pkg/agtp` provides the first concrete wire-token adapter for that direct path.
-It verifies AGTP Identity Grants and Session Binding Statements encoded as
-JWT/JWS, using locally configured issuer, audience, signing methods, and key
-lookup policy. The adapter does not choose the trusted Manager keys, rotate
-keys, perform revocation, or define deployment policy. Those remain caller
-responsibilities.
+`pkg/agtp` provides concrete JWT/JWS and CWT/COSE wire-token adapters. The
+JWT/JWS adapter verifies Identity Grants and Session Binding Statements using
+locally configured issuer, audience, signing methods, and key lookup policy. It
+does not choose trusted Manager keys, rotate keys, perform revocation, define
+deployment policy, or own distributed replay storage.
 
-The initial JWT/JWS adapter treats the grant `cnf.kid` value as the authorized
+The initial JWT/JWS adapter treats grant `cnf.kid` as the authorized
 session-binding signer key. The Session Binding Statement signer is taken from
-the protected JWS `kid` header and is later checked by `identitypolicy` against
-the verified grant. Thumbprint-based confirmation, such as `cnf.jkt`, can be
-added later once the deployment defines how key thumbprints map to local
-verification keys.
+the protected JWS `kid` header and later checked by `identitypolicy` against the
+verified grant. Thumbprint-based confirmation, such as `cnf.jkt`, can be added
+when a deployment defines how key thumbprints map to local verification keys.
 
-The adapter also rejects tokens with the wrong AGTP token type, unsupported
-profile version, missing JWT ID, missing grant confirmation key, missing
-session-binding grant hash, missing required session-binding fields, or an
-unsafe signing-method allow-list. It does not perform key rotation,
-revocation, or replay-cache storage; those remain deployment responsibilities.
-
-For callers that want one fail-closed acceptance gate, `pkg/agtp` also exposes
+For callers that want one fail-closed acceptance gate, `pkg/agtp` exposes
 `VerifySessionIdentityJWT`. That helper verifies the Manager-signed Identity
-Grant, verifies the Session Binding Statement, checks that the binding signer is
-authorized by the verified grant, compares the resulting assertion with local
-expected `identitypolicy.Policy` values and the accepted TLS session binding,
-and only then marks the binding nonce in the replay cache. This prevents a peer
-from making OAuth/OIDC-style claims authoritative by self-signing or simply
-presenting them as metadata.
+Grant, verifies the Session Binding Statement, checks binding-signer
+authorization, compares the resulting assertion with local expected
+`identitypolicy.Policy` values and the accepted TLS session binding, and only
+then marks the binding nonce in the replay cache.
 
-Callers are expected to:
-
-- build a local `Policy` from trusted deployment or authorization inputs,
-- extract or provide a verified observed identity assertion from the appropriate
-  implementation layer,
-- call `identitypolicy.ValidateAssertion`, provide the assertion through
-  `atls.ClientConfig.ObservedIdentity`, or configure the verified grant and
-  session-binding fields on `atls.ClientConfig`,
-- and treat validation errors as fail-closed for layers required by policy.
-
-`identitypolicy.Validate` reports all layer and field failures found in one
-pass. Callers can inspect `ValidationErrors` for per-field diagnostics, while
-still using `errors.Is` with the package sentinel errors.
-
-## Implemented production profile
-
-The initial production profile now has a fail-closed implementation path for
-AGTP JWT/JWS identity material. `AGTPObservedIdentity` requires both an Identity
-Grant and a Session Binding Statement, verifies them with locally configured
-JWT policy, and requires a replay cache before accepting AGTP identity tokens.
-
-The implemented profile covers:
+The implemented production profile covers:
 
 - trusted Manager or policy-authority key lookup for Identity Grants through
   `JWTVerifyOptions`;
 - issuer, audience, signing-method, `kid`, expiration, issued-at, token type,
   profile version, and `jti` checks;
-- confirmation-key binding through the Identity Grant `cnf.kid`;
+- confirmation-key binding through Identity Grant `cnf.kid`;
 - Session Binding Statement signer authorization against the verified grant;
 - comparison with the accepted TLS endpoint key, request context, and optional
   attestation binder;
 - local `identitypolicy.Policy` comparison for required L3 through L6 values;
-- and replay-cache enforcement before the observed identity is accepted.
+- replay-cache enforcement before the observed identity is accepted.
 
-Deployment still chooses the source of trusted keys, expected policy values,
-revocation data, and distributed replay storage. Those sources can be manager
-configuration, agent metadata, computation state, an authorization policy
-engine, or a fail-closed registry integration. They must not be raw
-peer-controlled metadata.
+Deployment still chooses trusted keys, expected policy values, revocation data,
+and distributed replay storage. Those sources can be Manager configuration,
+Agent metadata, computation state, an authorization policy engine, or a
+fail-closed registry integration. They must not be raw peer-controlled metadata.
 
-## Appendix: Identity Grant JWT claim map
+## Appendix A. Identity Grant JWT claim map
 
 The initial JWT/JWS profile uses two signed JWTs for different authority
 questions:
 
-- Identity Grant JWT: a Manager or policy authority signs the upper-layer
-  identity, task, and authorization values that the peer is allowed to claim.
+- Identity Grant JWT: a Manager or policy authority signs upper-layer identity,
+  task, and authorization values that the peer is allowed to claim.
 - Session Binding Statement JWT: the Agent confirmation key signs a
-  holder-of-key statement that binds the verified grant to the accepted TLS
+  holder-of-key statement binding the verified grant to the accepted TLS
   session.
 
 The Session Binding Statement JWT does not authorize service, tenant, task,
 scope, resource, or capability values. Those semantic values belong in the
 Identity Grant JWT and are accepted only after local policy comparison.
 
-### Separation from Session Binding Statement JWT
+| Identity Grant JWT field | Source or form | Purpose | Layer |
+| --- | --- | --- | --- |
+| JWS protected header `kid` | Manager or policy-authority signing key ID | Select the local verification key for the signed grant. The value is only a key-selection hint. | prerequisite |
+| JWS protected header `alg` | locally allowed signing method | Prevent algorithm confusion. `none` is forbidden. | prerequisite |
+| `agtp_type` | `agtp.identity-grant` | Distinguish the grant token from other repository profile tokens. | profile guard |
+| `agtp_version` | `1` | Reject unsupported wire-profile versions before interpreting claims. | profile guard |
+| `iss` | trusted Manager or policy authority | Identify the authority that issued the grant. | prerequisite |
+| `aud` | relying service or application profile audience | Ensure the grant was issued for this verifier or application profile. | prerequisite |
+| `sub` | upper-layer subject, usually the Agent when `agent` is absent | Provide the subject authorized by the grant. | L4 |
+| `jti` | unique grant ID | Support grant uniqueness, revocation, diagnostics, and replay-sensitive handling. | freshness |
+| `iat` | issued-at time | Detect future-issued or malformed grants and support freshness decisions. | freshness |
+| `exp` | expiration time | Bound the lifetime of the authority statement. | freshness |
+| `cnf.kid` | Agent confirmation key ID | Name the key allowed to sign the Session Binding Statement for this grant. | L4 / L2 prerequisite |
+| `authorized_endpoint_keys` | optional endpoint key IDs | Allow explicitly named endpoint keys when the deployment uses that binding model. | L4 / L2 prerequisite |
+| `service` | application service name or ID | Bind the grant to the intended service. | L3 |
+| `tenant` | tenant or account ID | Bind the grant to the intended tenant. | L3 |
+| `deployment` | deployment, region, cluster, or environment slice | Bind the grant to the intended deployment target. | L3 |
+| `environment` | production, staging, development, or similar | Bind the grant to the intended environment class. | L3 |
+| `workload` | workload, process, or component ID | Bind the grant to the intended workload. | L4 |
+| `agent` | Agent identity | Bind the grant to the intended Agent rather than any peer on the same platform. | L4 |
+| `agent_public_key` | stable Agent public-key reference or fingerprint | Bind the Agent identity to a specific key when required by policy. | L4 |
+| `computation_id` | computation or job ID | Bind the grant to a computation instance. | L5 |
+| `task_id` | task ID | Bind the grant to the intended task. | L5 |
+| `thread_id` | thread, conversation, or workflow ID | Bind the grant to the intended thread or workflow context. | L5 |
+| `delegation_id` | delegation token or delegation record ID | Bind the grant to a specific delegation chain or authorization handoff. | L5 |
+| `intent_ref` | stable intent reference | Bind the grant to a canonical task or intent family. | L5 |
+| `capability_ref` | stable capability reference | Bind the grant to a canonical capability or resource-action class. | L6 |
+| `ontology_id` | stable policy vocabulary or namespace ID | Identify the vocabulary used to interpret semantic references. | L6 |
+| `scope` / `scopes` | OAuth-style scope values | State coarse authorization strings for local policy comparison. | L6 |
+| `resource` / `resources` | resource indicators or resource URIs | State the resources the grant may be used against. | L6 |
+| `authorization_details` | profile-specific authorization detail strings | Carry fine-grained authorization constraints. | L6 |
 
-A deployment may package the Manager-signed Identity Grant JWT inside, or
-alongside, the Agent-signed Session Binding Statement JWT so an implementation
-passes around one envelope. That packaging does not merge the authorities. The
-verifier still has to validate the Manager or policy-authority signature on the
-grant, validate the Agent confirmation-key signature on the session binding,
-check that the session binding names the exact verified grant, and then compare
-the resulting assertion with local policy.
+## Appendix B. Session Binding Statement JWT claim map
 
-Moving the semantic grant fields directly into an Agent-signed Session Binding
+The Session Binding Statement JWT carries session facts, not semantic authority.
+A verifier that accepts JWT/JWS identity material MUST verify this JWT under the
+Agent confirmation key authorized by the verified Identity Grant and MUST reject
+missing, mismatched, expired, replayed, non-canonical, or unsupported binding
+material.
+
+| Session Binding Statement JWT field | Source or form | Purpose | Layer |
+| --- | --- | --- | --- |
+| JWS protected header `kid` | Agent confirmation or explicitly authorized endpoint key ID | Select the candidate binding-signature key. The key is accepted only if authorized by the verified grant or local policy. | L2/L4 prerequisite |
+| JWS protected header `alg` | locally allowed signing method | Prevent algorithm confusion. `none` is forbidden. | prerequisite |
+| `agtp_type` | `agtp.session-binding` | Distinguish the binding token from grants, envelopes, or unrelated JWTs. | profile guard |
+| `agtp_version` | `1` | Reject unsupported wire-profile versions before interpreting binding fields. | profile guard |
+| `aud` | relying service or application profile audience | Ensure the statement was issued for this verifier or profile. | L2 prerequisite |
+| `jti` | unique binding statement ID | Support diagnostics and one-shot replay handling. | freshness |
+| `iat` | issued-at time | Detect future-issued or malformed binding statements. | freshness |
+| `exp` | expiration time | Bound the lifetime of the session proof. It should not exceed the grant lifetime. | freshness |
+| `grant_hash` | domain-separated hash of exact signed Identity Grant bytes | Bind the statement to the exact Manager-signed grant that was verified. | L2 |
+| `leaf_public_key_sha256` | hash of accepted TLS or exported-authenticator endpoint public key | Bind the statement to the accepted endpoint key. | L2 |
+| `request_context_sha256` | hash of accepted request/exported-authenticator context | Bind the statement to the accepted request context. | L2 |
+| `attestation_binder_sha256` | hash of accepted attestation binder, when present | Bind the statement to accepted attestation-to-channel evidence. | L2 |
+| `nonce` | one-shot nonce or unique binding value | Prevent replay of an otherwise valid binding statement. | freshness |
+
+The receiver compares these fields as strict, already-canonical values. It does
+not repair aliases, reserialize JSON to compute `grant_hash`, infer missing
+binding fields from peer metadata, or treat a valid Identity Grant JWT as
+session-bound without the Session Binding Statement JWT.
+
+## Appendix C. Authority separation and envelope packaging
+
+A deployment may package the Manager-signed Identity Grant inside, or alongside,
+the Agent-signed Session Binding Statement so an implementation passes around
+one envelope. Packaging does not merge authorities. The verifier still validates
+the Manager or policy-authority signature on the grant, validates the Agent
+confirmation-key signature on the session binding, checks that the binding names
+the exact verified grant, and compares the resulting assertion with local
+policy.
+
+Moving semantic grant fields directly into an Agent-signed Session Binding
 Statement would make the Agent the authority for service, tenant, task, scope,
 resource, and capability claims. That changes the trust model and is unsafe for
-profiles that need Manager- or policy-authority-issued authorization. A single
-Manager-signed JWT that also includes session-binding values is possible only
-when the Manager participates in, or is given trustworthy evidence of, the
-per-connection TLS binding. That design adds an online authority dependency and
-moves replay and freshness responsibilities to the Manager path.
+profiles that need Manager- or policy-authority-issued authorization.
+
+A single Manager-signed JWT that also includes session-binding values is
+possible only when the Manager participates in, or is given trustworthy evidence
+of, the per-connection TLS binding. That design adds an online authority
+dependency and moves replay and freshness responsibilities to the Manager path.
 
 The two-JWT design adds one additional JWS verification plus a domain-separated
 hash over the exact compact Identity Grant JWT bytes. This is usually small
-compared with TLS setup and attestation verification. Verifiers MUST NOT cache
-a verified Identity Grant as acceptance evidence across sessions. If an
-implementation performs internal optimization, it must still re-check the
-Manager or policy-authority signature, expiration, revocation state, profile
-version, issuer, audience, grant hash, fresh Session Binding Statement, replay
-state, and local policy for each accepted session. A nested or single-envelope
-transport only removes message plumbing; it does not remove the need for both
-authority checks unless the trust model changes.
+compared with TLS setup and attestation verification. Verifiers MUST NOT cache a
+verified Identity Grant as acceptance evidence across sessions. Internal
+optimization must still re-check signature, expiration, revocation state,
+profile version, issuer, audience, grant hash, fresh Session Binding Statement,
+replay state, and local policy for each accepted session.
 
 The reusable `pkg/agtp` JWT/JWS adapter also supports a single-envelope
 verification path. In that profile, the outer envelope is signed by the Agent
@@ -904,33 +906,38 @@ claims in the outer envelope are not Manager authorization. The current runtime
 client configuration remains wired to the two-token JWT/JWS profile unless a
 caller explicitly uses the envelope verifier.
 
-| Identity Grant JWT field | Source or form | Purpose | Layer |
-| --- | --- | --- | --- |
-| JWS protected header `kid` | Manager or policy-authority signing key ID | Select the local verification key for the signed grant. The value is only a key-selection hint; the signature still has to verify under local trust policy. | L0-L2 prerequisite |
-| `agtp_type` | `agtp.identity-grant` | Distinguish the grant token from other AGTP profile tokens. | Profile guard |
-| `agtp_version` | `1` | Reject unsupported wire-profile versions before interpreting claims. | Profile guard |
-| `iss` | trusted Manager or policy authority | Identify the authority that issued the grant. | L0-L2 prerequisite |
-| `aud` | relying service or application profile audience | Ensure the grant was issued for this verifier or application profile. | L0-L2 prerequisite |
-| `sub` | upper-layer subject, usually the Agent when `agent` is absent | Provide the subject authorized by the grant. The adapter uses it as `agent` when no explicit `agent` claim is present. | L4 |
-| `jti` | unique grant ID | Support grant uniqueness, revocation, diagnostics, and replay-sensitive handling. | Freshness prerequisite |
-| `iat` | issued-at time | Detect future-issued or malformed grants and support freshness decisions. | Freshness prerequisite |
-| `exp` | expiration time | Bound the lifetime of the authority statement. | Freshness prerequisite |
-| `cnf.kid` | Agent confirmation key ID | Name the key allowed to sign the Session Binding Statement for this grant. | L4 and session-binding prerequisite |
-| `authorized_endpoint_keys` | optional endpoint key IDs | Allow explicitly named endpoint keys when the deployment uses that binding model. | L4 and session-binding prerequisite |
-| `service` | application service name or ID | Bind the grant to the intended service. | L3 |
-| `tenant` | tenant or account ID | Bind the grant to the intended tenant. | L3 |
-| `deployment` | deployment, region, cluster, or environment slice | Bind the grant to the intended deployment target. | L3 |
-| `environment` | production, staging, development, or similar | Bind the grant to the intended environment class. | L3 |
-| `workload` | workload, process, or component ID | Bind the grant to the intended workload. | L4 |
-| `agent` | Agent identity | Bind the grant to the intended Agent rather than any peer on the same platform. | L4 |
-| `agent_public_key` | stable Agent public-key reference or fingerprint | Bind the Agent identity to a specific key when required by policy. | L4 |
-| `computation_id` | computation or job ID | Bind the grant to a computation instance. | L5 |
-| `task_id` | task ID | Bind the grant to the intended task. | L5 |
-| `thread_id` | thread, conversation, or workflow ID | Bind the grant to the intended thread or workflow context. | L5 |
-| `delegation_id` | delegation token or delegation record ID | Bind the grant to a specific delegation chain or authorization handoff. | L5 |
-| `intent_ref` | stable intent reference | Bind the grant to a canonical task or intent family rather than free-form text. | L5 |
-| `capability_ref` | stable capability reference | Bind the grant to a canonical capability or resource-action class. | L6 |
-| `ontology_id` | stable policy vocabulary or namespace ID | Identify the vocabulary used to interpret semantic references. | L6 |
-| `scope` / `scopes` | OAuth-style scope values | State coarse authorization strings that local policy can require or compare exactly. | L6 |
-| `resource` / `resources` | resource indicators or resource URIs | State the resources the grant may be used against. | L6 |
-| `authorization_details` | profile-specific authorization detail strings | Carry finer-grained authorization purpose or constraint values, such as `purpose:monthly-settlement`, for local policy comparison. | L6 |
+## Appendix D. Non-normative trust-flow example
+
+```mermaid
+sequenceDiagram
+  participant M as Bob Manager
+  participant B as Bob Agent
+  participant A as Alice
+  participant X as Malware Agent on Alice machine
+
+  M->>B: Identity Grant signed by Manager key
+  Note over M,B: Grant authorizes Bob Agent key
+
+  A->>B: Start TLS or hardware-aware TLS session
+  B->>A: Identity Grant
+  B->>A: Session Binding Statement signed by Bob Agent key
+
+  X-->>A: Injects peer-provided identity metadata
+  X-->>A: Replays another grant or binding statement
+
+  A->>A: Verify grant with trusted Bob Manager public key
+  A->>A: Verify session binding with Bob Agent key from grant
+  A->>A: Check expected service, Agent, task, and capability
+  A->>A: Reject metadata not signed or not bound to this session
+```
+
+Bob Manager issues an authorization grant for Bob Agent. Bob Agent communicates
+with Alice and binds the Manager grant to the current TLS or hardware-aware TLS
+session. Malware on Alice's machine can try to inject peer-provided metadata or
+reuse an old grant or binding statement, but it cannot create a valid
+Manager-signed grant or Bob-Agent-key-signed session binding for the current
+accepted session.
+
+Alice accepts only the Manager-signed grant and the Agent-signed session binding
+after local expected service, Agent, task, and capability checks pass. This does
+not protect a fully compromised Alice process or local policy store.

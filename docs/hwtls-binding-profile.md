@@ -87,10 +87,10 @@ The profile fails closed when:
 ## Privacy Limits
 
 Binding values should not reveal more identity information than needed. The
-profile should prefer scoped grants, short lifetimes, minimal audit fields, and
+profile uses scoped grants, short lifetimes, minimal audit fields, and
 audience-restricted tokens.
 
-## Feedback Boundary
+## Protocol Boundary
 
-If AGTP already has a place for this material, use it. If not, ask for the
-smallest extension needed to carry or reference the security-profile material.
+Application protocols may carry or reference this profile material. They remain
+responsible for their own message syntax, routing, and discovery semantics.

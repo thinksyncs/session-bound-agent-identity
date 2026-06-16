@@ -178,7 +178,8 @@ func IdentityGrantHash(tokenString string) string {
 // converts it into the internal identitypolicy grant type.
 func VerifyIdentityGrantJWT(tokenString string, opts JWTVerifyOptions) (identitypolicy.VerifiedGrant, error) {
 	claims := &identityGrantClaims{}
-	if _, _, err := parseJWT(tokenString, claims, opts); err != nil {
+	_, signerKey, err := parseJWT(tokenString, claims, opts)
+	if err != nil {
 		return identitypolicy.VerifiedGrant{}, err
 	}
 	if err := validateProfileClaims(claims.profileClaims, TokenTypeIdentityGrant); err != nil {
@@ -227,6 +228,7 @@ func VerifyIdentityGrantJWT(tokenString string, opts JWTVerifyOptions) (identity
 
 	return identitypolicy.VerifiedGrant{
 		Issuer:                 claims.Issuer,
+		IssuerKey:              signerKey,
 		Audience:               audience,
 		GrantHash:              IdentityGrantHash(tokenString),
 		Values:                 values,

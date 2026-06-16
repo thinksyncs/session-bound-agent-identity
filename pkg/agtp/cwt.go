@@ -96,7 +96,7 @@ func IdentityGrantCWTHash(token []byte) string {
 // VerifyIdentityGrantCWT verifies an AGTP Identity Grant encoded as CWT/COSE
 // and converts it into the internal identitypolicy grant type.
 func VerifyIdentityGrantCWT(token []byte, opts CWTVerifyOptions) (identitypolicy.VerifiedGrant, error) {
-	claims, _, err := parseCWT(token, opts)
+	claims, signerKey, err := parseCWT(token, opts)
 	if err != nil {
 		return identitypolicy.VerifiedGrant{}, err
 	}
@@ -151,6 +151,7 @@ func VerifyIdentityGrantCWT(token []byte, opts CWTVerifyOptions) (identitypolicy
 
 	return identitypolicy.VerifiedGrant{
 		Issuer:                 issuer,
+		IssuerKey:              signerKey,
 		Audience:               opts.ExpectedAudience,
 		GrantHash:              IdentityGrantCWTHash(token),
 		Values:                 values,

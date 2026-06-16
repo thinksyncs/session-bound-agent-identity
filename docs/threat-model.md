@@ -2,8 +2,9 @@
 
 This threat model covers a hardware-aware TLS 1.3 identity-binding profile.
 AGTP is one reference target, but the risks are not AGTP-specific. Terminology,
-layers, and verification order are defined in
-`docs/SSOT.md`.
+layers, verification order, and the normative threat-to-design-impact mapping
+are defined in `docs/SSOT.md`. This file is explanatory and should be updated
+after the SSOT when the two diverge.
 
 Hardware-aware TLS is not pre-TLS platform authentication. It is ordinary TLS
 1.3 plus post-handshake platform attestation bound to the accepted TLS session.

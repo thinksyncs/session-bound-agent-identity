@@ -18,6 +18,7 @@ const (
 	LayerSessionBinding = "session_binding"
 
 	FieldIssuer          = "issuer"
+	FieldIssuerKey       = "issuer_key"
 	FieldAudience        = "aud"
 	FieldGrantHash       = "grant_hash"
 	FieldSignerKey       = "signer_key"
@@ -44,6 +45,7 @@ type SessionBindingOptions struct {
 // from a trusted manager or policy authority.
 type VerifiedGrant struct {
 	Issuer                 string
+	IssuerKey              string
 	Audience               string
 	GrantHash              string
 	Values                 Values
@@ -125,6 +127,8 @@ func ValidateSessionBindingStatementWithOptions(grant VerifiedGrant, statement V
 		errs = appendValidationErrors(errs, err)
 	} else if !grant.allowsBindingKey(statement.SignerKey) {
 		errs = append(errs, validationError(LayerSessionBinding, FieldSignerKey, ErrUnauthorizedBindingKey))
+	} else if grant.IssuerKey != "" && statement.SignerKey == grant.IssuerKey {
+		errs = append(errs, validationError(LayerSessionBinding, FieldIssuerKey, ErrUnauthorizedBindingKey))
 	}
 	if !grant.hasBindingKey() {
 		errs = append(errs, validationError(LayerIdentityGrant, FieldConfirmationKey, ErrMissingExpected))
