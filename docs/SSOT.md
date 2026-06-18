@@ -1,6 +1,6 @@
 # Hardware-Aware TLS Identity Binding Profile
 
-Draft v0.1.1
+Draft v0.3
 
 ## Abstract
 
@@ -333,7 +333,7 @@ session, the field is absent unless deployment policy requires it.
 
 ## 11. L2 Binding Construction
 
-This section fixes the byte-level L2 binding construction for the v0.1
+This section fixes the byte-level L2 binding construction for the v0.3
 direct-Agent profile. A verifier MUST NOT replace these inputs with
 peer-selected labels, inferred context, display names, or reserialized semantic
 metadata.
@@ -398,7 +398,7 @@ attestation_binder_sha256 = SHA-256(attestation_binding)
 ```
 
 `tls_exporter_sha256` is a mandatory Session Binding Statement field in the
-v0.1 direct-Agent profile. It binds the statement to the current TLS exporter
+v0.3 direct-Agent profile. It binds the statement to the current TLS exporter
 secret without exposing the exporter value itself. `request_context_sha256` is
 also mandatory and binds the statement to role, protocol, audience, grant, task,
 delegation, capability, tenant, and freshness context.
@@ -471,7 +471,7 @@ Reuse rules:
   QUIC profile MUST define its exporter API, context bytes, endpoint-key
   binding, replay rules, and gateway behavior explicitly;
 - gateway-terminated deployments bind the client-to-gateway TLS endpoint only
-  with this construction. They do not prove the final Agent process in the v0.1
+  with this construction. They do not prove the final Agent process in the v0.3
   core profile.
 
 Negative L2 cases:
@@ -482,7 +482,7 @@ Negative L2 cases:
 | Same TLS connection, different task context | Reject: `request_context_sha256` mismatch. |
 | Same endpoint key, different TLS session | Reject unless the exporter hash, context hash, nonce, replay state, and attestation binder all match the accepted instance. |
 | Peer-selected exporter label | Reject: exporter label is verifier policy. |
-| Missing `tls_exporter_sha256` | Reject in v0.1 direct-Agent JWT/CWT acceptance. |
+| Missing `tls_exporter_sha256` | Reject in v0.3 direct-Agent JWT/CWT acceptance. |
 | Missing `request_context_sha256` | Reject. |
 | Missing `attestation_binder_sha256` when accepted attestation binding exists | Reject. |
 | Reused nonce with same grant, audience, exporter hash, and context hash | Reject by replay state. |
@@ -915,13 +915,13 @@ endpoint key explicitly authorized by the grant or local policy.
 
 ### 20.2 Gateway-routed mode
 
-Gateway-routed mode is not part of the v0.1 core profile. Gateway session
+Gateway-routed mode is not part of the v0.3 core profile. Gateway session
 binding proves the gateway endpoint, not the final Agent process. A
 gateway-routed deployment needs a separate route assertion and replay model
 before the relying party can treat the final Agent as accepted.
 
 The non-core sketch is kept in `docs/gateway-routed-profile.md`. It should be
-treated as v0.2 design work until route assertions, tenant partitioning,
+treated as post-v0.3 design work until route assertions, tenant partitioning,
 gateway-to-Agent holder-of-key proof, and live gateway red-team tests are
 implemented.
 

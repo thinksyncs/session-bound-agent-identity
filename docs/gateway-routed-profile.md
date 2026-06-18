@@ -1,12 +1,12 @@
 # Gateway-Routed Profile
 
-This document is a future profile sketch, not part of the v0.1 core
+This document is a future profile sketch, not part of the v0.3 core
 direct-Agent profile. In gateway-routed mode, the gateway terminates the TLS
 session and performs the hardware-aware profile checks. The gateway is the live
 TLS endpoint. Gateway session binding proves the gateway endpoint, not the
 final Agent process.
 
-The v0.1 runtime client path implements direct-Agent mode. A gateway-routed
+The v0.3 runtime client path implements direct-Agent mode. A gateway-routed
 deployment needs a separate route assertion before the relying party can treat
 the final Agent as accepted.
 

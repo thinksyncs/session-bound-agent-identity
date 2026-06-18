@@ -19,7 +19,7 @@ gateway-routed profile remains separate design work because its trust model is
 different: the gateway is the TLS endpoint and must authenticate the
 gateway-to-Agent route before the intended Agent can be treated as accepted.
 
-The current evaluation is not a proof of the full security claim. It is a v0.1
+The current evaluation is not a proof of the full security claim. It is a v0.3
 evaluation built from focused local checks, negative vectors, unit-level tests,
 and dependency-free live-style harnesses. Claims such as "this grant is accepted
 only for this session" need additional network, hardware, multiplexing, replay,

@@ -113,7 +113,7 @@
 \section{Hardware-Aware TLS Identity Binding
 Profile}\label{hardware-aware-tls-identity-binding-profile}
 
-Draft v0.1.1
+Draft v0.3
 
 \subsection{Abstract}\label{abstract}
 
@@ -693,7 +693,7 @@ deployment policy requires it.
 
 \subsection{11. L2 Binding Construction}\label{l2-binding-construction}
 
-This section fixes the byte-level L2 binding construction for the v0.1
+This section fixes the byte-level L2 binding construction for the v0.3
 direct-Agent profile. A verifier MUST NOT replace these inputs with
 peer-selected labels, inferred context, display names, or reserialized
 semantic metadata.
@@ -777,7 +777,7 @@ Construction:
 \end{Shaded}
 
 \texttt{tls\_exporter\_sha256} is a mandatory Session Binding Statement
-field in the v0.1 direct-Agent profile. It binds the statement to the
+field in the v0.3 direct-Agent profile. It binds the statement to the
 current TLS exporter secret without exposing the exporter value itself.
 \texttt{request\_context\_sha256} is also mandatory and binds the
 statement to role, protocol, audience, grant, task, delegation,
@@ -879,7 +879,7 @@ Reuse rules:
 \item
   gateway-terminated deployments bind the client-to-gateway TLS endpoint
   only with this construction. They do not prove the final Agent process
-  in the v0.1 core profile.
+  in the v0.3 core profile.
 \end{itemize}
 
 \textbf{Negative L2 cases:} a verifier rejects a same grant with a
@@ -1542,15 +1542,15 @@ local policy.
 
 \subsubsection{20.2 Gateway-routed mode}\label{gateway-routed-mode}
 
-Gateway-routed mode is not part of the v0.1 core profile. Gateway
+Gateway-routed mode is not part of the v0.3 core profile. Gateway
 session binding proves the gateway endpoint, not the final Agent
 process. A gateway-routed deployment needs a separate route assertion
 and replay model before the relying party can treat the final Agent as
 accepted.
 
 The non-core sketch is kept in
-\texttt{docs/gateway-routed-profile.md}. It should be treated as v0.2
-design work until route assertions, tenant partitioning,
+\texttt{docs/gateway-routed-profile.md}. It should be treated as
+post-v0.3 design work until route assertions, tenant partitioning,
 gateway-to-Agent holder-of-key proof, and live gateway red-team tests
 are implemented.
 

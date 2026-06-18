@@ -105,7 +105,7 @@ first appears.
 
 ## Evaluation Status
 
-The v0.1 evaluation is useful but not sufficient proof of the full security
+The v0.3 evaluation is useful but not sufficient proof of the full security
 claim. It combines focused local checks, negative test vectors, unit-level
 coverage, and dependency-free live-style harnesses. The remaining work is
 tracked in `docs/live-red-team-report.md`, including real network relay,

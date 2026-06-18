@@ -5,10 +5,10 @@ type: software
 authors:
   - family-names: "Okutomi"
     given-names: "Akira"
-version: "0.1"
-date-released: "2026-06-18"
+version: "0.3"
+date-released: "2026-06-19"
 repository-code: "https://github.com/thinksyncs/hardware-aware-tls-identity-binding"
-url: "https://github.com/thinksyncs/hardware-aware-tls-identity-binding/releases/tag/v0.1"
+url: "https://github.com/thinksyncs/hardware-aware-tls-identity-binding/releases/tag/v0.3"
 license: "Apache-2.0"
 abstract: >
   A security-hardening profile and Go implementation helpers for binding
