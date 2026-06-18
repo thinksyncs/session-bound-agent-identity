@@ -321,6 +321,7 @@ func TestVerifySessionBindingJWTFeedsIdentityPolicy(t *testing.T) {
 		"agtp_version":              ProfileVersion,
 		"grant_hash":                grant.GrantHash,
 		"leaf_public_key_sha256":    "sha256:leaf",
+		"tls_exporter_sha256":       "sha256:exporter",
 		"request_context_sha256":    "sha256:context",
 		"attestation_binder_sha256": "sha256:binder",
 		"nonce":                     "nonce-1",
@@ -353,6 +354,7 @@ func TestVerifySessionBindingJWTFeedsIdentityPolicy(t *testing.T) {
 	}
 	expectedBinding := identitypolicy.Binding{
 		LeafPublicKeySHA256:     "sha256:leaf",
+		TLSExporterSHA256:       "sha256:exporter",
 		RequestContextSHA256:    "sha256:context",
 		AttestationBinderSHA256: "sha256:binder",
 		Nonce:                   "nonce-1",
@@ -390,6 +392,7 @@ func TestVerifySessionIdentityJWTAcceptsManagerGrantAndLocalPolicy(t *testing.T)
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             grantHash,
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -528,6 +531,7 @@ func TestVerifySessionIdentityJWTRejectsPeerSignedGrant(t *testing.T) {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             IdentityGrantHash(grantToken),
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -565,6 +569,7 @@ func TestVerifySessionIdentityJWTRejectsLocalPolicyMismatch(t *testing.T) {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             IdentityGrantHash(grantToken),
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -602,6 +607,7 @@ func TestVerifySessionIdentityJWTRejectsWrongGrantHash(t *testing.T) {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             "sha256:other-grant",
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -650,6 +656,7 @@ func TestVerifySessionIdentityJWTRejectsWrongGrantIssuerOrAudience(t *testing.T)
 				"agtp_version":           ProfileVersion,
 				"grant_hash":             IdentityGrantHash(grantToken),
 				"leaf_public_key_sha256": "sha256:leaf",
+				"tls_exporter_sha256":    "sha256:exporter",
 				"request_context_sha256": "sha256:context",
 				"nonce":                  "nonce-1",
 			})
@@ -824,6 +831,33 @@ func TestVerifySessionIdentityJWTRejectsReplay(t *testing.T) {
 	}
 }
 
+func TestVerifySessionIdentityJWTRejectsMissingReplayCache(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	grantToken := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+	bindingToken := signTestJWT(t, "agent-key-1", []byte("agent-secret"), testDefaultBindingClaims(now, IdentityGrantHash(grantToken)))
+	opts := testSessionIdentityOptions(now)
+	opts.ReplayCache = nil
+
+	_, err := VerifySessionIdentityJWT(grantToken, bindingToken, opts)
+	if !errors.Is(err, ErrMissingReplayCache) {
+		t.Fatalf("VerifySessionIdentityJWT() error = %v, want %v", err, ErrMissingReplayCache)
+	}
+}
+
+func TestVerifySessionIdentityJWTEnvelopeRejectsMissingReplayCache(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	grantToken := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+	envelopeToken := signTestJWT(t, "agent-key-1", []byte("agent-secret"),
+		testDefaultEnvelopeClaims(now, grantToken, IdentityGrantHash(grantToken)))
+	opts := testSessionIdentityOptions(now)
+	opts.ReplayCache = nil
+
+	_, err := VerifySessionIdentityJWTEnvelope(envelopeToken, opts)
+	if !errors.Is(err, ErrMissingReplayCache) {
+		t.Fatalf("VerifySessionIdentityJWTEnvelope() error = %v, want %v", err, ErrMissingReplayCache)
+	}
+}
+
 func TestVerifySessionIdentityJWTDoesNotConsumeReplayOnPolicyMismatch(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	replay := newAGTPReplayCache()
@@ -870,6 +904,7 @@ func TestVerifySessionBindingJWTRejectsWrongSigner(t *testing.T) {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             grant.GrantHash,
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -902,6 +937,7 @@ func TestVerifySessionBindingJWTRejectsWrongTokenType(t *testing.T) {
 		"agtp_version":              ProfileVersion,
 		"grant_hash":                "sha256:grant",
 		"leaf_public_key_sha256":    "sha256:leaf",
+		"tls_exporter_sha256":       "sha256:exporter",
 		"request_context_sha256":    "sha256:context",
 		"attestation_binder_sha256": "sha256:binder",
 		"nonce":                     "nonce-1",
@@ -930,6 +966,7 @@ func TestVerifySessionBindingJWTRejectsMissingGrantHash(t *testing.T) {
 		"agtp_type":              TokenTypeSessionBinding,
 		"agtp_version":           ProfileVersion,
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	})
@@ -958,6 +995,7 @@ func TestVerifySessionBindingJWTRejectsMissingBindingField(t *testing.T) {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             "sha256:grant",
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"nonce":                  "nonce-1",
 	})
 
@@ -1049,6 +1087,7 @@ func testDefaultBindingClaims(now time.Time, grantHash string) jwt.MapClaims {
 		"agtp_version":           ProfileVersion,
 		"grant_hash":             grantHash,
 		"leaf_public_key_sha256": "sha256:leaf",
+		"tls_exporter_sha256":    "sha256:exporter",
 		"request_context_sha256": "sha256:context",
 		"nonce":                  "nonce-1",
 	}
@@ -1121,9 +1160,11 @@ func testSessionIdentityOptions(now time.Time) SessionIdentityJWTOptions {
 		},
 		ExpectedBinding: identitypolicy.Binding{
 			LeafPublicKeySHA256:  "sha256:leaf",
+			TLSExporterSHA256:    "sha256:exporter",
 			RequestContextSHA256: "sha256:context",
 			Nonce:                "nonce-1",
 		},
-		Now: now,
+		ReplayCache: newAGTPReplayCache(),
+		Now:         now,
 	}
 }

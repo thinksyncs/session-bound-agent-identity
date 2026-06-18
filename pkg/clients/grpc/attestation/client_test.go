@@ -5,6 +5,7 @@ package attestation
 import (
 	"context"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,6 +16,14 @@ import (
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"google.golang.org/grpc"
 )
+
+func unixSocketPath(t *testing.T, name string) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "cocos-grpc-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return filepath.Join(dir, name)
+}
 
 // mockAttestationServer is a mock implementation of the AttestationServiceServer.
 type mockAttestationServer struct {
@@ -75,8 +84,7 @@ func (m *mockAttestationServer) FetchAzureToken(ctx context.Context, req *attest
 
 // TestNewClient tests creating a new attestation client.
 func TestNewClient(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-test.sock")
+	socketPath := unixSocketPath(t, "attestation-test.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -103,8 +111,7 @@ func TestNewClient(t *testing.T) {
 
 // TestGetAttestationSNP tests getting SNP attestation.
 func TestGetAttestationSNP(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-snp.sock")
+	socketPath := unixSocketPath(t, "attestation-snp.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -142,8 +149,7 @@ func TestGetAttestationSNP(t *testing.T) {
 
 // TestGetAttestationTDX tests getting TDX attestation.
 func TestGetAttestationTDX(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-tdx.sock")
+	socketPath := unixSocketPath(t, "attestation-tdx.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -176,8 +182,7 @@ func TestGetAttestationTDX(t *testing.T) {
 
 // TestGetAttestationVTPM tests getting vTPM attestation.
 func TestGetAttestationVTPM(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-vtpm.sock")
+	socketPath := unixSocketPath(t, "attestation-vtpm.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -210,8 +215,7 @@ func TestGetAttestationVTPM(t *testing.T) {
 
 // TestGetAttestationSNPvTPM tests getting SNP+vTPM attestation.
 func TestGetAttestationSNPvTPM(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-snpvtpm.sock")
+	socketPath := unixSocketPath(t, "attestation-snpvtpm.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -244,8 +248,7 @@ func TestGetAttestationSNPvTPM(t *testing.T) {
 
 // TestGetAttestationUnspecified tests getting attestation with unspecified platform.
 func TestGetAttestationUnspecified(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-unspec.sock")
+	socketPath := unixSocketPath(t, "attestation-unspec.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -279,8 +282,7 @@ func TestGetAttestationUnspecified(t *testing.T) {
 
 // TestGetAzureToken tests getting Azure token.
 func TestGetAzureToken(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-azure.sock")
+	socketPath := unixSocketPath(t, "attestation-azure.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -314,8 +316,7 @@ func TestGetAzureToken(t *testing.T) {
 
 // TestGetAttestationWithCanceledContext tests GetAttestation with canceled context.
 func TestGetAttestationWithCanceledContext(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-cancel.sock")
+	socketPath := unixSocketPath(t, "attestation-cancel.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -349,8 +350,7 @@ func TestGetAttestationWithCanceledContext(t *testing.T) {
 
 // TestClientClose tests closing the attestation client.
 func TestClientClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-close.sock")
+	socketPath := unixSocketPath(t, "attestation-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -376,8 +376,7 @@ func TestClientClose(t *testing.T) {
 
 // TestClientOperationsAfterClose tests operations after closing.
 func TestClientOperationsAfterClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "attestation-after-close.sock")
+	socketPath := unixSocketPath(t, "attestation-after-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -410,8 +409,7 @@ func TestClientOperationsAfterClose(t *testing.T) {
 
 // TestGetRawEvidenceSNP tests getting raw evidence for SNP platform.
 func TestGetRawEvidenceSNP(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "raw-evidence-snp.sock")
+	socketPath := unixSocketPath(t, "raw-evidence-snp.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -447,8 +445,7 @@ func TestGetRawEvidenceSNP(t *testing.T) {
 
 // TestGetRawEvidenceTDX tests getting raw evidence for TDX platform.
 func TestGetRawEvidenceTDX(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "raw-evidence-tdx.sock")
+	socketPath := unixSocketPath(t, "raw-evidence-tdx.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -481,8 +478,7 @@ func TestGetRawEvidenceTDX(t *testing.T) {
 
 // TestGetRawEvidenceVTPM tests getting raw evidence for VTPM platform.
 func TestGetRawEvidenceVTPM(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "raw-evidence-vtpm.sock")
+	socketPath := unixSocketPath(t, "raw-evidence-vtpm.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -515,8 +511,7 @@ func TestGetRawEvidenceVTPM(t *testing.T) {
 
 // TestGetRawEvidenceSNPvTPM tests getting raw evidence for SNPvTPM platform.
 func TestGetRawEvidenceSNPvTPM(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "raw-evidence-snpvtpm.sock")
+	socketPath := unixSocketPath(t, "raw-evidence-snpvtpm.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -549,8 +544,7 @@ func TestGetRawEvidenceSNPvTPM(t *testing.T) {
 
 // TestGetRawEvidenceUnspecified tests getting raw evidence with unspecified platform.
 func TestGetRawEvidenceUnspecified(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "raw-evidence-unspec.sock")
+	socketPath := unixSocketPath(t, "raw-evidence-unspec.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)

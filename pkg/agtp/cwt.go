@@ -31,6 +31,9 @@ var (
 )
 
 // CWTKeyFunc resolves a COSE verification key by protected-header key id.
+// Callers that use CWTKeyFunc own the key namespace: issuer, audience, key use,
+// algorithm, key status, and public-key identity must be enforced outside the
+// bare kid.
 type CWTKeyFunc func(keyID string) (interface{}, error)
 
 // CWTLocalKey is a locally configured COSE verification key.
@@ -186,6 +189,7 @@ func VerifySessionBindingCWT(token []byte, opts CWTVerifyOptions) (identitypolic
 	bindingClaims := &sessionBindingClaims{
 		GrantHash:               cwtStringClaimOrEmpty(claims, "grant_hash"),
 		LeafPublicKeySHA256:     cwtStringClaimOrEmpty(claims, "leaf_public_key_sha256"),
+		TLSExporterSHA256:       cwtStringClaimOrEmpty(claims, "tls_exporter_sha256"),
 		RequestContextSHA256:    cwtStringClaimOrEmpty(claims, "request_context_sha256"),
 		AttestationBinderSHA256: cwtStringClaimOrEmpty(claims, "attestation_binder_sha256"),
 		Nonce:                   cwtStringClaimOrEmpty(claims, "nonce"),
@@ -200,6 +204,7 @@ func VerifySessionBindingCWT(token []byte, opts CWTVerifyOptions) (identitypolic
 		SignerKey: signerKey,
 		Binding: identitypolicy.Binding{
 			LeafPublicKeySHA256:     bindingClaims.LeafPublicKeySHA256,
+			TLSExporterSHA256:       bindingClaims.TLSExporterSHA256,
 			RequestContextSHA256:    bindingClaims.RequestContextSHA256,
 			AttestationBinderSHA256: bindingClaims.AttestationBinderSHA256,
 			Nonce:                   bindingClaims.Nonce,
@@ -215,6 +220,9 @@ func VerifySessionBindingCWT(token []byte, opts CWTVerifyOptions) (identitypolic
 func VerifySessionIdentityCWT(grantToken, bindingToken []byte, opts SessionIdentityCWTOptions) (SessionIdentityCWTResult, error) {
 	if !opts.Policy.Enabled() {
 		return SessionIdentityCWTResult{}, ErrMissingIdentityPolicy
+	}
+	if opts.ReplayCache == nil {
+		return SessionIdentityCWTResult{}, ErrMissingReplayCache
 	}
 
 	now := opts.Now

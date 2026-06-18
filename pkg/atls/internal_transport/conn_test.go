@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
 )
 
@@ -557,6 +558,15 @@ func validationResultForIdentityPolicy(t *testing.T) *ea.ValidationResult {
 	return &ea.ValidationResult{
 		Context: []byte("identity-policy-request-context"),
 		Chain:   []*x509.Certificate{leaf},
+		Attestation: &eaattestation.VerifiedPayload{
+			Payload: &eaattestation.Payload{Binder: eaattestation.AttestationBinder{
+				Binding: []byte("identity-policy-attestation-binding"),
+			}},
+			BindingVerified: true,
+			Binding: eaattestation.EvidenceBinding{
+				ExportedValue: []byte("identity-policy-tls-exporter"),
+			},
+		},
 	}
 }
 

@@ -5,6 +5,7 @@ package log
 import (
 	"context"
 	"net"
+	"os"
 	"path/filepath"
 	"sync"
 	"testing"
@@ -17,6 +18,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
+
+func unixSocketPath(t *testing.T, name string) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "cocos-grpc-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return filepath.Join(dir, name)
+}
 
 // mockLogCollectorServer is a mock implementation of the LogCollectorServer.
 type mockLogCollectorServer struct {
@@ -49,8 +58,7 @@ func (m *mockLogCollectorServer) SendEvent(ctx context.Context, entry *log.Event
 
 // TestNewClient tests creating a new log client.
 func TestNewClient(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-test.sock")
+	socketPath := unixSocketPath(t, "log-test.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -77,8 +85,7 @@ func TestNewClient(t *testing.T) {
 
 // TestClientSendLog tests sending a log entry.
 func TestClientSendLog(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-sendlog.sock")
+	socketPath := unixSocketPath(t, "log-sendlog.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -117,8 +124,7 @@ func TestClientSendLog(t *testing.T) {
 
 // TestClientSendLogWithTimestamp tests sending a log entry with existing timestamp.
 func TestClientSendLogWithTimestamp(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-timestamp.sock")
+	socketPath := unixSocketPath(t, "log-timestamp.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -156,8 +162,7 @@ func TestClientSendLogWithTimestamp(t *testing.T) {
 
 // TestClientSendEvent tests sending an event entry.
 func TestClientSendEvent(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-sendevent.sock")
+	socketPath := unixSocketPath(t, "log-sendevent.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -196,8 +201,7 @@ func TestClientSendEvent(t *testing.T) {
 
 // TestClientSendEventWithTimestamp tests sending an event with existing timestamp.
 func TestClientSendEventWithTimestamp(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-event-timestamp.sock")
+	socketPath := unixSocketPath(t, "log-event-timestamp.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -234,8 +238,7 @@ func TestClientSendEventWithTimestamp(t *testing.T) {
 
 // TestClientSendLogWithCanceledContext tests SendLog with canceled context.
 func TestClientSendLogWithCanceledContext(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-cancel.sock")
+	socketPath := unixSocketPath(t, "log-cancel.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -271,8 +274,7 @@ func TestClientSendLogWithCanceledContext(t *testing.T) {
 
 // TestClientClose tests closing the client.
 func TestClientClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-close.sock")
+	socketPath := unixSocketPath(t, "log-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -298,8 +300,7 @@ func TestClientClose(t *testing.T) {
 
 // TestClientOperationsAfterClose tests operations after closing.
 func TestClientOperationsAfterClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-after-close.sock")
+	socketPath := unixSocketPath(t, "log-after-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -334,8 +335,7 @@ func TestClientOperationsAfterClose(t *testing.T) {
 
 // TestClientSendLogRetrySuccess tests SendLog retry behavior.
 func TestClientSendLogRetrySuccess(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-retry-success.sock")
+	socketPath := unixSocketPath(t, "log-retry-success.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -369,8 +369,7 @@ func TestClientSendLogRetrySuccess(t *testing.T) {
 
 // TestClientSendEventRetrySuccess tests SendEvent retry behavior.
 func TestClientSendEventRetrySuccess(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-event-retry.sock")
+	socketPath := unixSocketPath(t, "log-event-retry.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -402,8 +401,7 @@ func TestClientSendEventRetrySuccess(t *testing.T) {
 
 // TestClientSendLogRetryWithFailures tests SendLog retry with intermittent failures.
 func TestClientSendLogRetryWithFailures(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-retry-failures.sock")
+	socketPath := unixSocketPath(t, "log-retry-failures.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -441,8 +439,7 @@ func TestClientSendLogRetryWithFailures(t *testing.T) {
 
 // TestClientSendEventRetryWithFailures tests SendEvent retry with intermittent failures.
 func TestClientSendEventRetryWithFailures(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "event-retry-failures.sock")
+	socketPath := unixSocketPath(t, "event-retry-failures.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -479,8 +476,7 @@ func TestClientSendEventRetryWithFailures(t *testing.T) {
 
 // TestClientSendLogAllRetriesFail tests SendLog when all retries fail.
 func TestClientSendLogAllRetriesFail(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-all-fail.sock")
+	socketPath := unixSocketPath(t, "log-all-fail.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -518,8 +514,7 @@ func TestClientSendLogAllRetriesFail(t *testing.T) {
 }
 
 func TestClientSendEventAllRetriesFail(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "log-event-all-fail.sock")
+	socketPath := unixSocketPath(t, "log-event-all-fail.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)

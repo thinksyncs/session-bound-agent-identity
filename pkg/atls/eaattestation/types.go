@@ -49,6 +49,7 @@ type VerifiedPayload struct {
 	ResultsVerified   bool
 	BindingVerified   bool
 	UsedExporterLabel string
+	Binding           EvidenceBinding
 }
 
 func (p *Payload) Validate() error {

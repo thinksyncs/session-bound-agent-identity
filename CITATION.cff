@@ -1,24 +1,24 @@
 cff-version: 1.2.0
-message: "If you use this profile, please cite it using the metadata below."
-title: "Hardware-Aware TLS Identity Binding Profile: Draft v0.1.0"
-version: "0.1.0"
-date-released: "2026-06-11"
+message: "If you use this repository, please cite it using the metadata below."
+title: "Hardware-Aware TLS Identity Binding Profile"
+type: software
 authors:
-  - name: "thinksyncs"
-license: "Apache-2.0"
+  - family-names: "Okutomi"
+    given-names: "Akira"
+version: "0.1"
+date-released: "2026-06-18"
 repository-code: "https://github.com/thinksyncs/hardware-aware-tls-identity-binding"
-abstract: >-
-  A draft security profile for agent-to-agent and other application protocols
-  using TLS 1.3, post-handshake platform attestation, session binding,
-  Manager-signed Identity Grants, Agent Session Binding Statements, and
-  deterministic expected-versus-observed policy checks. AGTP is treated as one
-  reference target, not as the owner of the profile.
+url: "https://github.com/thinksyncs/hardware-aware-tls-identity-binding/releases/tag/v0.1"
+license: "Apache-2.0"
+abstract: >
+  A security-hardening profile and Go implementation helpers for binding
+  upper-layer identity and authorization material to an accepted TLS 1.3
+  session and post-handshake platform-attestation facts.
 keywords:
-  - AGTP
-  - TLS 1.3
-  - remote attestation
-  - session binding
-  - identity binding
-  - authorization
-  - relay resistance
-  - diversion resistance
+  - "TLS 1.3"
+  - "remote attestation"
+  - "identity binding"
+  - "agent security"
+  - "session binding"
+  - "JWT"
+  - "CWT"

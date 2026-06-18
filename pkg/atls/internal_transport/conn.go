@@ -229,6 +229,10 @@ func ExpectedIdentityBinding(validation *ea.ValidationResult) (identitypolicy.Bi
 		RequestContextSHA256: hex.EncodeToString(contextHash[:]),
 	}
 	if validation.Attestation != nil && validation.Attestation.BindingVerified && validation.Attestation.Payload != nil {
+		if len(validation.Attestation.Binding.ExportedValue) > 0 {
+			exporterHash := sha256.Sum256(validation.Attestation.Binding.ExportedValue)
+			binding.TLSExporterSHA256 = hex.EncodeToString(exporterHash[:])
+		}
 		binderHash := sha256.Sum256(validation.Attestation.Payload.Binder.Binding)
 		binding.AttestationBinderSHA256 = hex.EncodeToString(binderHash[:])
 	}

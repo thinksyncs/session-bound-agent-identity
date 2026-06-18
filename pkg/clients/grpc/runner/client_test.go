@@ -17,6 +17,14 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+func unixSocketPath(t *testing.T, name string) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "cocos-grpc-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return filepath.Join(dir, name)
+}
+
 // mockComputationRunnerServer is a mock implementation of the ComputationRunnerServer.
 type mockComputationRunnerServer struct {
 	pb.UnimplementedComputationRunnerServer
@@ -48,8 +56,7 @@ func (m *mockComputationRunnerServer) Stop(ctx context.Context, req *pb.StopRequ
 // TestNewClient tests creating a new gRPC client.
 func TestNewClient(t *testing.T) {
 	// Create a temporary directory for the socket
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test.sock")
+	socketPath := unixSocketPath(t, "test.sock")
 
 	// Start a mock gRPC server
 	listener, err := net.Listen("unix", socketPath)
@@ -95,8 +102,7 @@ func TestNewClientInvalidSocket(t *testing.T) {
 
 // TestClientRun tests the Run method.
 func TestClientRun(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-run.sock")
+	socketPath := unixSocketPath(t, "test-run.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -132,8 +138,7 @@ func TestClientRun(t *testing.T) {
 
 // TestClientRunWithCanceledContext tests Run with a canceled context.
 func TestClientRunWithCanceledContext(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-run-cancel.sock")
+	socketPath := unixSocketPath(t, "test-run-cancel.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -169,8 +174,7 @@ func TestClientRunWithCanceledContext(t *testing.T) {
 
 // TestClientStop tests the Stop method.
 func TestClientStop(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-stop.sock")
+	socketPath := unixSocketPath(t, "test-stop.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -205,8 +209,7 @@ func TestClientStop(t *testing.T) {
 
 // TestClientStopWithTimeout tests Stop with context timeout.
 func TestClientStopWithTimeout(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-stop-timeout.sock")
+	socketPath := unixSocketPath(t, "test-stop-timeout.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -244,8 +247,7 @@ func TestClientStopWithTimeout(t *testing.T) {
 
 // TestClientClose tests the Close method.
 func TestClientClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-close.sock")
+	socketPath := unixSocketPath(t, "test-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -272,8 +274,7 @@ func TestClientClose(t *testing.T) {
 
 // TestClientOperationsAfterClose tests that operations fail gracefully after close.
 func TestClientOperationsAfterClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "test-after-close.sock")
+	socketPath := unixSocketPath(t, "test-after-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)

@@ -19,6 +19,13 @@ gateway-routed profile remains separate design work because its trust model is
 different: the gateway is the TLS endpoint and must authenticate the
 gateway-to-Agent route before the intended Agent can be treated as accepted.
 
+The current evaluation is not a proof of the full security claim. It is a v0.1
+evaluation built from focused local checks, negative vectors, unit-level tests,
+and dependency-free live-style harnesses. Claims such as "this grant is accepted
+only for this session" need additional network, hardware, multiplexing, replay,
+fuzzing, and invariant-model coverage before they should be treated as broadly
+validated.
+
 ## Verification Evidence
 
 GitHub Actions:
@@ -45,6 +52,21 @@ env GOCACHE=/tmp/go-build-cocos go test -count=1 ./pkg/agtp ./pkg/atls/identityp
 
 All three packages passed.
 
+## Claim-to-Evaluation Matrix
+
+| Claim or attack class | Current evidence | Remaining evaluation |
+| --- | --- | --- |
+| Real network relay attack | Real TLS exporter binding is exercised in an in-memory TLS 1.3 harness, and borrowed binding values are rejected. | LRTT10: run two live endpoints and an active relay that forwards or swaps grants, bindings, exporter contexts, and request contexts. |
+| Borrowed attestation | Binder mismatch, missing binder, report-data mismatch, and nonce mismatch are covered in local tests. | LRTT11: generate hardware-backed evidence in a confidential-VM or equivalent environment and replay it across another session. |
+| Token substitution and cross-JWT confusion | Covered by grant substitution and single-envelope JWT substitution tests. | Keep as regression coverage; add malformed serialization cases under fuzzing. |
+| Same TLS connection with multiple tasks | SSOT requires distinct canonical contexts and nonces for distinct authentication instances. | LRTT12: run multiple tasks over one TLS connection and prove that task A's binding does not authorize task B. |
+| HTTP/2 or gRPC connection reuse | SSOT requires context separation for multiplexing and pooling. | LRTT13: exercise HTTP/2 and gRPC clients that reuse connections across tasks, Agents, or authority scopes. |
+| TLS resumption and 0-RTT | SSOT says prior statements and binders are not acceptance evidence, and 0-RTT is not profile-authenticated. | LRTT14: test resumed sessions and 0-RTT attempts against the acceptance gate. |
+| Distributed replay race | Local goroutine race and local multi-process SETNX-style service are covered. | LRTT03b: repeat against real multi-node Redis or Valkey, including failover and timeout behavior. |
+| Gateway route confusion | SSOT defines gateway route-assertion requirements. | LRTT15: implement a gateway-routed harness and test wrong route, stale route assertion, tenant mix-up, and missing Agent holder-of-key proof. |
+| JWT/JWS parser robustness | Deterministic negative tests cover supported claim and signature paths. | LRTT16: fuzz claims, Unicode, duplicate JSON keys, malformed base64url, malformed protected headers, and malformed JWS structure. |
+| Grant, binding, session, and expected-policy invariants | Invariants are described in SSOT and enforced by targeted tests. | LRTT17: build a small model or property test that states the acceptance invariant independently of the implementation. |
+
 ## Implemented Coverage
 
 | Test | Coverage | Result |
@@ -60,6 +82,7 @@ All three packages passed.
 | `TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures` | Stale JWKS, key rotation overlap, HTTP JWKS 500 and timeout, revocation-source outage, disabled Manager key, revoked grant `jti`, and disabled Agent binding key failures. | Passed locally and in GitHub Actions |
 | `TestAGTPObservedIdentityRedTeamRejectsAttestationBinderMismatch` | Session Binding Statement with only `attestation_binder_sha256` changed from the accepted attestation binder. | Passed locally and in GitHub Actions |
 | `TestAGTPObservedIdentityRedTeamRejectsMissingAttestationBinder` | Accepted lower-layer attestation binder requires `attestation_binder_sha256` in the Session Binding Statement. | Passed locally |
+| Evidence-binding freshness tests | Report-data and nonce mismatches reject evidence that is not bound to the current verifier challenge and TLS exporter binding. | Passed locally; live stale hardware evidence is outside this dependency-free CI profile |
 | `TestAGTPObservedIdentityRedTeamRejectsManagerKeyAsBindingKey` | Manager signing key cannot be reused as the Agent confirmation or Session Binding Statement key. | Passed locally |
 | `TestAGTPObservedIdentityRedTeamRejectsGrantSubstitution` | Binding statement whose `grant_hash` targets a different Manager-signed Identity Grant. | Passed locally and in GitHub Actions |
 | `TestAGTPObservedIdentityRedTeamRejectsVerifiedGrantCacheMisuse` | Previously accepted grant reused after the grant `jti` is revoked, with a fresh binding nonce. | Passed locally and in GitHub Actions |
@@ -82,6 +105,14 @@ All three packages passed.
 | LRTT07 | Completed | `TestAGTPObservedIdentityRedTeamRejectsVerifiedGrantCacheMisuse` | None for the modeled verified-grant cache misuse path |
 | LRTT08 | Out of scope for this completed direct-Agent branch | SSOT separates gateway mode from the direct-Agent trust model | Requires a gateway-routed profile before meaningful red-team tests can be implemented |
 | LRTT09 | Completed locally | `TestValidateResponseCachePolicyRedTeamRejectsCallerDependentPublicCache`; `TestValidateResponseCachePolicyRedTeamPartitionsPrivateCache` | This is a dependency-free policy and cache-key harness, not a live AGTP daemon response-cache implementation |
+| LRTT10 | Not implemented | Tracked from the evaluation matrix | Real network relay with live endpoints and an active relay |
+| LRTT11 | Not implemented | Tracked from the evaluation matrix | Hardware-generated borrowed attestation replay |
+| LRTT12 | Not implemented | Tracked from the evaluation matrix | Multiple task bindings on one TLS connection |
+| LRTT13 | Not implemented | Tracked from the evaluation matrix | HTTP/2 and gRPC connection reuse |
+| LRTT14 | Not implemented | Tracked from the evaluation matrix | TLS resumption and 0-RTT behavior |
+| LRTT15 | Not implemented | Tracked from the evaluation matrix | Gateway route-confusion end-to-end coverage |
+| LRTT16 | Not implemented | Tracked from the evaluation matrix | JWT/JWS parser and claim fuzzing |
+| LRTT17 | Not implemented | Tracked from the evaluation matrix | Formal-ish or property-based invariant model |
 
 ## Completed Changes
 
@@ -110,5 +141,5 @@ boundaries that need separate work if the project chooses to support them.
   wired for the JWT/JWS runtime path.
 - Replay race coverage uses a local HTTP SETNX-style service, not a real
   multi-node Redis or Valkey deployment.
-- Gateway-routed deployments need a separate gateway trust profile and route
-  assertion before LRTT08 can become executable.
+- Gateway-routed deployments now have SSOT route-assertion requirements, but
+  runtime client wiring and live LRTT08 coverage are still not implemented.

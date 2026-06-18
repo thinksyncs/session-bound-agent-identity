@@ -7,10 +7,11 @@ reference target, not the owner of this security-hardening profile. The layer
 split is one decomposition; terminology, layers, and verification order are
 defined in `docs/SSOT.md`.
 
-Hardware-aware TLS means ordinary TLS 1.3 plus a post-handshake
-platform-attestation and session-binding gate. TLS establishes the encrypted
-channel first. The profile then decides whether the application may treat that
-channel as an attested application peer.
+Hardware-aware TLS means an application-profile acceptance gate over ordinary
+TLS 1.3 plus post-handshake platform attestation and session binding. It is not
+a TLS extension. TLS establishes the encrypted channel first. The profile then
+decides whether the application may treat that channel as an attested
+application peer.
 
 ## Roles
 
@@ -124,6 +125,11 @@ sequenceDiagram
   A->>A: Check local expected service, agent, task, and capability
   A->>A: Reject unsigned, untrusted, or wrong-session metadata
 ```
+
+Gateway-routed deployments are separate from the direct-Agent flow above. A
+gateway TLS session proves the gateway endpoint, not the final Agent process.
+The SSOT defines the required gateway route assertion fields, replay handling,
+tenant partitioning, and Agent holder-of-key conditions for that topology.
 
 ## Audit
 

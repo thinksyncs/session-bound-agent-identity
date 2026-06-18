@@ -16,7 +16,7 @@ type EvidenceVerifier interface {
 }
 
 type ResultsVerifier interface {
-	VerifyAttestationResults(results []byte) error
+	VerifyAttestationResults(results []byte, binding EvidenceBinding) error
 }
 
 type VerificationPolicy struct {
@@ -58,6 +58,7 @@ func VerifyPayload(st *tls.ConnectionState, defaultLabel string, certificateRequ
 		Binding:       append([]byte(nil), binding...),
 		ExportedValue: append([]byte(nil), exportedValue...),
 	}
+	verified.Binding = expectedBinding
 	if len(payload.Evidence) > 0 && policy.EvidenceVerifier != nil {
 		if err := policy.EvidenceVerifier.VerifyEvidence(payload.Evidence, expectedBinding); err != nil {
 			return nil, err
@@ -67,7 +68,7 @@ func VerifyPayload(st *tls.ConnectionState, defaultLabel string, certificateRequ
 		return nil, ErrEvidenceVerificationMissing
 	}
 	if len(payload.AttestationResults) > 0 && policy.ResultsVerifier != nil {
-		if err := policy.ResultsVerifier.VerifyAttestationResults(payload.AttestationResults); err != nil {
+		if err := policy.ResultsVerifier.VerifyAttestationResults(payload.AttestationResults, expectedBinding); err != nil {
 			return nil, err
 		}
 		verified.ResultsVerified = true

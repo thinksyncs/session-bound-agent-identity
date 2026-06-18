@@ -1,0 +1,19 @@
+{
+  "profile": "hwtls-l2-context-v1",
+  "exporter_label": "Attestation",
+  "exporter_length": 32,
+  "role": "client-to-agent",
+  "protocol_id": "agtp-jwt-jws-v1",
+  "aud": "client-a",
+  "grant_hash": "sha256:grant-v1",
+  "task_context": "tenant=tenant-a;task=task-1;capability=orders.read",
+  "verifier_nonce_or_attempt_id": "attempt-0001",
+  "context_hex": "6877746c732d6c322d636f6e746578742d763100636c69656e742d746f2d6167656e7400616774702d6a77742d6a77732d763100636c69656e742d61007368613235363a6772616e742d76310074656e616e743d74656e616e742d613b7461736b3d7461736b2d313b6361706162696c6974793d6f72646572732e7265616400617474656d70742d30303031",
+  "leaf_spki_hex": "3059301306072a8648ce3d020106082a8648ce3d030107034200046c322d746573742d6c6561662d7075626c69632d6b65792d6d6174657269616c2d30303030303030303030303030303030",
+  "tls_exporter_hex": "00112233445566778899aabbccddeeff102132435465768798a9babbdcdef0f1",
+  "leaf_public_key_sha256": "39f414b75242bf0b85dd185ff638728c753b71a0133f9764ebe4fcde530e0c34",
+  "tls_exporter_sha256": "a39d4bf30d011ed288d091877eee551d3e74c42ff1a555272b1bada25cb761e8",
+  "request_context_sha256": "e0c2dae5c717507673825f91733b243f5099771cc8116ef4e261f7bba9a8cc21",
+  "attestation_binder_sha256": "72e0a462aeba7b82215ff0572bb1a048b847a2ff56b84b294eba3d1b0cdcd7f9",
+  "session_binding_nonce": "nonce-1"
+}

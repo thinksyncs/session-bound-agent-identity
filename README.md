@@ -3,8 +3,9 @@
 This repository defines a small security-hardening profile for binding a TLS
 1.3 session to hardware-attestation evidence and application identity policy.
 
-Hardware-aware TLS here means ordinary TLS 1.3 plus post-handshake platform
-attestation and session binding. It is not pre-TLS platform authentication.
+Hardware-aware TLS here means an application-profile acceptance gate over
+ordinary TLS 1.3 plus post-handshake platform attestation and session binding.
+It is not a TLS extension and it is not pre-TLS platform authentication.
 The older shorthand `aTLS` appears only for existing
 [Cocos](https://github.com/ultravioletrs/cocos) code paths, package names, or
 historical terms.
@@ -46,7 +47,7 @@ authorization decision.
 | --- | --- | --- | --- |
 | L0 | Same live TLS channel? | TLS 1.3 handshake, certificate validation, session keys | TLS |
 | L1 | Same trusted platform or VM evidence? | remote-attestation evidence appraisal, CoRIM or local measurement policy | hardware-attestation verifier |
-| L2 | Same evidence or authenticator bound to that TLS session? | Exported Authenticator, TLS exporter binding, request context, Session Binding Statement | hardware-aware TLS profile, then application profile |
+| L2 | Same evidence or authenticator bound to that TLS session? | Exported Authenticator, `tls_exporter_sha256`, request context, Session Binding Statement | hardware-aware TLS profile, then application profile |
 | L3 | Same intended service, tenant, deployment, or environment? | Manager-signed Identity Grant, local expected deployment policy | application profile / local policy |
 | L4 | Same intended workload, process, or agent? | agent identity, workload identity, confirmation key binding | application profile / local policy |
 | L5 | Same task, thread, context, or delegation? | task id, context id, delegation token, replay cache | application profile / application state |
@@ -65,6 +66,10 @@ Decision-sensitive values such as `intentRef`, `capabilityRef`, and
 `ontologyId` must already be canonical before verification. Receivers compare
 them deterministically and do not repair peer-provided aliases, display labels,
 URI variants, or free-form text in the final acceptance path.
+
+Canonical references also need a trusted registry namespace and version. The
+same string from two registries, or from two registry versions, is not
+automatically the same authority value.
 
 ## Risk Guide
 
@@ -98,6 +103,16 @@ first appears.
 - negative test vectors for relay, diversion, wrong-agent, replay, downgrade,
   stale evidence, measurement mismatch, and binding-parameter confusion
 
+## Evaluation Status
+
+The v0.1 evaluation is useful but not sufficient proof of the full security
+claim. It combines focused local checks, negative test vectors, unit-level
+coverage, and dependency-free live-style harnesses. The remaining work is
+tracked in `docs/live-red-team-report.md`, including real network relay,
+hardware-generated borrowed attestation, multiplexed connection reuse,
+resumption and 0-RTT behavior, gateway routing, fuzzing, and a small invariant
+model.
+
 ## Non-Goals
 
 - redefining AGTP core messages
@@ -115,6 +130,10 @@ first appears.
   threat model
 - `docs/hwtls-binding-profile.md`: hardware-aware TLS binding expectations
   for application profiles
+- `docs/http-cache-profile.md`: non-normative HTTP response-cache profile for
+  endpoints near identity-binding decisions
+- `docs/gateway-routed-profile.md`: non-core gateway route-assertion sketch for
+  future gateway-routed deployments
 - `docs/agtp-security-profile-mapping.md`: profile validation state machine and
   error mapping
 - `docs/agtp-security-profile-feedback.md`: high-priority AGTP security-profile

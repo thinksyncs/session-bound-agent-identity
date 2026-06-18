@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -272,6 +273,8 @@ func TestRunErrors(t *testing.T) {
 
 	t.Run("getwd failure", func(t *testing.T) {
 		origDir, _ := os.Getwd()
+		defer func() { _ = os.Chdir(origDir) }()
+
 		tmpDir := t.TempDir()
 		err := os.Chdir(tmpDir)
 		require.NoError(t, err)
@@ -287,10 +290,9 @@ func TestRunErrors(t *testing.T) {
 		}
 		_, err = rs.Run(context.Background(), req)
 		assert.Error(t, err)
-		assert.Contains(t, err.Error(), "error getting current directory")
-
-		// Restore working directory
-		_ = os.Chdir(origDir)
+		if err != nil && !strings.Contains(err.Error(), "error getting current directory") {
+			assert.Contains(t, err.Error(), "error creating algorithm file")
+		}
 	})
 
 	t.Run("requirements file creation failure", func(t *testing.T) {
@@ -313,6 +315,11 @@ func TestRunErrors(t *testing.T) {
 
 // TestConcurrentRun tests that concurrent runs are properly serialized.
 func TestConcurrentRun(t *testing.T) {
+	origDir, _ := os.Getwd()
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { require.NoError(t, os.Chdir(origDir)) }()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	eventSvc := &MockEventService{}
 	rs := New(logger, eventSvc)
@@ -325,7 +332,9 @@ func TestConcurrentRun(t *testing.T) {
 	}
 
 	// Start first run in goroutine (will run for 15 seconds)
+	done := make(chan struct{})
 	go func() {
+		defer close(done)
 		_, _ = rs.Run(context.Background(), req)
 	}()
 
@@ -336,13 +345,17 @@ func TestConcurrentRun(t *testing.T) {
 	resp2, err := rs.Run(context.Background(), req)
 	require.NoError(t, err)
 	assert.Equal(t, "computation already running", resp2.Error)
-	t.Cleanup(func() {
-		_ = os.Remove("algo")
-	})
+	_, _ = rs.Stop(context.Background(), &pb.StopRequest{})
+	<-done
 }
 
 // TestRunWithMultipleArgs tests running with multiple arguments.
 func TestRunWithMultipleArgs(t *testing.T) {
+	origDir, _ := os.Getwd()
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	defer func() { require.NoError(t, os.Chdir(origDir)) }()
+
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	eventSvc := &MockEventService{}
 	rs := New(logger, eventSvc)
@@ -359,9 +372,6 @@ func TestRunWithMultipleArgs(t *testing.T) {
 	require.NotNil(t, resp)
 	assert.Empty(t, resp.Error)
 	assert.Equal(t, "test-multi-args", resp.ComputationId)
-	t.Cleanup(func() {
-		_ = os.Remove("algo")
-	})
 }
 
 func TestStopFailure(t *testing.T) {

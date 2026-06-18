@@ -36,6 +36,7 @@ var (
 	ErrMissingGrantHash        = errors.New("agtp: missing grant hash")
 	ErrMissingBindingField     = errors.New("agtp: missing session binding field")
 	ErrMissingIdentityPolicy   = errors.New("agtp: missing identity policy")
+	ErrMissingReplayCache      = errors.New("agtp: missing replay cache")
 	ErrInvalidTokenType        = errors.New("agtp: invalid token type")
 	ErrUnsupportedVersion      = errors.New("agtp: unsupported profile version")
 	ErrUnsafeSigningMethod     = errors.New("agtp: unsafe JWT signing method")
@@ -51,7 +52,9 @@ const (
 	ProfileVersion           = "1"
 )
 
-// KeyFunc resolves a JWT verification key by protected-header key id.
+// KeyFunc resolves a JWT verification key by protected-header key id. Callers
+// that use KeyFunc own the key namespace: issuer, audience, key use, algorithm,
+// key status, and public-key identity must be enforced outside the bare kid.
 type KeyFunc func(keyID string) (interface{}, error)
 
 // LocalKey is a locally configured JWT verification key.
@@ -149,6 +152,7 @@ type sessionBindingClaims struct {
 
 	GrantHash               string `json:"grant_hash,omitempty"`
 	LeafPublicKeySHA256     string `json:"leaf_public_key_sha256,omitempty"`
+	TLSExporterSHA256       string `json:"tls_exporter_sha256,omitempty"`
 	RequestContextSHA256    string `json:"request_context_sha256,omitempty"`
 	AttestationBinderSHA256 string `json:"attestation_binder_sha256,omitempty"`
 	Nonce                   string `json:"nonce,omitempty"`
@@ -162,6 +166,7 @@ type sessionEnvelopeClaims struct {
 
 	GrantHash               string `json:"grant_hash,omitempty"`
 	LeafPublicKeySHA256     string `json:"leaf_public_key_sha256,omitempty"`
+	TLSExporterSHA256       string `json:"tls_exporter_sha256,omitempty"`
 	RequestContextSHA256    string `json:"request_context_sha256,omitempty"`
 	AttestationBinderSHA256 string `json:"attestation_binder_sha256,omitempty"`
 	Nonce                   string `json:"nonce,omitempty"`
@@ -268,6 +273,7 @@ func VerifySessionBindingJWT(tokenString string, opts JWTVerifyOptions) (identit
 		SignerKey: signerKey,
 		Binding: identitypolicy.Binding{
 			LeafPublicKeySHA256:     claims.LeafPublicKeySHA256,
+			TLSExporterSHA256:       claims.TLSExporterSHA256,
 			RequestContextSHA256:    claims.RequestContextSHA256,
 			AttestationBinderSHA256: claims.AttestationBinderSHA256,
 			Nonce:                   claims.Nonce,
@@ -284,6 +290,9 @@ func VerifySessionBindingJWT(tokenString string, opts JWTVerifyOptions) (identit
 func VerifySessionIdentityJWTEnvelope(envelopeToken string, opts SessionIdentityJWTOptions) (SessionIdentityJWTResult, error) {
 	if !opts.Policy.Enabled() {
 		return SessionIdentityJWTResult{}, ErrMissingIdentityPolicy
+	}
+	if opts.ReplayCache == nil {
+		return SessionIdentityJWTResult{}, ErrMissingReplayCache
 	}
 
 	now := opts.Now
@@ -343,6 +352,9 @@ func VerifySessionIdentityJWTEnvelope(envelopeToken string, opts SessionIdentity
 func VerifySessionIdentityJWT(grantToken, bindingToken string, opts SessionIdentityJWTOptions) (SessionIdentityJWTResult, error) {
 	if !opts.Policy.Enabled() {
 		return SessionIdentityJWTResult{}, ErrMissingIdentityPolicy
+	}
+	if opts.ReplayCache == nil {
+		return SessionIdentityJWTResult{}, ErrMissingReplayCache
 	}
 
 	now := opts.Now
@@ -508,6 +520,7 @@ func validateSessionBindingClaims(claims *sessionBindingClaims) error {
 	}
 	for _, value := range []string{
 		claims.LeafPublicKeySHA256,
+		claims.TLSExporterSHA256,
 		claims.RequestContextSHA256,
 		claims.Nonce,
 	} {
@@ -567,6 +580,7 @@ func (c *sessionEnvelopeClaims) sessionBindingClaims() *sessionBindingClaims {
 	return &sessionBindingClaims{
 		GrantHash:               c.GrantHash,
 		LeafPublicKeySHA256:     c.LeafPublicKeySHA256,
+		TLSExporterSHA256:       c.TLSExporterSHA256,
 		RequestContextSHA256:    c.RequestContextSHA256,
 		AttestationBinderSHA256: c.AttestationBinderSHA256,
 		Nonce:                   c.Nonce,
@@ -584,6 +598,7 @@ func (c *sessionEnvelopeClaims) verifiedStatement(signerKey, audience string) id
 		SignerKey: signerKey,
 		Binding: identitypolicy.Binding{
 			LeafPublicKeySHA256:     c.LeafPublicKeySHA256,
+			TLSExporterSHA256:       c.TLSExporterSHA256,
 			RequestContextSHA256:    c.RequestContextSHA256,
 			AttestationBinderSHA256: c.AttestationBinderSHA256,
 			Nonce:                   c.Nonce,

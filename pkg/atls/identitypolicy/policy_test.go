@@ -119,9 +119,9 @@ func TestValidateAcceptsMatchingRequiredLayers(t *testing.T) {
 		TaskID:               "task-1",
 		ThreadID:             "thread-1",
 		DelegationID:         "delegation-1",
-		Scopes:               []string{"read:orders", "write:audit"},
-		Resources:            []string{"orders", "audit-log"},
-		AuthorizationDetails: []string{"settle", "notify"},
+		Scopes:               []string{"read:orders"},
+		Resources:            []string{"orders"},
+		AuthorizationDetails: []string{"settle"},
 	}
 
 	if err := Validate(policy, observed); err != nil {
@@ -154,7 +154,7 @@ func TestValidateAcceptsSingleExpectedValuePerRequiredLayer(t *testing.T) {
 		Agent:       "agent-a",
 		TaskID:      "task-1",
 		ThreadID:    "different-thread",
-		Scopes:      []string{"read:orders", "write:audit"},
+		Scopes:      []string{"read:orders"},
 	}
 
 	if err := Validate(policy, observed); err != nil {
@@ -164,6 +164,7 @@ func TestValidateAcceptsSingleExpectedValuePerRequiredLayer(t *testing.T) {
 
 func TestValidateAcceptsObservedSetSupersetWithDuplicatesAndBlanks(t *testing.T) {
 	policy := Policy{
+		SetMode: SetModeContainsAll,
 		Require: Requirements{L6: true},
 		Expected: Values{
 			Scopes:               []string{"read:orders", "read:orders"},
@@ -180,6 +181,36 @@ func TestValidateAcceptsObservedSetSupersetWithDuplicatesAndBlanks(t *testing.T)
 
 	if err := Validate(policy, observed); err != nil {
 		t.Fatalf("Validate() error = %v", err)
+	}
+}
+
+func TestValidateDefaultSetModeRejectsExtraObservedValues(t *testing.T) {
+	policy := Policy{
+		Require: Requirements{L6: true},
+		Expected: Values{
+			Scopes:               []string{"read:orders"},
+			Resources:            []string{"orders"},
+			AuthorizationDetails: []string{"settle"},
+		},
+	}
+
+	err := Validate(policy, Values{
+		Scopes:               []string{"read:orders", "write:audit"},
+		Resources:            []string{"orders", "audit-log"},
+		AuthorizationDetails: []string{"settle", "notify"},
+	})
+	if !errors.Is(err, ErrMismatch) {
+		t.Fatalf("Validate() error = %v, want %v", err, ErrMismatch)
+	}
+
+	var validationErrs ValidationErrors
+	if !errors.As(err, &validationErrs) {
+		t.Fatalf("Validate() error = %T, want ValidationErrors", err)
+	}
+	for _, field := range []string{FieldScopes, FieldResources, FieldAuthorizationDetails} {
+		if !validationErrs.Has(LayerL6, field, ErrMismatch) {
+			t.Fatalf("Validate() errors do not include L6 %s mismatch", field)
+		}
 	}
 }
 
@@ -245,7 +276,7 @@ func TestValidateAcceptsPrintablePolicyValues(t *testing.T) {
 
 	observed := Values{
 		Service:   "https://service.example.com/a?env=prod&tenant=a",
-		Resources: []string{"urn:cocos:resource:orders#read", "urn:cocos:resource:audit#write"},
+		Resources: []string{"urn:cocos:resource:orders#read"},
 	}
 
 	if err := Validate(policy, observed); err != nil {
@@ -890,7 +921,7 @@ func TestValidateAssertionAcceptsSessionBoundIdentity(t *testing.T) {
 			Service: "payments",
 			Agent:   "agent-a",
 			TaskID:  "task-1",
-			Scopes:  []string{"orders:read", "audit:write"},
+			Scopes:  []string{"orders:read"},
 		},
 		Binding: Binding{
 			LeafPublicKeySHA256:     "leaf-hash",

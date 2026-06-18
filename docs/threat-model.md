@@ -69,6 +69,20 @@ Profile requirement:
   confirmation keys;
 - compare the observed agent identity with local expected policy.
 
+## Gateway Route Confusion
+
+Gateway route confusion occurs when the client correctly authenticates a
+gateway TLS endpoint but the gateway routes the request to the wrong final
+Agent, tenant, workload, or authority partition.
+
+Profile requirement:
+
+- treat gateway session binding as proof of the gateway endpoint only;
+- require the gateway route assertion defined in `docs/SSOT.md`;
+- partition route assertions and replay state by tenant or authority boundary;
+- require Agent holder-of-key proof unless local policy explicitly trusts the
+  gateway as the final-Agent delegation authority.
+
 ## Replay
 
 Replay occurs when a previously valid grant or binding statement is reused
@@ -79,6 +93,9 @@ Profile requirement:
 - require expiration and issued-at checks;
 - require a unique grant id and binding id;
 - use a replay cache or equivalent one-shot state;
+- reject old attestation evidence or attestation results unless they are bound
+  to the current verifier challenge, TLS exporter value, and application
+  context;
 - fail closed when replay state is unavailable.
 
 ## Binding-Parameter Confusion
@@ -88,13 +105,18 @@ expected local values. Examples include labels, contexts, grant ids,
 confirmation keys, expected agent ids, task ids, or authorization scopes.
 Semantic reference aliases are also in scope: a peer must not choose the
 verifier's expected `intentRef`, `capabilityRef`, or `ontologyId`.
+Registry drift is also in scope. The same semantic-reference string can mean
+different things under different registries, ontology versions, or migration
+rules.
 
 Profile requirement:
 
 - distinguish local expected values from observed values;
 - reject unexpected labels, contexts, token types, versions, and signing
   methods;
-- reject grants or binding statements that do not match local trust policy.
+- reject grants or binding statements that do not match local trust policy;
+- reject semantic references whose registry namespace, registry version,
+  deprecation status, or migration rule is unavailable or unsupported;
 - apply the canonical semantic-reference rules in
   `docs/SSOT.md`.
 
@@ -111,5 +133,22 @@ The profile must fail closed when:
 ## Privacy
 
 The profile should avoid unnecessary disclosure of deployment or agent identity.
-Where possible, implementations should use short-lived grants, scoped audience
-values, and minimal audit fields.
+Tenant IDs, deployment names, task IDs, capability references, key
+fingerprints, grant IDs, route IDs, and attestation-related identifiers can all
+be correlation values.
+
+Profile requirement:
+
+- partition audiences so tokens and binding statements are not reusable or
+  linkable across relying services;
+- prefer pairwise or audience-scoped identifiers when global identifiers are not
+  required;
+- minimize logs and avoid recording full grants, binding statements,
+  attestation evidence, key fingerprints, task IDs, tenant IDs, and capability
+  references unless needed for security audit;
+- protect correlation fields in audit logs through redaction, access control,
+  or deployment-specific hashing;
+- disclose only the identity, task, and authorization fields needed by the
+  receiver's local policy;
+- use selective disclosure or reference tokens when proving one attribute should
+  not reveal unrelated tenant, task, capability, or deployment values.

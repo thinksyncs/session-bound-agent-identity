@@ -6,6 +6,7 @@ package attestation_agent
 import (
 	"context"
 	"net"
+	"os"
 	"path/filepath"
 	"testing"
 	"time"
@@ -15,6 +16,14 @@ import (
 	aa "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 )
+
+func unixSocketPath(t *testing.T, name string) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "cocos-grpc-")
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return filepath.Join(dir, name)
+}
 
 type mockAttestationAgentServer struct {
 	aa.UnimplementedAttestationAgentServiceServer
@@ -34,8 +43,7 @@ func (m *mockAttestationAgentServer) GetToken(ctx context.Context, req *aa.GetTo
 }
 
 func TestNewClientUnixSocket(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "aa-test.sock")
+	socketPath := unixSocketPath(t, "aa-test.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -81,8 +89,7 @@ func TestNewClientTCPAddress(t *testing.T) {
 }
 
 func TestGetToken(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "aa-gettoken.sock")
+	socketPath := unixSocketPath(t, "aa-gettoken.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -110,8 +117,7 @@ func TestGetToken(t *testing.T) {
 }
 
 func TestGetTokenError(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "aa-error.sock")
+	socketPath := unixSocketPath(t, "aa-error.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -138,8 +144,7 @@ func TestGetTokenError(t *testing.T) {
 }
 
 func TestGetTokenCanceledContext(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "aa-cancel.sock")
+	socketPath := unixSocketPath(t, "aa-cancel.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)
@@ -166,8 +171,7 @@ func TestGetTokenCanceledContext(t *testing.T) {
 }
 
 func TestClientClose(t *testing.T) {
-	tmpDir := t.TempDir()
-	socketPath := filepath.Join(tmpDir, "aa-close.sock")
+	socketPath := unixSocketPath(t, "aa-close.sock")
 
 	listener, err := net.Listen("unix", socketPath)
 	require.NoError(t, err)

@@ -32,13 +32,14 @@ executable regression test in this repository.
 | NEG-01 | Valid Identity Grant but missing or incomplete Session Binding Statement. | Covered by partial JWT configuration rejection and missing binding `jti` rejection. |
 | NEG-02 | Valid grant but Session Binding Statement signed by an unauthorized Agent key. | Covered by `TestAGTPObservedIdentityRedTeamRejectsAgentThreats` and CWT unauthorized binding-key coverage. |
 | NEG-03 | Valid grant but Session Binding Statement `grant_hash` targets another grant. | Covered by `TestAGTPObservedIdentityRedTeamRejectsGrantSubstitution` and JWT envelope substitution coverage. |
-| NEG-04 | Valid grant and binding but TLS endpoint-key hash differs from the accepted session. | Covered by `TestAGTPObservedIdentityRedTeamRejectsAttacks`. |
+| NEG-04 | Valid grant and binding but TLS endpoint-key hash, TLS exporter hash, or request-context hash differs from the accepted session. | Covered by `TestAGTPObservedIdentityRedTeamRejectsAttacks` and real TLS exporter binding coverage. |
 | NEG-05 | Accepted lower-layer attestation binder exists but `attestation_binder_sha256` is absent from the binding. | Covered by `TestAGTPObservedIdentityRedTeamRejectsMissingAttestationBinder`. |
 | NEG-06 | Reuse of the same binding nonce or replay-cache key. | Covered by replay, concurrent replay, and multi-process replay-race tests. |
 | NEG-07 | Peer metadata matches local policy text but the Manager-signed grant does not. | Covered by semantic drift cases in the client-hook red-team tests. |
 | NEG-08 | Manager signing key is reused as the Agent confirmation or binding key. | Covered by `TestAGTPObservedIdentityRedTeamRejectsManagerKeyAsBindingKey` and the identity-policy unit test. |
 | NEG-09 | Non-canonical semantic alias, such as an `intent_ref` spelling variant, is normalized into acceptance. | Covered by `TestValidateDoesNotNormalizePeerProvidedReferenceValues`. |
-| NEG-10 | Gateway TLS is valid but the gateway-to-Agent route assertion is missing. | Not implemented in the direct-Agent profile; tracked as gateway-routed profile work. |
+| NEG-10 | Gateway TLS is valid but the gateway-to-Agent route assertion is missing, stale, replayed, signed by an unauthorized gateway route key, missing required Agent holder-of-key proof, or scoped to the wrong tenant partition. | Runtime coverage is not implemented in the direct-Agent profile; SSOT defines the gateway route assertion requirements for future gateway-routed profile work. |
+| NEG-11 | Hardware evidence or attestation results contain a valid measurement but are not bound to the current verifier challenge, TLS exporter value, and application context. | Evidence-binding unit tests cover report-data and nonce mismatches. Live hardware stale-evidence coverage remains outside the dependency-free red-team harness. |
 
 ## Tests
 
@@ -162,8 +163,9 @@ Coverage:
   goroutines in one address space.
 
 The local replay service models SET NX EX semantics: record the
-`grant_hash/audience/nonce` key once for the binding TTL, return duplicate on
-subsequent attempts, and fail closed if the store cannot make that decision.
+`grant_hash/audience/tls_exporter_sha256/request_context_sha256/nonce` key once
+for the binding TTL, return duplicate on subsequent attempts, and fail closed if
+the store cannot make that decision.
 It is not a live Redis, Valkey, or multi-node deployment test.
 
 ### `TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures`

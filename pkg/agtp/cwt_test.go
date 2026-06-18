@@ -35,6 +35,20 @@ func TestVerifySessionIdentityCWTAcceptsManagerGrantAndLocalPolicy(t *testing.T)
 	}
 }
 
+func TestVerifySessionIdentityCWTRejectsMissingReplayCache(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	keys := newTestCWTKeySet(t)
+	grantToken := signTestCWT(t, "manager-key", keys.manager, testDefaultCWTGrantClaims(now))
+	bindingToken := signTestCWT(t, "agent-key-1", keys.agent, testDefaultCWTBindingClaims(now, IdentityGrantCWTHash(grantToken)))
+	opts := testSessionIdentityCWTOptions(now, keys)
+	opts.ReplayCache = nil
+
+	_, err := VerifySessionIdentityCWT(grantToken, bindingToken, opts)
+	if !errors.Is(err, ErrMissingReplayCache) {
+		t.Fatalf("VerifySessionIdentityCWT() error = %v, want %v", err, ErrMissingReplayCache)
+	}
+}
+
 func TestVerifySessionIdentityCWTRedTeamRejectsCOSEProfileAttacks(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	keys := newTestCWTKeySet(t)
@@ -219,6 +233,7 @@ func testDefaultCWTBindingClaims(now time.Time, grantHash string) map[any]any {
 		ClaimProfileVersion:         ProfileVersion,
 		"grant_hash":                grantHash,
 		"leaf_public_key_sha256":    "sha256:leaf",
+		"tls_exporter_sha256":       "sha256:exporter",
 		"request_context_sha256":    "sha256:context",
 		"nonce":                     "nonce-1",
 	}
@@ -250,9 +265,11 @@ func testSessionIdentityCWTOptions(now time.Time, keys testCWTKeySet) SessionIde
 		},
 		ExpectedBinding: identitypolicy.Binding{
 			LeafPublicKeySHA256:  "sha256:leaf",
+			TLSExporterSHA256:    "sha256:exporter",
 			RequestContextSHA256: "sha256:context",
 			Nonce:                "nonce-1",
 		},
-		Now: now,
+		ReplayCache: newAGTPReplayCache(),
+		Now:         now,
 	}
 }

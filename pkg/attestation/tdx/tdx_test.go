@@ -6,6 +6,7 @@ package tdx
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/google/go-tdx-guest/proto/checkconfig"
@@ -37,6 +38,13 @@ func TestNewProvider(t *testing.T) {
 	}
 }
 
+func tdxDeviceErrContains() string {
+	if runtime.GOOS == "linux" {
+		return "/sys/kernel/config/tsm/report"
+	}
+	return "unsupported"
+}
+
 func TestProvider_Attestation(t *testing.T) {
 	tests := []struct {
 		name        string
@@ -57,7 +65,7 @@ func TestProvider_Attestation(t *testing.T) {
 			teeNonce:    []byte("test-noncetest-noncetest-noncetest-noncetest-noncetest-noncetest"),
 			vTpmNonce:   []byte("vtpm-nonce"),
 			wantErr:     true,
-			errContains: "/sys/kernel/config/tsm/report",
+			errContains: tdxDeviceErrContains(),
 		},
 		{
 			name:        "should handle nil nonces",
@@ -71,7 +79,7 @@ func TestProvider_Attestation(t *testing.T) {
 			teeNonce:    make([]byte, 64),
 			vTpmNonce:   make([]byte, 32),
 			wantErr:     true,
-			errContains: "/sys/kernel/config/tsm/report",
+			errContains: tdxDeviceErrContains(),
 		},
 	}
 
@@ -109,7 +117,7 @@ func TestProvider_TeeAttestation(t *testing.T) {
 			name:        "should handle valid nonce",
 			teeNonce:    []byte("test-noncetest-noncetest-noncetest-noncetest-noncetest-noncetest"),
 			wantErr:     true,
-			errContains: "/sys/kernel/config/tsm/report",
+			errContains: tdxDeviceErrContains(),
 		},
 		{
 			name:        "should handle nil nonce",
@@ -121,7 +129,7 @@ func TestProvider_TeeAttestation(t *testing.T) {
 			name:        "should handle 64-byte nonce",
 			teeNonce:    make([]byte, 64),
 			wantErr:     true,
-			errContains: "/sys/kernel/config/tsm/report",
+			errContains: tdxDeviceErrContains(),
 		},
 	}
 

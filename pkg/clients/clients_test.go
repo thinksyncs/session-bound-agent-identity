@@ -57,17 +57,19 @@ func TestAGTPObservedIdentityAcceptsSessionBoundJWT(t *testing.T) {
 		"service":      "payments",
 	})
 	bindingToken := signClientTestJWT(t, "agent-key-1", []byte("agent-secret"), jwt.MapClaims{
-		"iss":                    "agent-a",
-		"aud":                    "client-a",
-		"jti":                    "binding-1",
-		"iat":                    now.Unix(),
-		"exp":                    now.Add(time.Minute).Unix(),
-		"agtp_type":              agtp.TokenTypeSessionBinding,
-		"agtp_version":           agtp.ProfileVersion,
-		"grant_hash":             agtp.IdentityGrantHash(grantToken),
-		"leaf_public_key_sha256": expectedBinding.LeafPublicKeySHA256,
-		"request_context_sha256": expectedBinding.RequestContextSHA256,
-		"nonce":                  "nonce-1",
+		"iss":                       "agent-a",
+		"aud":                       "client-a",
+		"jti":                       "binding-1",
+		"iat":                       now.Unix(),
+		"exp":                       now.Add(time.Minute).Unix(),
+		"agtp_type":                 agtp.TokenTypeSessionBinding,
+		"agtp_version":              agtp.ProfileVersion,
+		"grant_hash":                agtp.IdentityGrantHash(grantToken),
+		"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
+		"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
+		"request_context_sha256":    expectedBinding.RequestContextSHA256,
+		"attestation_binder_sha256": expectedBinding.AttestationBinderSHA256,
+		"nonce":                     "nonce-1",
 	})
 	cfg := AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
@@ -303,17 +305,19 @@ func TestAGTPObservedIdentityRedTeamRejectsAttacks(t *testing.T) {
 	}
 	baseBindingClaims := func(grantToken string) jwt.MapClaims {
 		return jwt.MapClaims{
-			"iss":                    "agent-a",
-			"aud":                    "client-a",
-			"jti":                    "binding-1",
-			"iat":                    now.Unix(),
-			"exp":                    now.Add(time.Minute).Unix(),
-			"agtp_type":              agtp.TokenTypeSessionBinding,
-			"agtp_version":           agtp.ProfileVersion,
-			"grant_hash":             agtp.IdentityGrantHash(grantToken),
-			"leaf_public_key_sha256": expectedBinding.LeafPublicKeySHA256,
-			"request_context_sha256": expectedBinding.RequestContextSHA256,
-			"nonce":                  "nonce-1",
+			"iss":                       "agent-a",
+			"aud":                       "client-a",
+			"jti":                       "binding-1",
+			"iat":                       now.Unix(),
+			"exp":                       now.Add(time.Minute).Unix(),
+			"agtp_type":                 agtp.TokenTypeSessionBinding,
+			"agtp_version":              agtp.ProfileVersion,
+			"grant_hash":                agtp.IdentityGrantHash(grantToken),
+			"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
+			"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
+			"request_context_sha256":    expectedBinding.RequestContextSHA256,
+			"attestation_binder_sha256": expectedBinding.AttestationBinderSHA256,
+			"nonce":                     "nonce-1",
 		}
 	}
 	runObservedIdentity := func(grantToken, bindingToken string) error {
@@ -411,6 +415,18 @@ func TestAGTPObservedIdentityRedTeamRejectsAttacks(t *testing.T) {
 		}
 	})
 
+	t.Run("borrowed TLS exporter cannot satisfy accepted aTLS session", func(t *testing.T) {
+		grantToken := signClientTestJWT(t, "manager-key", []byte("manager-secret"), baseGrantClaims())
+		binding := baseBindingClaims(grantToken)
+		binding["tls_exporter_sha256"] = "sha256:other-exporter"
+		bindingToken := signClientTestJWT(t, "agent-key-1", []byte("agent-secret"), binding)
+
+		err := runObservedIdentity(grantToken, bindingToken)
+		if !errors.Is(err, identitypolicy.ErrMismatch) {
+			t.Fatalf("observed identity error = %v, want %v", err, identitypolicy.ErrMismatch)
+		}
+	})
+
 	t.Run("borrowed request context cannot satisfy accepted aTLS session", func(t *testing.T) {
 		grantToken := signClientTestJWT(t, "manager-key", []byte("manager-secret"), baseGrantClaims())
 		binding := baseBindingClaims(grantToken)
@@ -480,17 +496,19 @@ func TestAGTPObservedIdentityRedTeamRejectsAgentThreats(t *testing.T) {
 	}
 	baseBindingClaims := func(grantToken string) jwt.MapClaims {
 		return jwt.MapClaims{
-			"iss":                    "agent-a",
-			"aud":                    "client-a",
-			"jti":                    "binding-1",
-			"iat":                    now.Unix(),
-			"exp":                    now.Add(time.Minute).Unix(),
-			"agtp_type":              agtp.TokenTypeSessionBinding,
-			"agtp_version":           agtp.ProfileVersion,
-			"grant_hash":             agtp.IdentityGrantHash(grantToken),
-			"leaf_public_key_sha256": expectedBinding.LeafPublicKeySHA256,
-			"request_context_sha256": expectedBinding.RequestContextSHA256,
-			"nonce":                  "nonce-1",
+			"iss":                       "agent-a",
+			"aud":                       "client-a",
+			"jti":                       "binding-1",
+			"iat":                       now.Unix(),
+			"exp":                       now.Add(time.Minute).Unix(),
+			"agtp_type":                 agtp.TokenTypeSessionBinding,
+			"agtp_version":              agtp.ProfileVersion,
+			"grant_hash":                agtp.IdentityGrantHash(grantToken),
+			"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
+			"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
+			"request_context_sha256":    expectedBinding.RequestContextSHA256,
+			"attestation_binder_sha256": expectedBinding.AttestationBinderSHA256,
+			"nonce":                     "nonce-1",
 		}
 	}
 
@@ -662,17 +680,19 @@ func TestAGTPObservedIdentityRedTeamRejectsReplay(t *testing.T) {
 		"service":      "payments",
 	})
 	bindingToken := signClientTestJWT(t, "agent-key-1", []byte("agent-secret"), jwt.MapClaims{
-		"iss":                    "agent-a",
-		"aud":                    "client-a",
-		"jti":                    "binding-1",
-		"iat":                    now.Unix(),
-		"exp":                    now.Add(time.Minute).Unix(),
-		"agtp_type":              agtp.TokenTypeSessionBinding,
-		"agtp_version":           agtp.ProfileVersion,
-		"grant_hash":             agtp.IdentityGrantHash(grantToken),
-		"leaf_public_key_sha256": expectedBinding.LeafPublicKeySHA256,
-		"request_context_sha256": expectedBinding.RequestContextSHA256,
-		"nonce":                  "nonce-1",
+		"iss":                       "agent-a",
+		"aud":                       "client-a",
+		"jti":                       "binding-1",
+		"iat":                       now.Unix(),
+		"exp":                       now.Add(time.Minute).Unix(),
+		"agtp_type":                 agtp.TokenTypeSessionBinding,
+		"agtp_version":              agtp.ProfileVersion,
+		"grant_hash":                agtp.IdentityGrantHash(grantToken),
+		"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
+		"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
+		"request_context_sha256":    expectedBinding.RequestContextSHA256,
+		"attestation_binder_sha256": expectedBinding.AttestationBinderSHA256,
+		"nonce":                     "nonce-1",
 	})
 	cfg := AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
@@ -1187,6 +1207,15 @@ func validationResultForAGTP(t *testing.T) *ea.ValidationResult {
 	return &ea.ValidationResult{
 		Context: []byte("agtp-request-context"),
 		Chain:   []*x509.Certificate{leaf},
+		Attestation: &attestation.VerifiedPayload{
+			Payload: &attestation.Payload{Binder: attestation.AttestationBinder{
+				Binding: []byte("agtp-attestation-binding"),
+			}},
+			BindingVerified: true,
+			Binding: attestation.EvidenceBinding{
+				ExportedValue: []byte("agtp-tls-exporter"),
+			},
+		},
 	}
 }
 
@@ -1218,6 +1247,15 @@ func deterministicValidationResultForAGTP(t *testing.T) *ea.ValidationResult {
 	return &ea.ValidationResult{
 		Context: []byte("agtp-lrtt03-request-context"),
 		Chain:   []*x509.Certificate{leaf},
+		Attestation: &attestation.VerifiedPayload{
+			Payload: &attestation.Payload{Binder: attestation.AttestationBinder{
+				Binding: []byte("agtp-lrtt03-attestation-binding"),
+			}},
+			BindingVerified: true,
+			Binding: attestation.EvidenceBinding{
+				ExportedValue: []byte("agtp-lrtt03-tls-exporter"),
+			},
+		},
 	}
 }
 
@@ -1232,6 +1270,9 @@ func validationResultForAGTPWithAttestationBinder(t *testing.T, binder []byte) *
 			},
 		},
 		BindingVerified: true,
+		Binding: attestation.EvidenceBinding{
+			ExportedValue: []byte("agtp-tls-exporter"),
+		},
 	}
 	return validation
 }
@@ -1542,6 +1583,7 @@ func (i clientTestJWTIssuer) issueSessionBinding(t *testing.T, now time.Time, gr
 		"agtp_version":           agtp.ProfileVersion,
 		"grant_hash":             grantHash,
 		"leaf_public_key_sha256": binding.LeafPublicKeySHA256,
+		"tls_exporter_sha256":    binding.TLSExporterSHA256,
 		"request_context_sha256": binding.RequestContextSHA256,
 		"nonce":                  "nonce-1",
 	}

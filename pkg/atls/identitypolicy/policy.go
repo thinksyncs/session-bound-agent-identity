@@ -72,6 +72,7 @@ const (
 	FieldResources             = "resources"
 	FieldAuthorizationDetails  = "authorization_details"
 	FieldLeafPublicKeyHash     = "leaf_public_key_sha256"
+	FieldTLSExporterHash       = "tls_exporter_sha256"
 	FieldRequestContextHash    = "request_context_sha256"
 	FieldAttestationBinderHash = "attestation_binder_sha256"
 	FieldNonce                 = "nonce"
@@ -121,6 +122,7 @@ type Values struct {
 // Binding ties an observed identity assertion to the accepted TLS session.
 type Binding struct {
 	LeafPublicKeySHA256     string    `json:"leaf_public_key_sha256,omitempty" yaml:"leaf_public_key_sha256,omitempty"`
+	TLSExporterSHA256       string    `json:"tls_exporter_sha256,omitempty" yaml:"tls_exporter_sha256,omitempty"`
 	RequestContextSHA256    string    `json:"request_context_sha256,omitempty" yaml:"request_context_sha256,omitempty"`
 	AttestationBinderSHA256 string    `json:"attestation_binder_sha256,omitempty" yaml:"attestation_binder_sha256,omitempty"`
 	Nonce                   string    `json:"nonce,omitempty" yaml:"nonce,omitempty"`
@@ -358,6 +360,7 @@ func validateBinding(observed, expected Binding, now time.Time) error {
 		got  string
 	}{
 		{FieldLeafPublicKeyHash, expected.LeafPublicKeySHA256, observed.LeafPublicKeySHA256},
+		{FieldTLSExporterHash, expected.TLSExporterSHA256, observed.TLSExporterSHA256},
 		{FieldRequestContextHash, expected.RequestContextSHA256, observed.RequestContextSHA256},
 		{FieldAttestationBinderHash, expected.AttestationBinderSHA256, observed.AttestationBinderSHA256},
 		{FieldNonce, expected.Nonce, observed.Nonce},
@@ -441,7 +444,7 @@ func validateExactLayer(layer string, expected, observed Values, fields []field)
 
 func (p Policy) setMode() SetMode {
 	if p.SetMode == SetModeDefault {
-		return SetModeContainsAll
+		return SetModeExact
 	}
 	return p.SetMode
 }
@@ -504,10 +507,10 @@ func validateL6(expected, observed Values, setMode SetMode) error {
 
 func validateSet(layer, fieldName string, expected, observed []string, setMode SetMode) error {
 	switch setMode {
-	case SetModeDefault, SetModeContainsAll:
-		return requireContainsAll(layer, fieldName, expected, observed)
-	case SetModeExact:
+	case SetModeDefault, SetModeExact:
 		return requireExactSet(layer, fieldName, expected, observed)
+	case SetModeContainsAll:
+		return requireContainsAll(layer, fieldName, expected, observed)
 	default:
 		return validationError(layer, fieldName, ErrInvalidMode)
 	}

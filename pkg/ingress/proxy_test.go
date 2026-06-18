@@ -149,7 +149,7 @@ func TestProxyStartReturnsListenerError(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	ps := NewProxyServer(logger, getBackendURL(), nil).(*proxyServer)
 
-	occupied, err := net.Listen("tcp", "127.0.0.1:0")
+	occupied, err := net.Listen("tcp", "0.0.0.0:0")
 	require.NoError(t, err)
 	defer occupied.Close()
 

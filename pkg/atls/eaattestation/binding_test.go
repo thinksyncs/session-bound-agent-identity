@@ -45,12 +45,25 @@ func (s *stubEvidenceVerifier) VerifyEvidence(evidence []byte, binding EvidenceB
 }
 
 type stubResultsVerifier struct {
-	called bool
-	err    error
+	called       bool
+	err          error
+	gotBinding   EvidenceBinding
+	wantReport   [64]byte
+	wantNonce    [32]byte
+	checkBinding bool
 }
 
-func (s *stubResultsVerifier) VerifyAttestationResults(results []byte) error {
+func (s *stubResultsVerifier) VerifyAttestationResults(results []byte, binding EvidenceBinding) error {
 	s.called = true
+	s.gotBinding = binding
+	if s.checkBinding {
+		if !bytes.Equal(binding.ReportData[:], s.wantReport[:]) {
+			return ErrBindingMismatch
+		}
+		if !bytes.Equal(binding.Nonce[:], s.wantNonce[:]) {
+			return ErrBindingMismatch
+		}
+	}
 	return s.err
 }
 
@@ -171,7 +184,11 @@ func TestVerifyPayloadSuccess(t *testing.T) {
 		wantNonce:    nonce,
 		checkBinding: true,
 	}
-	rv := &stubResultsVerifier{}
+	rv := &stubResultsVerifier{
+		wantReport:   reportData,
+		wantNonce:    nonce,
+		checkBinding: true,
+	}
 	payload := &Payload{
 		Version:            1,
 		Evidence:           []byte("evidence"),
@@ -198,6 +215,9 @@ func TestVerifyPayloadSuccess(t *testing.T) {
 	}
 	if len(ev.gotBinding.Binding) == 0 || len(ev.gotBinding.ExportedValue) == 0 {
 		t.Fatalf("expected evidence verifier to receive binding inputs")
+	}
+	if len(rv.gotBinding.Binding) == 0 || len(rv.gotBinding.ExportedValue) == 0 {
+		t.Fatalf("expected results verifier to receive binding inputs")
 	}
 }
 

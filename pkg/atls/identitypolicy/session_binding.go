@@ -234,7 +234,11 @@ func MarkSessionBindingUsed(cache ReplayCache, statement VerifiedSessionBindingS
 	if cache == nil {
 		return nil
 	}
-	key := statement.GrantHash + "\x00" + statement.Audience + "\x00" + statement.Binding.Nonce
+	key := statement.GrantHash + "\x00" +
+		statement.Audience + "\x00" +
+		statement.Binding.TLSExporterSHA256 + "\x00" +
+		statement.Binding.RequestContextSHA256 + "\x00" +
+		statement.Binding.Nonce
 	if err := cache.MarkUsed(key, statement.Binding.ExpiresAt); err != nil {
 		return validationError(LayerSessionBinding, FieldNonce, err)
 	}
@@ -264,6 +268,7 @@ func validateStatementBinding(binding Binding, now time.Time) error {
 		value string
 	}{
 		{FieldLeafPublicKeyHash, binding.LeafPublicKeySHA256},
+		{FieldTLSExporterHash, binding.TLSExporterSHA256},
 		{FieldRequestContextHash, binding.RequestContextSHA256},
 		{FieldNonce, binding.Nonce},
 	} {
