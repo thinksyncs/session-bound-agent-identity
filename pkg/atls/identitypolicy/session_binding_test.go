@@ -11,6 +11,8 @@ import (
 	"os"
 	"testing"
 	"time"
+
+	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
 )
 
 const testManagerKeyID = "manager-key-1"
@@ -207,8 +209,8 @@ func TestL2BindingVector(t *testing.T) {
 	if vector.Profile != "hwtls-l2-context-v1" {
 		t.Fatalf("profile = %q, want hwtls-l2-context-v1", vector.Profile)
 	}
-	if vector.ExporterLabel != "Attestation" {
-		t.Fatalf("exporter_label = %q, want Attestation", vector.ExporterLabel)
+	if vector.ExporterLabel != eaattestation.ExporterLabelAttestation {
+		t.Fatalf("exporter_label = %q, want %q", vector.ExporterLabel, eaattestation.ExporterLabelAttestation)
 	}
 	if vector.ExporterLength != 32 {
 		t.Fatalf("exporter_length = %d, want 32", vector.ExporterLength)
