@@ -105,13 +105,15 @@ first appears.
 
 ## Evaluation Status
 
-The v0.3 evaluation is useful but not sufficient proof of the full security
-claim. It combines focused local checks, negative test vectors, unit-level
-coverage, and dependency-free live-style harnesses. The remaining work is
-tracked in `docs/live-red-team-report.md`, including real network relay,
-hardware-generated borrowed attestation, multiplexed connection reuse,
-resumption and 0-RTT behavior, gateway routing, fuzzing, and a small invariant
-model.
+The v0.4-dev evaluation is useful but not sufficient proof of the full
+security claim. It combines focused local checks, negative test vectors,
+unit-level coverage, dependency-free live-style harnesses, a deterministic
+acceptance-invariant matrix, and local gateway route-assertion tests. The
+remaining work is tracked in `docs/live-red-team-report.md`, including TLS
+resumption and 0-RTT behavior, gRPC connection pooling, route-assertion
+wire-token adapters, a full gateway-routed network harness, randomized
+fuzz/property generation, and hardware-generated confidential-VM attestation
+replay.
 
 ## Non-Goals
 
@@ -132,8 +134,9 @@ model.
   for application profiles
 - `docs/http-cache-profile.md`: non-normative HTTP response-cache profile for
   endpoints near identity-binding decisions
-- `docs/gateway-routed-profile.md`: non-core gateway route-assertion sketch for
-  future gateway-routed deployments
+- `docs/gateway-routed-profile.md`: gateway route-assertion profile and
+  final-Agent holder-of-key boundary
+- `pkg/agtp/gatewayroute/`: local gateway route-assertion policy gate
 - `docs/ai2ai-security-profile.md`: A2A/AGTP mapping, wallet boundary, and
   Security Binding Object carrier rules
 - `docs/agtp-security-profile-mapping.md`: profile validation state machine and

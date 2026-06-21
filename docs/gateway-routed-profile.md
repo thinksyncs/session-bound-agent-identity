@@ -1,14 +1,17 @@
 # Gateway-Routed Profile
 
-This document is a future profile sketch, not part of the v0.3 core
-direct-Agent profile. In gateway-routed mode, the gateway terminates the TLS
-session and performs the profile binding checks. The gateway is the live
-TLS endpoint. Gateway session binding proves the gateway endpoint, not the
-final Agent process.
+This document defines the gateway-routed companion profile for the
+Session-Bound Agent Identity Profile. It is separate from direct-Agent mode. In
+gateway-routed mode, the gateway terminates the TLS session and performs the
+profile binding checks. The gateway is the live TLS endpoint. Gateway session
+binding proves the gateway endpoint, not the final Agent process.
 
-The v0.3 runtime client path implements direct-Agent mode. A gateway-routed
-deployment needs a separate route assertion before the relying party can treat
-the final Agent as accepted.
+The current runtime client path implements direct-Agent mode. Gateway-routed
+deployments use a separate route assertion before the relying party can treat
+the final Agent as accepted. This repository provides the claim map, failure
+semantics, and local `pkg/agtp/gatewayroute` validation gate. Route-assertion
+JWT/CWT adapters and a full gateway-routed network harness remain separate
+runtime work.
 
 ## Route Assertion
 

@@ -48,7 +48,7 @@ many TLS sessions. The primary binding is the exporter output under the
 verifier-accepted context, together with the grant hash, audience, nonce, and
 replay state.
 
-`tls_exporter_sha256` is mandatory in the v0.3 direct-Agent profile. It is the
+`tls_exporter_sha256` is mandatory in the direct-Agent profile. It is the
 SHA-256 digest of the accepted TLS exporter output, not a peer-chosen value.
 
 Rules:

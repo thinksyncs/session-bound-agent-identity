@@ -6,25 +6,35 @@ session-bound agent identity profile. The normative profile source is
 
 ## Status
 
-Branch-scoped implementation and verification are complete as of 2026-06-13.
-Additional local regressions were run on 2026-06-16 for attestation-binder
-absence and Manager/Agent key-role separation.
+Current mainline coverage is synchronized with `docs/SSOT.md` draft v0.4-dev
+as of 2026-06-21. The profile now includes direct-Agent JWT/JWS and CWT/COSE
+verification, dependency-free live-style relay and HTTP/2 reuse harnesses,
+deterministic malformed-token corpus tests, a deterministic JWT acceptance
+invariant matrix, and local Gateway Route Assertion validation.
+
+Earlier branch-scoped implementation and verification completed on
+2026-06-13. Additional local regressions were run on 2026-06-16 for
+attestation-binder absence and Manager/Agent key-role separation.
 
 - Implementation verification commit: `2ebd52694d88bef6d0a5e3fae2593ec9bfdf8647`
 - GitHub Actions `Security Red Team` run #3 on that commit: success
 - GitHub Actions `CI` run #3 on that commit: success
 
-The completed branch covers the current direct-Agent AGTP/aTLS profile. A
-gateway-routed profile remains separate design work because its trust model is
-different: the gateway is the TLS endpoint and must authenticate the
+The gateway-routed profile is separate from direct-Agent mode because its trust
+model is different: the gateway is the TLS endpoint and must authenticate the
 gateway-to-Agent route before the intended Agent can be treated as accepted.
+The Gateway Route Assertion claim map, final-Agent holder-of-key proof rules,
+and local policy gate are now defined. Runtime client/server wiring,
+route-assertion JWT/CWT adapters, and a full gateway-routed network harness
+remain separate work.
 
-The current evaluation is not a proof of the full security claim. It is a v0.3
-evaluation built from focused local checks, negative vectors, unit-level tests,
-and dependency-free live-style harnesses. Claims such as "this grant is accepted
-only for this session" need additional network, hardware, multiplexing, replay,
-fuzzing, and invariant-model coverage before they should be treated as broadly
-validated.
+The current evaluation is not a proof of the full security claim. It is a
+v0.4-dev evaluation built from focused local checks, negative vectors,
+unit-level tests, dependency-free live-style harnesses, and deterministic
+invariant checks. Claims such as "this grant is accepted only for this session"
+still need additional TLS resumption, 0-RTT, gRPC pooling, full gateway network,
+randomized fuzz/property, and hardware-backed attestation coverage before they
+should be treated as broadly validated.
 
 ## Verification Evidence
 
@@ -112,7 +122,7 @@ All three packages passed.
 | LRTT05 | Completed | `TestAGTPObservedIdentityRedTeamRejectsAttestationBinderMismatch` | None for binder mismatch comparison |
 | LRTT06 | Completed | `TestVerifySessionIdentityJWTEnvelopeRedTeamRejectsSubstitution` | Runtime client configuration remains two-token JWT/JWS-wired unless callers use the envelope verifier directly |
 | LRTT07 | Completed | `TestAGTPObservedIdentityRedTeamRejectsVerifiedGrantCacheMisuse` | None for the modeled verified-grant cache misuse path |
-| LRTT08 | Out of scope for this completed direct-Agent branch | SSOT separates gateway mode from the direct-Agent trust model | Requires a gateway-routed profile before meaningful red-team tests can be implemented |
+| LRTT08 | Superseded by LRTT15 gateway work | SSOT separates gateway mode from the direct-Agent trust model; `docs/gateway-routed-profile.md` now defines the companion profile | Full gateway-routed runtime harness remains future work |
 | LRTT09 | Completed locally | `TestValidateResponseCachePolicyRedTeamRejectsCallerDependentPublicCache`; `TestValidateResponseCachePolicyRedTeamPartitionsPrivateCache` | This is a dependency-free policy and cache-key harness, not a live AGTP daemon response-cache implementation |
 | LRTT10 | Not implemented | Tracked from the evaluation matrix | Real network relay with live endpoints and an active relay |
 | LRTT11 | Not implemented | Tracked from the evaluation matrix | Hardware-generated borrowed attestation replay |
