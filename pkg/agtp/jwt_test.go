@@ -4,12 +4,20 @@
 package agtp
 
 import (
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/hmac"
+	"crypto/rand"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
+	"crypto/x509/pkix"
 	"encoding/base64"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -20,6 +28,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	attestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
 )
 
@@ -975,6 +984,71 @@ func TestVerifySessionIdentityJWTLiveRedTeamRejectsNetworkRelayAcrossEndpoints(t
 	liveRedTeamDoRequest(t, endpointB.Client(), endpointB.URL, grantToken, bindingEndpointB, http.StatusNoContent)
 }
 
+func TestVerifySessionIdentityJWTLiveRedTeamRejectsTLSResumptionReplayAndPreBinding(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	grantToken := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+
+	addr := liveRedTeamTLSServer(t, 4)
+	context := []byte("agtp-lrtt14-resumption-context")
+	contextHash := liveRedTeamSHA256Hex(context)
+	clientConfig := &tls.Config{
+		MinVersion:         tls.VersionTLS13,
+		MaxVersion:         tls.VersionTLS13,
+		ServerName:         "localhost",
+		InsecureSkipVerify: true,
+		ClientSessionCache: tls.NewLRUClientSessionCache(4),
+	}
+
+	initial := liveRedTeamTLSConnectionMaterial(t, addr, clientConfig, context)
+	if initial.didResume {
+		t.Fatal("first TLS connection unexpectedly resumed")
+	}
+	initialNonce := "nonce-lrtt14-initial"
+	initialBinding := signTestJWT(t, "agent-key-1", []byte("agent-secret"),
+		liveRedTeamBindingClaimsWithSession(now, grantToken, "lrtt14-initial", initial.exporterHash, contextHash, initialNonce))
+	initialOpts := liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), initial.exporterHash, contextHash, initialNonce)
+	if _, err := VerifySessionIdentityJWT(grantToken, initialBinding, initialOpts); err != nil {
+		t.Fatalf("VerifySessionIdentityJWT() initial session error = %v", err)
+	}
+
+	var resumed liveRedTeamTLSMaterial
+	for attempt := 0; attempt < 3; attempt++ {
+		resumed = liveRedTeamTLSConnectionMaterial(t, addr, clientConfig, context)
+		if resumed.didResume {
+			break
+		}
+	}
+	if !resumed.didResume {
+		t.Skip("local Go TLS stack did not resume the session; cannot exercise LRTT14 resumption path")
+	}
+	if resumed.exporterHash == initial.exporterHash {
+		t.Fatalf("resumed TLS exporter hash = initial hash %q, want a fresh connection binding", resumed.exporterHash)
+	}
+
+	resumedOptsForOldBinding := liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), resumed.exporterHash, contextHash, initialNonce)
+	_, err := VerifySessionIdentityJWT(grantToken, initialBinding, resumedOptsForOldBinding)
+	if !errors.Is(err, identitypolicy.ErrMismatch) {
+		t.Fatalf("VerifySessionIdentityJWT() resumed old binding error = %v, want %v", err, identitypolicy.ErrMismatch)
+	}
+
+	resumedNonce := "nonce-lrtt14-resumed"
+	resumedBinding := signTestJWT(t, "agent-key-1", []byte("agent-secret"),
+		liveRedTeamBindingClaimsWithSession(now, grantToken, "lrtt14-resumed", resumed.exporterHash, contextHash, resumedNonce))
+	resumedOpts := liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), resumed.exporterHash, contextHash, resumedNonce)
+	if _, err := VerifySessionIdentityJWT(grantToken, resumedBinding, resumedOpts); err != nil {
+		t.Fatalf("VerifySessionIdentityJWT() resumed fresh binding error = %v", err)
+	}
+
+	preBindingClaims := liveRedTeamBindingClaimsWithSession(now, grantToken, "lrtt14-pre-binding", resumed.exporterHash, contextHash, "nonce-lrtt14-pre-binding")
+	delete(preBindingClaims, "tls_exporter_sha256")
+	preBindingToken := signTestJWT(t, "agent-key-1", []byte("agent-secret"), preBindingClaims)
+	_, err = VerifySessionIdentityJWT(grantToken, preBindingToken,
+		liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), resumed.exporterHash, contextHash, "nonce-lrtt14-pre-binding"))
+	if !errors.Is(err, ErrMissingBindingField) {
+		t.Fatalf("VerifySessionIdentityJWT() pre-binding error = %v, want %v", err, ErrMissingBindingField)
+	}
+}
+
 func TestVerifySessionIdentityJWTRedTeamRejectsMalformedCorpus(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	validGrant := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
@@ -1382,11 +1456,15 @@ func signRawTestJWT(t *testing.T, headerJSON, payloadJSON string, secret []byte)
 }
 
 func liveRedTeamBindingClaims(now time.Time, grantToken, contextID, tlsExporter string) jwt.MapClaims {
+	return liveRedTeamBindingClaimsWithSession(now, grantToken, contextID, tlsExporter, "sha256:context-"+contextID, "nonce-"+contextID)
+}
+
+func liveRedTeamBindingClaimsWithSession(now time.Time, grantToken, contextID, tlsExporter, requestContext, nonce string) jwt.MapClaims {
 	claims := testDefaultBindingClaims(now, IdentityGrantHash(grantToken))
 	claims["jti"] = "binding-" + contextID
 	claims["tls_exporter_sha256"] = tlsExporter
-	claims["request_context_sha256"] = "sha256:context-" + contextID
-	claims["nonce"] = "nonce-" + contextID
+	claims["request_context_sha256"] = requestContext
+	claims["nonce"] = nonce
 	return claims
 }
 
@@ -1431,6 +1509,101 @@ func liveRedTeamDoRequest(t *testing.T, client *http.Client, url, grantToken, bi
 	_, _ = io.Copy(io.Discard, resp.Body)
 	if resp.StatusCode != wantStatus {
 		t.Fatalf("Do(%s) status = %d, want %d", url, resp.StatusCode, wantStatus)
+	}
+}
+
+type liveRedTeamTLSMaterial struct {
+	exporterHash string
+	didResume    bool
+}
+
+func liveRedTeamTLSServer(t *testing.T, maxConnections int) string {
+	t.Helper()
+
+	cert := liveRedTeamSelfSignedTLSCertificate(t)
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen() error = %v", err)
+	}
+	t.Cleanup(func() {
+		_ = ln.Close()
+	})
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{cert},
+		MinVersion:   tls.VersionTLS13,
+		MaxVersion:   tls.VersionTLS13,
+	}
+	go func() {
+		for i := 0; i < maxConnections; i++ {
+			raw, err := ln.Accept()
+			if err != nil {
+				return
+			}
+			conn := tls.Server(raw, config)
+			if err := conn.Handshake(); err == nil {
+				_, _ = conn.Write([]byte{0})
+			}
+			_ = conn.Close()
+		}
+	}()
+
+	return ln.Addr().String()
+}
+
+func liveRedTeamTLSConnectionMaterial(t *testing.T, addr string, config *tls.Config, context []byte) liveRedTeamTLSMaterial {
+	t.Helper()
+
+	conn, err := tls.Dial("tcp", addr, config)
+	if err != nil {
+		t.Fatalf("tls.Dial() error = %v", err)
+	}
+	defer conn.Close()
+
+	var ack [1]byte
+	if _, err := io.ReadFull(conn, ack[:]); err != nil {
+		t.Fatalf("ReadFull() error = %v", err)
+	}
+
+	state := conn.ConnectionState()
+	exported, err := state.ExportKeyingMaterial(attestation.ExporterLabelAttestation, context, 32)
+	if err != nil {
+		t.Fatalf("ExportKeyingMaterial() error = %v", err)
+	}
+	return liveRedTeamTLSMaterial{
+		exporterHash: liveRedTeamSHA256Hex(exported),
+		didResume:    state.DidResume,
+	}
+}
+
+func liveRedTeamSHA256Hex(data []byte) string {
+	sum := sha256.Sum256(data)
+	return hex.EncodeToString(sum[:])
+}
+
+func liveRedTeamSelfSignedTLSCertificate(t *testing.T) tls.Certificate {
+	t.Helper()
+
+	key, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("GenerateKey() error = %v", err)
+	}
+	template := &x509.Certificate{
+		SerialNumber: big.NewInt(1),
+		Subject:      pkix.Name{CommonName: "localhost"},
+		NotBefore:    time.Now().Add(-time.Minute),
+		NotAfter:     time.Now().Add(time.Hour),
+		DNSNames:     []string{"localhost"},
+		KeyUsage:     x509.KeyUsageDigitalSignature,
+		ExtKeyUsage:  []x509.ExtKeyUsage{x509.ExtKeyUsageServerAuth},
+	}
+	der, err := x509.CreateCertificate(rand.Reader, template, template, &key.PublicKey, key)
+	if err != nil {
+		t.Fatalf("CreateCertificate() error = %v", err)
+	}
+	return tls.Certificate{
+		Certificate: [][]byte{der},
+		PrivateKey:  key,
 	}
 }
 

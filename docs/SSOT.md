@@ -1,6 +1,6 @@
 # Session-Bound Agent Identity Profile
 
-Draft v0.4-dev
+Draft v0.4
 
 ## Abstract
 
@@ -1125,10 +1125,11 @@ Current repository coverage includes local loopback relay checks, HTTP/2
 connection-reuse checks, malformed JWT/CWT corpus checks, deterministic
 acceptance-invariant coverage for the JWT gate, and local gateway route
 assertion red-team tests for policy-bound diversion and holder-of-key proof
-requirements. Remaining work includes TLS resumption and 0-RTT behavior,
-gRPC-specific connection pooling, route-assertion wire adapters, a full
-gateway-routed network harness, randomized property or fuzz generation, and
-hardware-backed confidential-VM attestation replay.
+requirements. Local TLS resumption behavior is covered for JWT/JWS acceptance.
+Remaining work includes real 0-RTT transport behavior, gRPC-specific connection
+pooling, route-assertion wire adapters, a full gateway-routed network harness,
+randomized property or fuzz generation, and hardware-backed confidential-VM
+attestation replay.
 
 ## Appendix A. Identity Grant JWT claim map
 

@@ -105,15 +105,15 @@ first appears.
 
 ## Evaluation Status
 
-The v0.4-dev evaluation is useful but not sufficient proof of the full
+The v0.4 evaluation is useful but not sufficient proof of the full
 security claim. It combines focused local checks, negative test vectors,
 unit-level coverage, dependency-free live-style harnesses, a deterministic
 acceptance-invariant matrix, and local gateway route-assertion tests. The
-remaining work is tracked in `docs/live-red-team-report.md`, including TLS
-resumption and 0-RTT behavior, gRPC connection pooling, route-assertion
-wire-token adapters, a full gateway-routed network harness, randomized
-fuzz/property generation, and hardware-generated confidential-VM attestation
-replay.
+status is tracked in `docs/live-red-team-report.md`, including local TLS
+resumption coverage and remaining real 0-RTT transport behavior, gRPC
+connection pooling, route-assertion wire-token adapters, a full gateway-routed
+network harness, randomized fuzz/property generation, and hardware-generated
+confidential-VM attestation replay.
 
 ## Non-Goals
 
