@@ -14,6 +14,12 @@ import (
 	"github.com/veraison/go-cose"
 )
 
+const (
+	testGatewayRouteID     = "route-payments"
+	testGatewaySPIFFEPeer  = "spiffe://mesh/ns/payments/sa/agent-a"
+	testGatewayTargetAgent = "agent-a"
+)
+
 func TestVerifyGatewayRouteJWTAcceptsLocalPolicy(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	token := signTestJWT(t, "gateway-key", []byte("gateway-secret"), testGatewayRouteJWTClaims(now))
@@ -22,7 +28,7 @@ func TestVerifyGatewayRouteJWTAcceptsLocalPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("VerifyGatewayRouteJWT() error = %v", err)
 	}
-	if assertion.RouteID != "route-payments" || assertion.TargetAgent != "agent-a" {
+	if assertion.RouteID != testGatewayRouteID || assertion.TargetAgent != testGatewayTargetAgent {
 		t.Fatalf("assertion route/agent = %q/%q", assertion.RouteID, assertion.TargetAgent)
 	}
 }
@@ -141,7 +147,7 @@ func TestVerifyGatewayRouteCWTAcceptsLocalPolicy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("VerifyGatewayRouteCWT() error = %v", err)
 	}
-	if assertion.RouteID != "route-payments" || assertion.TargetAgent != "agent-a" {
+	if assertion.RouteID != testGatewayRouteID || assertion.TargetAgent != testGatewayTargetAgent {
 		t.Fatalf("assertion route/agent = %q/%q", assertion.RouteID, assertion.TargetAgent)
 	}
 }
@@ -222,17 +228,17 @@ func testGatewayRouteJWTClaims(now time.Time) jwt.MapClaims {
 		gatewayroute.FieldNonce:     "route-nonce-a",
 		gatewayroute.FieldGrantHash: "sha256:grant-a",
 		gatewayroute.FieldGatewaySessionBindingSHA256: "sha256:gateway-session-a",
-		gatewayroute.FieldRouteID:                     "route-payments",
-		gatewayroute.FieldNextHop:                     "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldRouteID:                     testGatewayRouteID,
+		gatewayroute.FieldNextHop:                     testGatewaySPIFFEPeer,
 		gatewayroute.FieldTenant:                      "tenant-a",
 		gatewayroute.FieldPrincipal:                   "principal-a",
 		gatewayroute.FieldAuthorityScope:              "orders:settle",
 		gatewayroute.FieldPolicyID:                    "policy-payments-v1",
-		gatewayroute.FieldTargetAgent:                 "agent-a",
+		gatewayroute.FieldTargetAgent:                 testGatewayTargetAgent,
 		gatewayroute.FieldTargetWorkload:              "payments-workload-a",
 		gatewayroute.FieldTargetAgentKeyThumbprint:    "sha256:agent-key-a",
 		gatewayroute.FieldUpstreamAuthn:               "agent-hok",
-		gatewayroute.FieldUpstreamPeer:                "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldUpstreamPeer:                testGatewaySPIFFEPeer,
 		gatewayroute.FieldRequestContextSHA256:        "sha256:context-a",
 		gatewayroute.FieldTaskID:                      "task-a",
 		gatewayroute.FieldContextID:                   "context-a",
@@ -254,17 +260,17 @@ func testGatewayRouteCWTClaims(now time.Time) map[any]any {
 		gatewayroute.FieldNonce:                       "route-nonce-a",
 		gatewayroute.FieldGrantHash:                   "sha256:grant-a",
 		gatewayroute.FieldGatewaySessionBindingSHA256: "sha256:gateway-session-a",
-		gatewayroute.FieldRouteID:                     "route-payments",
-		gatewayroute.FieldNextHop:                     "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldRouteID:                     testGatewayRouteID,
+		gatewayroute.FieldNextHop:                     testGatewaySPIFFEPeer,
 		gatewayroute.FieldTenant:                      "tenant-a",
 		gatewayroute.FieldPrincipal:                   "principal-a",
 		gatewayroute.FieldAuthorityScope:              "orders:settle",
 		gatewayroute.FieldPolicyID:                    "policy-payments-v1",
-		gatewayroute.FieldTargetAgent:                 "agent-a",
+		gatewayroute.FieldTargetAgent:                 testGatewayTargetAgent,
 		gatewayroute.FieldTargetWorkload:              "payments-workload-a",
 		gatewayroute.FieldTargetAgentKeyThumbprint:    "sha256:agent-key-a",
 		gatewayroute.FieldUpstreamAuthn:               "agent-hok",
-		gatewayroute.FieldUpstreamPeer:                "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldUpstreamPeer:                testGatewaySPIFFEPeer,
 		gatewayroute.FieldRequestContextSHA256:        "sha256:context-a",
 		gatewayroute.FieldTaskID:                      "task-a",
 		gatewayroute.FieldContextID:                   "context-a",
@@ -316,9 +322,9 @@ func testGatewayExpectedRoute() gatewayroute.ExpectedRoute {
 		Audience:                     "client-a",
 		Tenant:                       "tenant-a",
 		AuthorityScope:               "orders:settle",
-		RouteID:                      "route-payments",
+		RouteID:                      testGatewayRouteID,
 		PolicyID:                     "policy-payments-v1",
-		TargetAgent:                  "agent-a",
+		TargetAgent:                  testGatewayTargetAgent,
 		TargetWorkload:               "payments-workload-a",
 		TargetAgentKeyThumbprint:     "sha256:agent-key-a",
 		RequestContextSHA256:         "sha256:context-a",
@@ -331,11 +337,11 @@ func testGatewayExpectedRoute() gatewayroute.ExpectedRoute {
 
 func testGatewayHolderProof(now time.Time) *gatewayroute.HolderOfKeyProof {
 	return &gatewayroute.HolderOfKeyProof{
-		AgentID:       "agent-a",
+		AgentID:       testGatewayTargetAgent,
 		WorkloadID:    "payments-workload-a",
 		KeyThumbprint: "sha256:agent-key-a",
 		GrantHash:     "sha256:grant-a",
-		RouteID:       "route-payments",
+		RouteID:       testGatewayRouteID,
 		TaskID:        "task-a",
 		ContextID:     "context-a",
 		Nonce:         "route-nonce-a",
