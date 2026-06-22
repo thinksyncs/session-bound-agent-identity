@@ -1565,9 +1565,10 @@ assertions fail closed.
 
 The claim map and failure semantics are kept in
 \texttt{docs/gateway-routed-profile.md}. Local route-assertion
-validation lives in \texttt{pkg/agtp/gatewayroute}. Runtime client
-wiring, route-assertion JWT/CWT adapters, and a full gateway-routed
-network red-team harness remain separate work.
+validation lives in \texttt{pkg/agtp/gatewayroute}. JWT/JWS and
+CWT/COSE route-assertion adapters live in \texttt{pkg/agtp}. Runtime
+client/server wiring and a full gateway-routed network red-team harness
+remain separate work.
 
 \subsection{21. Implementation hooks}\label{implementation-hooks}
 
@@ -1738,8 +1739,12 @@ distributed replay storage.
 Assertions against verifier-local route policy and optional final-Agent
 holder-of-key proofs. It checks route, tenant, authority scope, policy,
 target Agent, request context, task or context, audit hash, freshness,
-and replay state. It does not parse JWS or COSE route assertions and
-does not replace a full gateway network harness.
+and replay state. \texttt{pkg/agtp} adds JWT/JWS and CWT/COSE
+route-assertion adapters that verify protected \texttt{kid}, issuer,
+audience, expiry, nonce, grant hash, gateway session-binding hash,
+holder-of-key proof hash, replay state, and local route policy before
+acceptance. The adapters do not replace runtime client/server wiring or
+a full gateway network harness.
 
 The initial JWT/JWS adapter treats grant \texttt{cnf.kid} as the
 authorized session-binding signer key. The Session Binding Statement
@@ -1837,11 +1842,12 @@ Current repository coverage includes local loopback relay checks, HTTP/2
 connection-reuse checks, malformed JWT/CWT corpus checks, deterministic
 acceptance-invariant coverage for the JWT gate, and local gateway route
 assertion red-team tests for policy-bound diversion and holder-of-key
-proof requirements. Local TLS resumption behavior is covered for JWT/JWS
-acceptance. Remaining work includes real 0-RTT transport behavior,
-gRPC-specific connection pooling, route-assertion wire adapters, a full
-gateway-routed network harness, randomized property or fuzz generation,
-and hardware-backed confidential-VM attestation replay.
+proof requirements, and JWT/JWS plus CWT/COSE route-assertion adapters.
+Local TLS resumption behavior is covered for JWT/JWS acceptance.
+Remaining work includes real 0-RTT transport behavior, gRPC-specific
+connection pooling, runtime gateway wiring, a full gateway-routed
+network harness, randomized property or fuzz generation, and
+hardware-backed confidential-VM attestation replay.
 
 \subsection{Appendix A. Identity Grant JWT claim
 map}\label{appendix-a.-identity-grant-jwt-claim-map}

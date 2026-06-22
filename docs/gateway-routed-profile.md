@@ -9,9 +9,9 @@ binding proves the gateway endpoint, not the final Agent process.
 The current runtime client path implements direct-Agent mode. Gateway-routed
 deployments use a separate route assertion before the relying party can treat
 the final Agent as accepted. This repository provides the claim map, failure
-semantics, and local `pkg/agtp/gatewayroute` validation gate. Route-assertion
-JWT/CWT adapters and a full gateway-routed network harness remain separate
-runtime work.
+semantics, local `pkg/agtp/gatewayroute` validation gate, and JWT/CWT
+route-assertion adapters in `pkg/agtp`. Runtime client/server wiring and a full
+gateway-routed network harness remain separate work.
 
 ## Route Assertion
 

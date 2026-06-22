@@ -1057,9 +1057,12 @@ deployment policy, or own distributed replay storage.
 `pkg/agtp/gatewayroute` validates already-verified Gateway Route Assertions
 against verifier-local route policy and optional final-Agent holder-of-key
 proofs. It checks route, tenant, authority scope, policy, target Agent, request
-context, task or context, audit hash, freshness, and replay state. It does not
-parse JWS or COSE route assertions and does not replace a full gateway network
-harness.
+context, task or context, audit hash, freshness, and replay state. `pkg/agtp`
+adds JWT/JWS and CWT/COSE route-assertion adapters that verify protected `kid`,
+issuer, audience, expiry, nonce, grant hash, gateway session-binding hash,
+holder-of-key proof hash, replay state, and local route policy before
+acceptance. The adapters do not replace runtime client/server wiring or a full
+gateway network harness.
 
 The initial JWT/JWS adapter treats grant `cnf.kid` as the authorized
 session-binding signer key. The Session Binding Statement signer is taken from
@@ -1125,11 +1128,11 @@ Current repository coverage includes local loopback relay checks, HTTP/2
 connection-reuse checks, malformed JWT/CWT corpus checks, deterministic
 acceptance-invariant coverage for the JWT gate, and local gateway route
 assertion red-team tests for policy-bound diversion and holder-of-key proof
-requirements. Local TLS resumption behavior is covered for JWT/JWS acceptance.
-Remaining work includes real 0-RTT transport behavior, gRPC-specific connection
-pooling, route-assertion wire adapters, a full gateway-routed network harness,
-randomized property or fuzz generation, and hardware-backed confidential-VM
-attestation replay.
+requirements, and JWT/JWS plus CWT/COSE route-assertion adapters. Local TLS
+resumption behavior is covered for JWT/JWS acceptance. Remaining work includes
+real 0-RTT transport behavior, gRPC-specific connection pooling, runtime gateway
+wiring, a full gateway-routed network harness, randomized property or fuzz
+generation, and hardware-backed confidential-VM attestation replay.
 
 ## Appendix A. Identity Grant JWT claim map
 

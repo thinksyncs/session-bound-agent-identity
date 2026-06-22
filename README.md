@@ -110,10 +110,10 @@ security claim. It combines focused local checks, negative test vectors,
 unit-level coverage, dependency-free live-style harnesses, a deterministic
 acceptance-invariant matrix, and local gateway route-assertion tests. The
 status is tracked in `docs/live-red-team-report.md`, including local TLS
-resumption coverage and remaining real 0-RTT transport behavior, gRPC
-connection pooling, route-assertion wire-token adapters, a full gateway-routed
-network harness, randomized fuzz/property generation, and hardware-generated
-confidential-VM attestation replay.
+resumption coverage, route-assertion wire-token adapters, and remaining real
+0-RTT transport behavior, gRPC connection pooling, runtime gateway wiring, a
+full gateway-routed network harness, randomized fuzz/property generation, and
+hardware-generated confidential-VM attestation replay.
 
 ## Non-Goals
 

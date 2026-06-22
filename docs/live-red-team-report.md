@@ -24,9 +24,9 @@ The gateway-routed profile is separate from direct-Agent mode because its trust
 model is different: the gateway is the TLS endpoint and must authenticate the
 gateway-to-Agent route before the intended Agent can be treated as accepted.
 The Gateway Route Assertion claim map, final-Agent holder-of-key proof rules,
-and local policy gate are now defined. Runtime client/server wiring,
-route-assertion JWT/CWT adapters, and a full gateway-routed network harness
-remain separate work.
+local policy gate, and JWT/CWT route-assertion adapters are now defined.
+Runtime client/server wiring and a full gateway-routed network harness remain
+separate work.
 
 The current evaluation is not a proof of the full security claim. It is a
 v0.4 evaluation built from focused local checks, negative vectors,
@@ -91,7 +91,7 @@ All checks passed. `docs/SSOT.pdf` rendered as a 24-page PDF.
 | HTTP/2 or gRPC connection reuse | The HTTP/2 harness verifies connection reuse, accepted same-context bindings, and rejected cross-context bindings. | Add gRPC connection-pooling coverage and cross-Agent / cross-authority-scope cases. |
 | TLS resumption and 0-RTT | `TestVerifySessionIdentityJWTLiveRedTeamRejectsTLSResumptionReplayAndPreBinding` establishes an initial TLS 1.3 session and a resumed TLS 1.3 session, derives exporter hashes from each, accepts fresh per-session binding material, rejects the initial Session Binding Statement on the resumed session, and rejects a pre-binding statement without `tls_exporter_sha256`. | Real 0-RTT early-data transport coverage remains future work because the Go standard TLS stack used by this harness does not expose a 0-RTT API. |
 | Distributed replay race | Local goroutine race and local multi-process SETNX-style service are covered. | LRTT03b: repeat against real multi-node Redis or Valkey, including failover and timeout behavior. |
-| Gateway route confusion | SSOT defines gateway route-assertion requirements, `docs/gateway-routed-profile.md` fixes the Gateway Route Assertion claim map and holder-of-key proof, and `pkg/agtp/gatewayroute` rejects route, tenant, policy, task, target-Agent, nonce, audit-hash, replay, and missing-proof confusion. | Add a full gateway-routed network harness when runtime client/server wiring exists. |
+| Gateway route confusion | SSOT defines gateway route-assertion requirements, `docs/gateway-routed-profile.md` fixes the Gateway Route Assertion claim map and holder-of-key proof, `pkg/agtp/gatewayroute` rejects route, tenant, policy, task, target-Agent, nonce, audit-hash, replay, and missing-proof confusion, and `pkg/agtp` verifies JWT/JWS and CWT/COSE route-assertion wire tokens. | Add a full gateway-routed network harness when runtime client/server wiring exists. |
 | JWT/JWS parser robustness | Deterministic negative tests cover supported claim and signature paths. `TestVerifySessionIdentityJWTRedTeamRejectsMalformedCorpus` rejects malformed compact JWS, duplicate protected-header or payload JSON members, and unsafe control-character claims. | Add Go fuzz targets and long-running corpus jobs for Unicode, duplicate JSON keys, malformed base64url, malformed protected headers, and malformed JWS structure. |
 | Grant, binding, session, and expected-policy invariants | `TestVerifySessionIdentityJWTInvariantMatrix` enumerates grant hash, request context, TLS exporter, attestation binder, audience, role-separated context, task, replay, and local-policy invariants through the same JWT acceptance gate. | Add long-running property or fuzz generation if the project wants randomized invariant exploration. |
 
@@ -128,6 +128,11 @@ All checks passed. `docs/SSOT.pdf` rendered as a 24-page PDF.
 | `TestValidateRejectsPolicyBoundDiversion` | Valid gateway assertions are rejected when route, tenant, policy, task, target Agent, holder nonce, audit hash, proof freshness, or proof hash is wrong. | Passed locally |
 | `TestValidateRejectsMissingRequiredAgentHolderProof` | A gateway assertion without a required final-Agent holder-of-key proof fails closed. | Passed locally |
 | `TestValidateRejectsRouteAssertionReplay` | Reuse of a Gateway Route Assertion nonce through the same replay cache is rejected. | Passed locally |
+| `TestVerifyGatewayRouteJWTAcceptsLocalPolicy` | JWT/JWS Gateway Route Assertion adapter verifies the gateway signature and accepts only with matching local route policy, expected grant hash, gateway session-binding hash, holder proof hash, and replay cache. | Passed locally |
+| `TestVerifyGatewayRouteJWTRedTeamRejectsAttacks` | JWT/JWS Gateway Route Assertion adapter rejects route diversion, grant-hash substitution, gateway-session substitution, holder-proof hash substitution, missing replay cache, and wrong gateway signing key. | Passed locally |
+| `TestVerifyGatewayRouteJWTRejectsMissingProtectedKeyIDAndReplay` | JWT/JWS Gateway Route Assertion adapter rejects missing protected `kid` and replay through the route replay cache. | Passed locally |
+| `TestVerifyGatewayRouteCWTAcceptsLocalPolicy` | CWT/COSE Gateway Route Assertion adapter maps canonical CBOR claims to the same route policy gate. | Passed locally |
+| `TestVerifyGatewayRouteCWTRedTeamRejectsAttacks` | CWT/COSE Gateway Route Assertion adapter rejects route diversion, grant-hash substitution, gateway-session substitution, holder-proof hash substitution, unprotected COSE `kid`, and replay. | Passed locally |
 | `TestVerifySessionIdentityJWTInvariantMatrix` | The JWT acceptance invariant rejects mismatched grant hash, request context, TLS exporter, attestation binder, audience, role-separated context, task, replay, and local policy. | Passed locally |
 
 ## LRTT Status
@@ -192,9 +197,9 @@ boundaries that need separate work if the project chooses to support them.
 - Replay race coverage uses a local HTTP SETNX-style service, not a real
   multi-node Redis or Valkey deployment.
 - Gateway-routed deployments now have a fixed route-assertion claim map,
-  holder-of-key proof rules, and a local policy gate. Runtime client wiring,
-  route-assertion JWT/CWT adapters, and a full gateway network harness remain
-  separate work.
+  holder-of-key proof rules, a local policy gate, and JWT/CWT route-assertion
+  adapters. Runtime client/server wiring and a full gateway network harness
+  remain separate work.
 - HTTP/2 connection reuse is covered locally; gRPC connection-pooling coverage
   remains separate work.
 - TLS resumption is covered locally; real 0-RTT early-data transport coverage

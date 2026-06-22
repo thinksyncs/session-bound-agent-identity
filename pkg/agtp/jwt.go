@@ -629,6 +629,8 @@ func jwtIDFromClaims(claims jwt.Claims) string {
 		return c.ID
 	case *sessionEnvelopeClaims:
 		return c.ID
+	case *gatewayRouteAssertionClaims:
+		return c.ID
 	default:
 		return ""
 	}

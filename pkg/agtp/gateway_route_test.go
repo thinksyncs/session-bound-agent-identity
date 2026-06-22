@@ -1,0 +1,355 @@
+// Copyright (c) Ultraviolet
+// SPDX-License-Identifier: Apache-2.0
+
+package agtp
+
+import (
+	"crypto/ecdsa"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp/gatewayroute"
+	"github.com/veraison/go-cose"
+)
+
+func TestVerifyGatewayRouteJWTAcceptsLocalPolicy(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	token := signTestJWT(t, "gateway-key", []byte("gateway-secret"), testGatewayRouteJWTClaims(now))
+
+	assertion, err := VerifyGatewayRouteJWT(token, testGatewayRouteJWTOptions(now))
+	if err != nil {
+		t.Fatalf("VerifyGatewayRouteJWT() error = %v", err)
+	}
+	if assertion.RouteID != "route-payments" || assertion.TargetAgent != "agent-a" {
+		t.Fatalf("assertion route/agent = %q/%q", assertion.RouteID, assertion.TargetAgent)
+	}
+}
+
+func TestVerifyGatewayRouteJWTRedTeamRejectsAttacks(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+
+	tests := []struct {
+		name    string
+		claims  func() jwt.MapClaims
+		opts    func() GatewayRouteJWTOptions
+		wantErr error
+	}{
+		{
+			name: "policy-bound route diversion",
+			claims: func() jwt.MapClaims {
+				claims := testGatewayRouteJWTClaims(now)
+				claims[gatewayroute.FieldRouteID] = "route-admin"
+				return claims
+			},
+			opts:    func() GatewayRouteJWTOptions { return testGatewayRouteJWTOptions(now) },
+			wantErr: gatewayroute.ErrMismatch,
+		},
+		{
+			name: "grant hash substitution",
+			claims: func() jwt.MapClaims {
+				claims := testGatewayRouteJWTClaims(now)
+				claims[gatewayroute.FieldGrantHash] = "sha256:other-grant"
+				return claims
+			},
+			opts:    func() GatewayRouteJWTOptions { return testGatewayRouteJWTOptions(now) },
+			wantErr: gatewayroute.ErrMismatch,
+		},
+		{
+			name: "gateway session substitution",
+			claims: func() jwt.MapClaims {
+				claims := testGatewayRouteJWTClaims(now)
+				claims[gatewayroute.FieldGatewaySessionBindingSHA256] = "sha256:other-gateway-session"
+				return claims
+			},
+			opts:    func() GatewayRouteJWTOptions { return testGatewayRouteJWTOptions(now) },
+			wantErr: gatewayroute.ErrMismatch,
+		},
+		{
+			name: "holder proof hash substitution",
+			claims: func() jwt.MapClaims {
+				claims := testGatewayRouteJWTClaims(now)
+				claims[gatewayroute.FieldAgentHOKProofSHA256] = "sha256:other-hok-proof"
+				return claims
+			},
+			opts:    func() GatewayRouteJWTOptions { return testGatewayRouteJWTOptions(now) },
+			wantErr: gatewayroute.ErrMismatch,
+		},
+		{
+			name:   "missing replay cache",
+			claims: func() jwt.MapClaims { return testGatewayRouteJWTClaims(now) },
+			opts: func() GatewayRouteJWTOptions {
+				opts := testGatewayRouteJWTOptions(now)
+				opts.Route.ReplayCache = nil
+				return opts
+			},
+			wantErr: ErrMissingReplayCache,
+		},
+		{
+			name:   "wrong gateway signing key",
+			claims: func() jwt.MapClaims { return testGatewayRouteJWTClaims(now) },
+			opts: func() GatewayRouteJWTOptions {
+				opts := testGatewayRouteJWTOptions(now)
+				opts.Assertion.KeyFunc = testKeyFunc(map[string][]byte{"gateway-key": []byte("gateway-secret")})
+				return opts
+			},
+			wantErr: ErrMissingKeyID,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			keyID := "gateway-key"
+			secret := []byte("gateway-secret")
+			if tt.name == "wrong gateway signing key" {
+				keyID = "tls-endpoint-key"
+				secret = []byte("tls-secret")
+			}
+			token := signTestJWT(t, keyID, secret, tt.claims())
+			_, err := VerifyGatewayRouteJWT(token, tt.opts())
+			if !errors.Is(err, tt.wantErr) {
+				t.Fatalf("VerifyGatewayRouteJWT() error = %v, want %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestVerifyGatewayRouteJWTRejectsMissingProtectedKeyIDAndReplay(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	token := signGatewayRouteJWTWithoutKID(t, []byte("gateway-secret"), testGatewayRouteJWTClaims(now))
+	if _, err := VerifyGatewayRouteJWT(token, testGatewayRouteJWTOptions(now)); !errors.Is(err, ErrMissingKeyID) {
+		t.Fatalf("VerifyGatewayRouteJWT() missing kid error = %v, want %v", err, ErrMissingKeyID)
+	}
+
+	replayToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), testGatewayRouteJWTClaims(now))
+	opts := testGatewayRouteJWTOptions(now)
+	if _, err := VerifyGatewayRouteJWT(replayToken, opts); err != nil {
+		t.Fatalf("VerifyGatewayRouteJWT() first error = %v", err)
+	}
+	if _, err := VerifyGatewayRouteJWT(replayToken, opts); !errors.Is(err, gatewayroute.ErrReplayDetected) {
+		t.Fatalf("VerifyGatewayRouteJWT() replay error = %v, want %v", err, gatewayroute.ErrReplayDetected)
+	}
+}
+
+func TestVerifyGatewayRouteCWTAcceptsLocalPolicy(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	keys := newTestCWTKeySet(t)
+	token := signTestCWT(t, "gateway-key", keys.manager, testGatewayRouteCWTClaims(now))
+
+	assertion, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+	if err != nil {
+		t.Fatalf("VerifyGatewayRouteCWT() error = %v", err)
+	}
+	if assertion.RouteID != "route-payments" || assertion.TargetAgent != "agent-a" {
+		t.Fatalf("assertion route/agent = %q/%q", assertion.RouteID, assertion.TargetAgent)
+	}
+}
+
+func TestVerifyGatewayRouteCWTRedTeamRejectsAttacks(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	keys := newTestCWTKeySet(t)
+
+	t.Run("policy-bound route diversion", func(t *testing.T) {
+		claims := testGatewayRouteCWTClaims(now)
+		claims[gatewayroute.FieldRouteID] = "route-admin"
+		token := signTestCWT(t, "gateway-key", keys.manager, claims)
+		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+		if !errors.Is(err, gatewayroute.ErrMismatch) {
+			t.Fatalf("VerifyGatewayRouteCWT() error = %v, want %v", err, gatewayroute.ErrMismatch)
+		}
+	})
+
+	t.Run("grant hash substitution", func(t *testing.T) {
+		claims := testGatewayRouteCWTClaims(now)
+		claims[gatewayroute.FieldGrantHash] = "sha256:other-grant"
+		token := signTestCWT(t, "gateway-key", keys.manager, claims)
+		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+		if !errors.Is(err, gatewayroute.ErrMismatch) {
+			t.Fatalf("VerifyGatewayRouteCWT() error = %v, want %v", err, gatewayroute.ErrMismatch)
+		}
+	})
+
+	t.Run("gateway session substitution", func(t *testing.T) {
+		claims := testGatewayRouteCWTClaims(now)
+		claims[gatewayroute.FieldGatewaySessionBindingSHA256] = "sha256:other-gateway-session"
+		token := signTestCWT(t, "gateway-key", keys.manager, claims)
+		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+		if !errors.Is(err, gatewayroute.ErrMismatch) {
+			t.Fatalf("VerifyGatewayRouteCWT() error = %v, want %v", err, gatewayroute.ErrMismatch)
+		}
+	})
+
+	t.Run("holder proof hash substitution", func(t *testing.T) {
+		claims := testGatewayRouteCWTClaims(now)
+		claims[gatewayroute.FieldAgentHOKProofSHA256] = "sha256:other-hok-proof"
+		token := signTestCWT(t, "gateway-key", keys.manager, claims)
+		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+		if !errors.Is(err, gatewayroute.ErrMismatch) {
+			t.Fatalf("VerifyGatewayRouteCWT() error = %v, want %v", err, gatewayroute.ErrMismatch)
+		}
+	})
+
+	t.Run("unprotected COSE kid", func(t *testing.T) {
+		token := signTestCWTWithKidPlacement(t, "gateway-key", keys.manager, testGatewayRouteCWTClaims(now), false)
+		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
+		if !errors.Is(err, ErrUnprotectedKeyID) {
+			t.Fatalf("VerifyGatewayRouteCWT() error = %v, want %v", err, ErrUnprotectedKeyID)
+		}
+	})
+
+	t.Run("replay", func(t *testing.T) {
+		token := signTestCWT(t, "gateway-key", keys.manager, testGatewayRouteCWTClaims(now))
+		opts := testGatewayRouteCWTOptions(now, keys)
+		if _, err := VerifyGatewayRouteCWT(token, opts); err != nil {
+			t.Fatalf("VerifyGatewayRouteCWT() first error = %v", err)
+		}
+		if _, err := VerifyGatewayRouteCWT(token, opts); !errors.Is(err, gatewayroute.ErrReplayDetected) {
+			t.Fatalf("VerifyGatewayRouteCWT() replay error = %v, want %v", err, gatewayroute.ErrReplayDetected)
+		}
+	})
+}
+
+func testGatewayRouteJWTClaims(now time.Time) jwt.MapClaims {
+	return jwt.MapClaims{
+		gatewayroute.FieldType:      gatewayroute.AssertionType,
+		gatewayroute.FieldVersion:   gatewayroute.AssertionVersion,
+		"iss":                       "gateway-a",
+		"aud":                       "client-a",
+		"jti":                       "route-assertion-1",
+		"iat":                       now.Unix(),
+		"exp":                       now.Add(time.Minute).Unix(),
+		gatewayroute.FieldNonce:     "route-nonce-a",
+		gatewayroute.FieldGrantHash: "sha256:grant-a",
+		gatewayroute.FieldGatewaySessionBindingSHA256: "sha256:gateway-session-a",
+		gatewayroute.FieldRouteID:                     "route-payments",
+		gatewayroute.FieldNextHop:                     "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldTenant:                      "tenant-a",
+		gatewayroute.FieldPrincipal:                   "principal-a",
+		gatewayroute.FieldAuthorityScope:              "orders:settle",
+		gatewayroute.FieldPolicyID:                    "policy-payments-v1",
+		gatewayroute.FieldTargetAgent:                 "agent-a",
+		gatewayroute.FieldTargetWorkload:              "payments-workload-a",
+		gatewayroute.FieldTargetAgentKeyThumbprint:    "sha256:agent-key-a",
+		gatewayroute.FieldUpstreamAuthn:               "agent-hok",
+		gatewayroute.FieldUpstreamPeer:                "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldRequestContextSHA256:        "sha256:context-a",
+		gatewayroute.FieldTaskID:                      "task-a",
+		gatewayroute.FieldContextID:                   "context-a",
+		gatewayroute.FieldSessionID:                   "session-a",
+		gatewayroute.FieldAuditHash:                   "sha256:audit-a",
+		gatewayroute.FieldAgentHOKProofSHA256:         "sha256:hok-proof-a",
+	}
+}
+
+func testGatewayRouteCWTClaims(now time.Time) map[any]any {
+	return map[any]any{
+		gatewayroute.FieldType:                        gatewayroute.AssertionType,
+		gatewayroute.FieldVersion:                     gatewayroute.AssertionVersion,
+		cose.CWTClaimIssuer:                           "gateway-a",
+		cose.CWTClaimAudience:                         "client-a",
+		cose.CWTClaimCWTID:                            []byte("route-assertion-1"),
+		cose.CWTClaimIssuedAt:                         now.Unix(),
+		cose.CWTClaimExpirationTime:                   now.Add(time.Minute).Unix(),
+		gatewayroute.FieldNonce:                       "route-nonce-a",
+		gatewayroute.FieldGrantHash:                   "sha256:grant-a",
+		gatewayroute.FieldGatewaySessionBindingSHA256: "sha256:gateway-session-a",
+		gatewayroute.FieldRouteID:                     "route-payments",
+		gatewayroute.FieldNextHop:                     "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldTenant:                      "tenant-a",
+		gatewayroute.FieldPrincipal:                   "principal-a",
+		gatewayroute.FieldAuthorityScope:              "orders:settle",
+		gatewayroute.FieldPolicyID:                    "policy-payments-v1",
+		gatewayroute.FieldTargetAgent:                 "agent-a",
+		gatewayroute.FieldTargetWorkload:              "payments-workload-a",
+		gatewayroute.FieldTargetAgentKeyThumbprint:    "sha256:agent-key-a",
+		gatewayroute.FieldUpstreamAuthn:               "agent-hok",
+		gatewayroute.FieldUpstreamPeer:                "spiffe://mesh/ns/payments/sa/agent-a",
+		gatewayroute.FieldRequestContextSHA256:        "sha256:context-a",
+		gatewayroute.FieldTaskID:                      "task-a",
+		gatewayroute.FieldContextID:                   "context-a",
+		gatewayroute.FieldSessionID:                   "session-a",
+		gatewayroute.FieldAuditHash:                   "sha256:audit-a",
+		gatewayroute.FieldAgentHOKProofSHA256:         "sha256:hok-proof-a",
+	}
+}
+
+func testGatewayRouteJWTOptions(now time.Time) GatewayRouteJWTOptions {
+	return GatewayRouteJWTOptions{
+		Assertion: JWTVerifyOptions{
+			ExpectedIssuer:   "gateway-a",
+			ExpectedAudience: "client-a",
+			ValidMethods:     []string{"HS256"},
+			KeyFunc:          testKeyFunc(map[string][]byte{"gateway-key": []byte("gateway-secret")}),
+			Now:              now,
+		},
+		Expected:                            testGatewayExpectedRoute(),
+		Proof:                               testGatewayHolderProof(now),
+		ExpectedGrantHash:                   "sha256:grant-a",
+		ExpectedGatewaySessionBindingSHA256: "sha256:gateway-session-a",
+		ExpectedAgentHolderOfKeyProofSHA256: "sha256:hok-proof-a",
+		Route:                               gatewayroute.Options{Now: now, ReplayCache: newAGTPReplayCache()},
+	}
+}
+
+func testGatewayRouteCWTOptions(now time.Time, keys testCWTKeySet) GatewayRouteCWTOptions {
+	return GatewayRouteCWTOptions{
+		Assertion: CWTVerifyOptions{
+			ExpectedIssuer:   "gateway-a",
+			ExpectedAudience: "client-a",
+			ValidAlgorithms:  []cose.Algorithm{cose.AlgorithmES256},
+			KeyFunc:          testCWTKeyFunc(map[string]*ecdsa.PrivateKey{"gateway-key": keys.manager}),
+			Now:              now,
+		},
+		Expected:                            testGatewayExpectedRoute(),
+		Proof:                               testGatewayHolderProof(now),
+		ExpectedGrantHash:                   "sha256:grant-a",
+		ExpectedGatewaySessionBindingSHA256: "sha256:gateway-session-a",
+		ExpectedAgentHolderOfKeyProofSHA256: "sha256:hok-proof-a",
+		Route:                               gatewayroute.Options{Now: now, ReplayCache: newAGTPReplayCache()},
+	}
+}
+
+func testGatewayExpectedRoute() gatewayroute.ExpectedRoute {
+	return gatewayroute.ExpectedRoute{
+		Issuer:                       "gateway-a",
+		Audience:                     "client-a",
+		Tenant:                       "tenant-a",
+		AuthorityScope:               "orders:settle",
+		RouteID:                      "route-payments",
+		PolicyID:                     "policy-payments-v1",
+		TargetAgent:                  "agent-a",
+		TargetWorkload:               "payments-workload-a",
+		TargetAgentKeyThumbprint:     "sha256:agent-key-a",
+		RequestContextSHA256:         "sha256:context-a",
+		TaskID:                       "task-a",
+		ContextID:                    "context-a",
+		AuditHash:                    "sha256:audit-a",
+		RequireAgentHolderOfKeyProof: true,
+	}
+}
+
+func testGatewayHolderProof(now time.Time) *gatewayroute.HolderOfKeyProof {
+	return &gatewayroute.HolderOfKeyProof{
+		AgentID:       "agent-a",
+		WorkloadID:    "payments-workload-a",
+		KeyThumbprint: "sha256:agent-key-a",
+		GrantHash:     "sha256:grant-a",
+		RouteID:       "route-payments",
+		TaskID:        "task-a",
+		ContextID:     "context-a",
+		Nonce:         "route-nonce-a",
+		IssuedAt:      now,
+		ExpiresAt:     now.Add(time.Minute),
+	}
+}
+
+func signGatewayRouteJWTWithoutKID(t *testing.T, secret []byte, claims jwt.MapClaims) string {
+	t.Helper()
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	tokenString, err := token.SignedString(secret)
+	if err != nil {
+		t.Fatalf("SignedString() error = %v", err)
+	}
+	return tokenString
+}
