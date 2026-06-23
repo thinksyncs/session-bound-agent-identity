@@ -1,7 +1,8 @@
-# Session-Bound Agent Identity Profile
+# Agents Secure Binding
 
-This repository defines a small security-hardening profile for binding a TLS
-1.3 session to hardware-attestation evidence and application identity policy.
+This repository defines the Session-Bound Agent Identity Profile, a small
+security-hardening profile for binding a TLS 1.3 session to
+hardware-attestation evidence and application identity policy.
 
 The profile is an application acceptance gate over ordinary TLS 1.3,
 post-handshake platform attestation, session binding, and local policy. It is
