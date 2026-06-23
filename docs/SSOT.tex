@@ -99,7 +99,6 @@
 \urlstyle{same}
 \hypersetup{
   hidelinks,
-  pdftitle={Session-Bound Agent Identity Profile},
   pdfcreator={LaTeX via pandoc}}
 
 \author{}
@@ -114,7 +113,7 @@
 \section{Session-Bound Agent Identity
 Profile}\label{session-bound-agent-identity-profile}
 
-Draft v0.4
+Draft v0.5-review3
 
 Copyright (c) 2026 ToppyMicroServices OÜ
 
@@ -124,131 +123,96 @@ SPDX-License-Identifier: Apache-2.0
 
 \subsection{Abstract}\label{abstract}
 
-This profile binds upper-layer identity and authorization material to an
-accepted TLS 1.3 session and to post-handshake platform-attestation
-facts. It is application-protocol neutral at L0 through L2 and does not
-depend on Agent2Agent, AGTP, or any other application protocol to supply
-the trust model described here.
+This profile binds upper-layer identity and authorization material to
+one accepted TLS 1.3 session and to the attestation facts accepted for
+that session. It is not a TLS extension and it does not depend on AGTP,
+Agent2Agent, or any other application protocol for its trust model.
 
-This profile is not a TLS extension. It is an application-profile
-acceptance gate that consumes TLS 1.3, exported-authenticator, exporter,
-and attestation results.
+The verifier accepts a peer only when the authenticated identity,
+session binding, freshness state, attestation state, and local policy
+all describe the same intended session, platform, service, agent, task,
+and authority boundary.
 
-The core rule is simple: a verifier accepts a peer only when the peer's
-authenticated identity, session binding, freshness state, and local
-policy all refer to the same intended session, platform, service, agent,
-task, and authority boundary.
+\subsection{1. Status and scope}\label{status-and-scope}
 
-\subsection{1. Status}\label{status}
+This is a repository security-hardening profile. It does not define a
+new TLS handshake, attestation evidence format, identity provider, or
+application core protocol. It composes existing mechanisms and adds
+fail-closed acceptance rules.
 
-This is a repository security-hardening profile. It is not an IETF
-consensus document and it does not define a new TLS handshake, a new
-attestation evidence format, a new identity provider, or a new
-application core protocol.
+The key words \textbf{MUST}, \textbf{MUST NOT}, \textbf{REQUIRED},
+\textbf{SHALL}, \textbf{SHALL NOT}, \textbf{SHOULD}, \textbf{SHOULD
+NOT}, \textbf{RECOMMENDED}, \textbf{NOT RECOMMENDED}, \textbf{MAY}, and
+\textbf{OPTIONAL} are interpreted as in BCP 14, RFC 2119, and RFC 8174
+when they appear in capitals.
 
-Within this repository, this Markdown file is the normative source for
-the profile. Rendered specifications, notes, reports, and tests are
-derived from it unless they explicitly say otherwise.
+A rule belongs in this profile when omitting it could cause one of these
+failures:
 
-The key words ``MUST'', ``MUST NOT'', ``REQUIRED'', ``SHALL'', ``SHALL
-NOT'', ``SHOULD'', ``SHOULD NOT'', ``RECOMMENDED'', ``NOT RECOMMENDED'',
-``MAY'', and ``OPTIONAL'' are to be interpreted as described in BCP 14,
-RFC 2119 and RFC 8174 when, and only when, they appear in all capitals.
+\begin{itemize}
+\tightlist
+\item
+  accepting a binding from the wrong live TLS or attestation session;
+\item
+  accepting the right platform for the wrong service, tenant, agent,
+  task, or authority boundary;
+\item
+  accepting replayed, stale, missing, downgraded, or partly verified
+  state;
+\item
+  treating peer-selected metadata as verifier policy;
+\item
+  reusing a security result outside the session or request for which it
+  was produced.
+\end{itemize}
+
+Out of scope are generic OAuth, OIDC, JWT, JWS, CWT, COSE, DID, VC, TLS,
+and attestation behavior except where this profile uses them for
+fail-closed acceptance.
+
+Normative requirements apply to profile behavior, not to a package name
+or library layout. Implementation-status text is descriptive unless it
+uses BCP 14 keywords.
 
 \subsection{2. Terms}\label{terms}
 
-Session-Bound Agent Identity Profile means an application-profile
-acceptance gate over ordinary TLS 1.3, post-handshake platform
-attestation, session binding, authenticated identity material, and
-verifier-local policy. It is not a TLS extension. Platform attestation
-does not replace the TLS handshake and does not authenticate the
-platform before a TLS channel exists.
+\textbf{Session-Bound Agent Identity Profile} means an
+application-profile acceptance gate over ordinary TLS 1.3,
+post-handshake platform attestation, session binding, authenticated
+identity material, and verifier-local policy.
 
-The older shorthand \texttt{aTLS} is reserved for existing Cocos
-implementation code paths, package names, or historical text. Older
-text may also use ``hardware-aware TLS'' for the lower-layer TLS and
-attestation binding portion. New profile text should use
-``Session-Bound Agent Identity Profile'' for the complete L0-L6 profile.
+\textbf{Identity Grant} means an authority statement issued by a Manager
+or another locally trusted policy authority. It authorizes upper-layer
+identity, task, and authorization values. It does not prove presence on
+the current TLS session.
 
-Identity Grant means an authority statement issued by a Manager or
-another locally trusted policy authority. It authorizes upper-layer
-identity, task, and authorization values.
+\textbf{Session Binding Statement} means a holder-of-key proof that
+binds one verified Identity Grant to one accepted TLS or
+exported-authenticator session. It does not authorize service, tenant,
+task, scope, resource, or capability values.
 
-Session Binding Statement means a holder-of-key proof that binds one
-verified Identity Grant to one accepted TLS or exported-authenticator
-session. It does not authorize service, tenant, task, scope, resource,
-or capability values.
+\textbf{Expected values} are verifier-local policy inputs.
+\textbf{Observed values} are extracted from authenticated grants,
+session-bound statements, attestation claims, trusted manifests, or
+locally derived request state. Observed values do not become expected
+values without a trusted local policy decision.
 
-Expected values are verifier-local policy inputs. Observed values are
-values extracted from authenticated grants, session-bound statements,
-attestation claims, trusted manifests, or locally derived request state.
-Observed values do not become expected values without a trusted local
-policy decision.
+\textbf{Acceptance decision} means returning a peer identity or
+authorization result to the application as profile-authenticated. Replay
+state for one-shot bindings is committed before this decision is
+returned.
 
-\subsection{3. Scope}\label{scope}
+The older shorthand \texttt{aTLS} is reserved for existing CoCos
+implementation code, package names, and historical text. AGTP-named
+packages, tests, claim aliases, and notes may remain in the repository.
+In this profile, AGTP is an implementation/reference namespace only; it
+is not an application-protocol dependency or authority source.
 
-This profile covers the checks needed before an application treats an
-accepted TLS peer as the intended platform, service, agent, task, or
-authorized actor. It focuses on fail-closed binding across three classes
-of facts:
+\subsection{3. Relationship to existing
+work}\label{relationship-to-existing-work}
 
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  accepted TLS and post-handshake attestation facts;
-\item
-  authenticated identity and authorization material;
-\item
-  verifier-local expected policy.
-\end{enumerate}
-
-Out of scope:
-
-\begin{itemize}
-\tightlist
-\item
-  selecting a specific identity provider;
-\item
-  standardizing a concrete wire-token format;
-\item
-  changing attestation evidence formats;
-\item
-  changing lower-layer TLS or post-handshake attestation wire protocols;
-\item
-  proving a complete end-to-end authorization model;
-\item
-  defining generic OAuth, OIDC, JWT, JWS, CWT, or COSE behavior except
-  where this profile relies on them for fail-closed acceptance.
-\end{itemize}
-
-A requirement belongs in this profile when omitting it could cause any
-of these acceptance failures:
-
-\begin{itemize}
-\tightlist
-\item
-  a binding from the wrong live TLS or attestation session is accepted;
-\item
-  the right platform is accepted for the wrong service, tenant, agent,
-  task, or authority boundary;
-\item
-  replay, stale state, missing state, or required-mode downgrade is
-  accepted;
-\item
-  peer-selected metadata becomes verifier policy;
-\item
-  a security result, authorization decision, or verification result is
-  reused outside the session or request for which it was produced.
-\end{itemize}
-
-\subsection{4. Relationship to existing
-specifications}\label{relationship-to-existing-specifications}
-
-Most building blocks are already standardized. This profile composes
-them and adds repository-specific fail-closed requirements for identity,
-session binding, replay, canonical references, local policy comparison,
-and cache safety.
+Most inputs are already standardized. This profile fixes how they are
+combined for one acceptance decision.
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
@@ -258,7 +222,7 @@ and cache safety.
 \begin{minipage}[b]{\linewidth}\raggedright
 Area
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Existing specification
+Reference
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Profile decision
 \end{minipage} \\
@@ -269,131 +233,49 @@ Profile decision
 Normative keywords & BCP 14: RFC 2119 and RFC 8174 & Keywords apply to
 this repository profile only. \\
 OAuth roles and authorization vocabulary & RFC 6749 and RFC 9396 &
-Manager, Agent, relying party, \texttt{scope}, \texttt{resource}, and
-\texttt{authorization\_details} are mapped by this profile. \\
-JWT/JWS syntax and safety & RFC 7519, RFC 7515, and RFC 8725 & The
-two-token Identity Grant plus Session Binding Statement model,
-\texttt{agtp\_type}, \texttt{agtp\_version}, \texttt{grant\_hash}, and
-the mandatory claim set are profile choices. \\
-Proof-of-possession pattern & RFC 7800 and RFC 8705 & The Agent
-confirmation-key rule follows the PoP pattern. The exact Session Binding
-Statement claims are profile-specific. \\
+\texttt{scope}, \texttt{resource}, and \texttt{authorization\_details}
+are usable vocabulary, not a complete trust model. \\
+JWT/JWS syntax and safety & RFC 7519, RFC 7515, RFC 8725 & The two-token
+Identity Grant plus Session Binding Statement model is
+profile-specific. \\
+Proof of possession & RFC 7800 and RFC 8705 & The Agent confirmation-key
+rule follows the PoP pattern. \\
 TLS channel binding and exported authenticators & RFC 9266 and RFC 9261
 & The profile consumes accepted lower-layer binding facts. It does not
-define a new TLS exporter or exported-authenticator format. \\
+define a new TLS exporter format. \\
 Remote attestation roles & RFC 9334 & The attestation-binder hash,
 accepted-evidence policy, and L1/L2 wiring are profile details. \\
 CWT/COSE & RFC 8392 and RFC 9052 & CWT/COSE is an alternative encoding
-for the same semantics, not a different trust model. \\
+for the same semantics. \\
 Wallets, DID, and verifiable credentials & Deployment-specific; related
-work includes W3C DID and Verifiable Credentials specifications & A
-wallet can store grants, protect confirmation keys, and sign or present
-profile material. Wallet metadata, display names, card fields, and
-credential labels are not verifier policy and do not replace Identity
-Grant, Session Binding Statement, replay, or local-policy checks. \\
-HTTP response caching & RFC 9111 & The core rule is that security-state
-objects and verification results are not cacheable acceptance evidence.
-Detailed response-cache guidance is separated into
-\texttt{docs/http-cache-profile.md}. \\
-OIDC & OpenID Connect Core & OIDC is vocabulary only. This profile does
-not require OIDC. \\
-L0-L6, Identity Grant, Session Binding Statement, canonical references &
-Not standardized as one combined profile & These are local names for
-reviewable fail-closed identity binding. \\
+work includes W3C DID and VC specifications & A wallet can store
+credentials, protect holder keys, and present session-bound material.
+Wallet labels and UI metadata are not verifier policy. \\
+AGTP and CoCos & Repository drafts, adapters, and implementation
+experience & These remain informative references for implementation
+shape, test vectors, and lower-layer attestation/TLS wiring. They are
+not normative application-protocol dependencies. \\
+HTTP response caching & RFC 9111 & Security-state objects and
+verification results are not cacheable acceptance evidence. \\
 \end{longtable}
 
-\subsection{5. Threat model}\label{threat-model}
+\subsection{4. Threat model and layer
+model}\label{threat-model-and-layer-model}
 
-The attacker can observe, replay, reorder, or relay network messages.
-The attacker can provide malicious application metadata. The attacker
-can run another Agent on the same machine or in the same deployment
+The attacker can observe, replay, reorder, relay, or substitute network
+and application messages. The attacker can supply malicious peer
+metadata and can run another Agent on the same host or deployment
 environment.
 
-In the Alice-side example, malware may influence peer-provided metadata
-or try to reuse old grants or binding statements. It does not fully
-control Alice's verifier process, local policy store, OS sandbox,
-keychain, or trusted Manager key configuration.
+The lower layers are assumed to validate TLS 1.3, exported
+authenticators, and platform evidence correctly. This profile defines
+what must be bound to those facts before the application treats the peer
+as the intended actor.
 
-The lower layers are assumed to implement TLS 1.3 validation,
-exported-authenticator validation, and platform-evidence appraisal
-correctly. This profile defines the identity and policy material that
-must be bound to those lower-layer facts before the application accepts
-the peer as the intended Agent.
-
-Out of scope for this threat model:
-
-\begin{itemize}
-\tightlist
-\item
-  a fully compromised verifier process or local policy store;
-\item
-  a malicious or compromised trusted Manager or policy authority;
-\item
-  compromise of all local secret storage, OS isolation, or keychain
-  controls;
-\item
-  denial of service;
-\item
-  side-channel leakage outside the identity-binding path.
-\end{itemize}
-
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Threat
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Required design consequence
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-Network relay or borrowed attestation & Bind the verified grant to the
-accepted TLS exporter context, one-shot session binding, endpoint-key
-confirmation, and attestation-binder hash when present. \\
-Replay of old grants or bindings & Use \texttt{iat}, \texttt{exp},
-unique IDs, and one-shot nonce or binding state. Required-mode
-deployments fail closed when replay state is unavailable. \\
-Same-machine wrong-Agent & Keep Manager keys and Agent confirmation keys
-in separate trust domains. Accept only a Session Binding Statement
-signed by the grant-authorized confirmation key or by a key explicitly
-authorized by local policy. \\
-Peer-provided metadata injection & Build accepted identity only from
-authenticated grants, session-bound statements, and local expected
-policy. \\
-Service, tenant, deployment, task, or capability diversion & Compare L3
-through L6 values against local expected values. Required layers fail
-closed when expected values are missing or ambiguous. \\
-Token substitution between grant and binding & Carry a domain-separated
-\texttt{grant\_hash} over the exact signed grant bytes. Reject
-mismatched grant and binding pairs. \\
-Key rotation, stale key, or revocation failure & Reject unknown, stale,
-retired, or revoked Manager keys, Agent binding keys, and grant IDs.
-Remote key sources need freshness and failure behavior. \\
-Cache confusion or cross-authority leakage & Do not reuse identity
-tokens, binding statements, attestation evidence, authorization
-decisions, or verification results as acceptance evidence. \\
-Gateway route confusion & In gateway-terminated deployments,
-authenticate the gateway-to-Agent route. Gateway session binding alone
-proves only the gateway endpoint. \\
-Semantic alias or fuzzy-match confusion & Use canonical identifiers for
-decision-sensitive semantic values. Fuzzy matching, alias repair, or
-model interpretation is not an acceptance authority. \\
-\end{longtable}
-
-If Alice's verifier, local expected-policy source, or trusted key store
-is fully compromised, token design alone cannot recover security. Those
-cases require host isolation, policy-file integrity, secret isolation,
-process isolation, and operational controls outside this profile.
-
-\subsection{6. Layer model}\label{layer-model}
-
-The layer model separates lower-layer session and attestation binding
-from upper-layer deployment, agent, task, and authorization policy.
-Other profiles may collapse, rename, or extend these layers if they
-preserve the same fail-closed checks.
+Out of scope are a fully compromised verifier process or local policy
+store, a malicious trusted Manager, compromise of all local secret
+storage, denial of service, and side channels outside the
+identity-binding path.
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
@@ -414,132 +296,24 @@ Main failure class
 L0 & Live TLS channel & MITM or session confusion \\
 L1 & Attested platform validity & Fake, malformed, or untrusted platform
 evidence \\
-L2 & Attestation-to-channel or authenticator-to-channel binding & Relay,
-replay, or borrowed evidence \\
-L3 & Intended service, tenant, deployment, or environment & Service or
-tenant diversion \\
-L4 & Intended workload, process, or agent & Same-machine wrong-Agent \\
-L5 & Intended task, thread, context, or delegation & Cross-task or
-context diversion \\
-L6 & Intended authorization or capability policy & Confused deputy or
-privilege escalation \\
+L2 & Attestation/authenticator-to-channel binding & Relay, replay, or
+borrowed evidence \\
+L3 & Service, tenant, deployment, environment & Service or tenant
+diversion \\
+L4 & Workload, process, Agent & Same-machine wrong-Agent \\
+L5 & Task, thread, context, delegation & Cross-task or context
+diversion \\
+L6 & Authorization or capability policy & Confused deputy or privilege
+escalation \\
 \end{longtable}
 
-L0 through L2 can be tested with transport, attestation, and
-implementation regressions. L3 through L6 require explicit policy inputs
-before a verifier or application layer can enforce them consistently.
+L0 through L2 are transport and attestation questions. L3 through L6
+require local expected policy.
 
-\subsection{7. Application-protocol
-boundary}\label{application-protocol-boundary}
+\subsection{5. Authority and token
+model}\label{authority-and-token-model}
 
-TLS and the TLS/attestation binding portion of the profile are
-responsible for L0 through L2:
-
-\begin{itemize}
-\tightlist
-\item
-  authenticating the live TLS channel;
-\item
-  appraising attested platform or VM evidence;
-\item
-  binding authenticator or attestation material to the accepted TLS
-  session.
-\end{itemize}
-
-An application profile carries or references the upper-layer identity
-and policy material needed for L3 through L6:
-
-\begin{itemize}
-\tightlist
-\item
-  intended service, tenant, deployment, or environment;
-\item
-  intended workload, process, or Agent;
-\item
-  intended task, thread, context, or delegation;
-\item
-  authorization or capability policy.
-\end{itemize}
-
-Relay defense remains an L2 session-binding question. Diversion and
-wrong-Agent prevention require L3 and L4 policy comparison. Task and
-capability checks then continue at L5 and L6.
-
-Current application-protocol drafts do not by themselves provide all
-semantic binding needed for service, tenant, Agent, task, capability,
-canonical-reference, replay, and local-policy checks. The application
-protocol may carry authenticated policy inputs, such as an Identity
-Grant, and bind them to the accepted TLS session through a Session
-Binding Statement. The verifier still compares the resulting observed
-values with local expected values before accepting the peer.
-
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Review item
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Question
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Profile requirement
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Negative-test anchor
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-SP-01 & Is identity material bound to the accepted TLS and attestation
-session? & Verify the Session Binding Statement against the
-request/exporter context, grant hash, audience, nonce, endpoint-key
-confirmation, attestation binder when present, and replay state. & relay;
-binder mismatch \\
-SP-02 & Which values are local policy and which are peer claims? &
-Compare service, tenant, deployment, agent, task, scope, resource, and
-authorization values against local expected policy. & diversion;
-wrong-Agent; binding confusion \\
-SP-03 & Which freshness values are one-shot? & Reject repeated Session
-Binding Statement IDs, nonces, or task-binding values when one-shot use
-is required. & replay \\
-SP-04 & What happens when grant or binding material is missing,
-unsupported, substituted, or partly verified? & Required mode fails
-closed. Neither Identity Grant nor Session Binding Statement is
-sufficient alone. & downgrade; nested-token substitution \\
-SP-05 & Which responses are safe for shared caching? & Treat
-caller-dependent responses as \texttt{private} with adequate
-partitioning or \texttt{no-store}. Do not cache security inputs or
-verification results as acceptance evidence. & caller-dependent cache
-leak \\
-SP-06 & Are semantic references canonical? & Reject non-canonical,
-ambiguous, fuzzy-matched, or receiver-repaired decision values. &
-semantic alias confusion \\
-SP-07 & Are Manager and Agent keys separated? & Reject Manager keys used
-as Agent confirmation keys and Agent keys used as Manager signing keys.
-& key-role confusion \\
-SP-08 & Is gateway routing authenticated? & In gateway mode, bind the
-gateway endpoint and the gateway-to-Agent route separately. & gateway
-route confusion \\
-\end{longtable}
-
-\subsection{8. Authority and key
-separation}\label{authority-and-key-separation}
-
-One implementation profile used in this repository is:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{Identity Grant + session{-}bound profile + OAuth/OIDC{-}style semantics + JWT/JWS encoding}
-\end{Highlighting}
-\end{Shaded}
-
-OAuth and OIDC provide claim semantics and review vocabulary. JWT/JWS
-provides one signed-token encoding. CWT/COSE provides a compact binary
-encoding for the same trust model.
-
-The profile keeps three key roles separate:
+The profile keeps three key roles separate.
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
@@ -556,427 +330,208 @@ Purpose
 \endlastfoot
 TLS endpoint key & Proves possession for the accepted TLS or
 exported-authenticator endpoint. \\
-Agent binding key & Signs the Session Binding Statement that binds a
-verified grant to the accepted TLS session. \\
-Manager or policy-authority key & Signs Identity Grants that authorize
-intended deployment, Agent, task, or capability values. \\
+Agent binding key & Signs the Session Binding Statement. \\
+Manager or policy-authority key & Signs Identity Grants. \\
 \end{longtable}
 
-These keys may be related by deployment policy, but they MUST NOT be
-treated as the same key by default. The Manager key is a token-signing
-or policy-authority key, not a TLS endpoint key.
+These keys may be related by deployment policy, but they are not
+interchangeable by default. Manager signing keys MUST NOT be accepted as
+Agent confirmation keys. Agent confirmation keys MUST NOT be accepted as
+Manager or policy-authority signing keys. Endpoint keys are valid for
+session binding only when the verified grant or local policy explicitly
+authorizes that use.
 
-Manager signing keys MUST NOT be accepted as Agent confirmation keys.
-Agent confirmation keys MUST NOT be accepted as Manager or
-policy-authority signing keys. A deployment MAY explicitly authorize an
-endpoint key for session binding, but that authorization must come from
-the verified grant or from local policy; it must not be inferred from
-the TLS session alone.
+The protected-header \texttt{kid} is only a key-selection hint.
+Acceptance also depends on issuer, audience, algorithm allow-list, key
+type, key use, key status, profile version, token type, time validity,
+revocation state, and local policy. The \texttt{none} algorithm is
+forbidden.
 
-The JWS protected header \texttt{kid} is only a key-selection hint.
-Acceptance also requires issuer, audience, algorithm allow-list, key
-status, key use, profile version, token type, time validity, and local
-policy checks. The signing-method allow-list MUST NOT include
-\texttt{none}.
+\subsubsection{5.1 Identity Grant}\label{identity-grant}
 
-\subsection{9. Identity Grant}\label{identity-grant}
+An Identity Grant authorizes upper-layer semantics. It is signed by a
+Manager or trusted policy authority and identifies the Agent
+confirmation key, usually through a confirmation-key claim such as
+\texttt{cnf.kid}.
 
-An Identity Grant authorizes the intended upper-layer subject. The
-initial wire profile uses JWT/JWS and OAuth/OIDC-style claim names where
-they fit. Other encodings, including CWT/COSE or a signed manifest, are
-acceptable only if they preserve the same authority, freshness,
-canonicalization, and session-binding rules.
+The grant may carry L3 through L6 fields, including service, tenant,
+deployment, workload, Agent, task, delegation, canonical intent or
+capability references, scopes, resources, and authorization details. The
+Agent is not the authority for these values. They are accepted only
+after grant verification and local policy comparison.
 
-An Identity Grant contains the deployment-specific equivalent of:
+The normative token guard names are \texttt{profile\_type} and
+\texttt{profile\_version}. Legacy adapters MAY expose
+\texttt{agtp\_type} and \texttt{agtp\_version} as compatibility aliases,
+but a verifier MUST NOT treat AGTP names as the authority model.
 
-\begin{itemize}
-\tightlist
-\item
-  profile token type, \texttt{agtp\_type=agtp.identity-grant} in the
-  current JWT/JWS implementation;
-\item
-  profile version, \texttt{agtp\_version=1} in the current JWT/JWS
-  implementation;
-\item
-  issuer, \texttt{iss};
-\item
-  subject, \texttt{sub};
-\item
-  audience, \texttt{aud};
-\item
-  unique grant ID, \texttt{jti} for JWT/JWS or \texttt{cti} for
-  CWT/COSE;
-\item
-  issued-at time, \texttt{iat};
-\item
-  expiration time, \texttt{exp};
-\item
-  Agent confirmation key, \texttt{cnf.kid} in the initial JWT/JWS
-  profile;
-\item
-  optional explicitly authorized endpoint keys;
-\item
-  service, tenant, deployment, or environment values when L3 is
-  required;
-\item
-  workload, process, or Agent identity when L4 is required;
-\item
-  computation, task, thread, or delegation IDs when L5 is required;
-\item
-  canonical intent, capability, or ontology references when those values
-  are decision-sensitive;
-\item
-  scopes, resources, or authorization details when L6 is required;
-\item
-  issuer key ID or key version when needed for key rotation.
-\end{itemize}
-
-The Agent is not the authority for service, tenant, deployment, task,
-scope, resource, or capability values. Those values are accepted only
-when they appear in a grant verified under a locally trusted Manager or
-policy-authority key and then pass local policy comparison.
-
-\subsection{10. Session Binding
+\subsubsection{5.2 Session Binding
 Statement}\label{session-binding-statement}
 
 A Session Binding Statement proves that the holder of the confirmation
-key named in the verified grant bound that exact grant to the accepted
-TLS or exported-authenticator session. It does not authorize identity or
-capability values.
-
-A generic accepted endpoint key is not sufficient unless the verified
-grant or local attestation policy explicitly binds that key to the same
-Agent identity.
-
-A Session Binding Statement contains the deployment-specific equivalent
-of:
+key bound the verified grant to the accepted TLS or
+exported-authenticator session. It contains at least:
 
 \begin{itemize}
 \tightlist
 \item
-  profile token type, \texttt{agtp\_type=agtp.session-binding} in the
-  current JWT/JWS implementation;
+  \texttt{profile\_type} and \texttt{profile\_version};
 \item
-  profile version, \texttt{agtp\_version=1} in the current JWT/JWS
-  implementation;
+  \texttt{aud}, \texttt{jti}, \texttt{iat}, and \texttt{exp};
 \item
-  unique binding statement ID, \texttt{jti};
-\item
-  audience or relying-service ID, \texttt{aud};
-\item
-  issued-at time, \texttt{iat};
-\item
-  expiration time, \texttt{exp};
-\item
-  \texttt{grant\_hash};
+  \texttt{grant\_hash} over the exact signed grant bytes;
 \item
   \texttt{leaf\_public\_key\_sha256};
 \item
+  \texttt{tls\_exporter\_sha256};
+\item
   \texttt{request\_context\_sha256};
 \item
-  \texttt{attestation\_binder\_sha256} when accepted
-  attestation-to-channel evidence is present;
+  \texttt{nonce};
 \item
-  one-shot nonce or unique binding value.
+  \texttt{attestation\_binder\_sha256} when accepted
+  attestation-to-channel evidence is present.
 \end{itemize}
 
-Binding means receiver-verifiable linkage to the accepted session and
-accepted evidence. The statement does not need to embed a TLS session
-identifier when the verifier can deterministically compare endpoint-key,
-exporter or request context, attestation-binder, nonce, and replay
-fields.
-
-The grant hash is computed over an unambiguous byte string. For the
-initial encodings:
+For the initial encodings, \texttt{grant\_hash} is computed over the
+exact signed bytes:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{SHA{-}256("agtp.identity{-}grant.jwt.v1" || NUL || exact{-}signed{-}grant{-}bytes)}
-\NormalTok{SHA{-}256("agtp.identity{-}grant.cwt.v1" || NUL || exact{-}signed{-}grant{-}bytes)}
+\NormalTok{grant\_hash = SHA{-}256("sbaip.identity{-}grant.jwt.v1" || NUL || exact{-}signed{-}grant{-}bytes)}
+\NormalTok{grant\_hash = SHA{-}256("sbaip.identity{-}grant.cwt.v1" || NUL || exact{-}signed{-}grant{-}bytes)}
 \end{Highlighting}
 \end{Shaded}
 
-For JSON-based formats, the verifier SHOULD hash the exact signed bytes.
-It MUST NOT compute \texttt{grant\_hash} by re-serializing JSON in the
-acceptance path. Canonical CBOR/COSE is acceptable when the encoding
-profile defines the canonical form.
+A verifier MUST NOT compute \texttt{grant\_hash} by reserializing JSON
+in the acceptance path. Canonical CBOR/COSE is acceptable only when the
+encoding profile fixes the canonical form.
 
-When accepted attestation evidence includes an attestation-to-channel
-binder, \texttt{attestation\_binder\_sha256} is REQUIRED in the Session
-Binding Statement and must match the accepted binder. When no such
-binder exists in the lower-layer session, the field is absent unless
-deployment policy requires it.
+\subsection{6. Wallet presentation
+model}\label{wallet-presentation-model}
 
-\subsection{11. L2 Binding Construction}\label{l2-binding-construction}
+A wallet can be used as the holder-side presentation component. It can
+store Identity Grants, verifiable credentials, DID references, reference
+tokens, and confirmation-key material. It can also protect the Agent
+binding key and create or present a Session Binding Statement after a
+verifier challenge.
 
-This section fixes the byte-level L2 binding construction for the
-direct-Agent profile. A verifier MUST NOT replace these inputs with
-peer-selected labels, inferred context, display names, or reserialized
-semantic metadata.
+A wallet is not a trust root for this profile. Wallet UI labels, display
+names, card fields, credential nicknames, and peer-supplied metadata are
+not expected policy. A wallet presentation is accepted only if the
+verifier can validate the issuer or Manager authority, holder key,
+session binding, freshness, replay state, and local policy.
 
-\begin{quote}
-Related references: RFC 8446 for TLS 1.3 exporter behavior, RFC 9261
-for exported authenticators, RFC 9266 for \texttt{tls-exporter} channel
-binding, RFC 9334 for RATS roles, and RFC 8725 for JWT BCP.
-\end{quote}
+Pre-signed wallet presentations are not session-bound by themselves. A
+presentation that lacks the current \texttt{aud}, \texttt{nonce},
+\texttt{grant\_hash}, \texttt{request\_context\_sha256}, and TLS
+exporter binding MUST NOT be accepted as proof for the current session.
+
+Selective disclosure and reference tokens are useful privacy tools. They
+do not change the acceptance rule: the disclosed or referenced
+attributes still need a trusted issuer, a holder proof, a fresh session
+binding, and local policy comparison.
+
+\subsection{7. L2 binding construction}\label{l2-binding-construction}
+
+This section fixes the direct-Agent L2 construction. A verifier MUST NOT
+replace these inputs with peer-selected labels, inferred context,
+display names, or reserialized semantic metadata.
 
 Inputs:
 
 \begin{itemize}
 \tightlist
 \item
-  \texttt{tls\_connection}: the accepted TLS 1.3 connection after the
-  handshake has completed;
+  \texttt{tls\_connection}: the accepted TLS 1.3 connection;
 \item
-  \texttt{exporter\_label}: the ASCII string \texttt{Attestation};
+  \texttt{exporter\_label}: ASCII \texttt{Attestation} for the legacy v1
+  construction;
 \item
-  \texttt{context}: the exact Exported Authenticator
-  \texttt{certificate\_request\_context} bytes chosen by the verifier or
-  by local application state;
+  \texttt{leaf\_spki}: DER SubjectPublicKeyInfo of the accepted leaf
+  certificate or exported-authenticator certificate;
 \item
-  \texttt{leaf\_spki}: the DER-encoded SubjectPublicKeyInfo of the
-  accepted leaf certificate or exported-authenticator certificate;
+  \texttt{H}: the TLS 1.3 authenticator hash for the negotiated cipher
+  suite;
 \item
-  \texttt{H}: the TLS 1.3 authenticator hash associated with the
-  negotiated cipher suite;
-\item
-  \texttt{role}: the verifier-local role or direction for this
-  authentication instance;
-\item
-  \texttt{protocol\_id}: the upper protocol profile;
-\item
-  \texttt{aud}: the relying-party audience;
-\item
-  \texttt{grant\_hash}: the domain-separated hash of the exact verified
-  Identity Grant;
-\item
-  \texttt{task\_context}: verifier-local task, thread, delegation,
-  route, capability, method, path, tenant, or resource values that
-  affect local policy.
+  \texttt{role}, \texttt{protocol\_id}, \texttt{aud},
+  \texttt{grant\_hash}, \texttt{task\_context}, and
+  \texttt{verifier\_nonce\_or\_attempt\_id} from verifier-local state.
 \end{itemize}
 
-The accepted \texttt{context} bytes are canonical application context
-bytes. They are constructed by the verifier, or by verifier-trusted
-local application state, before acceptance:
+New profiles SHOULD use a namespaced exporter label. The v1 label
+remains fixed for compatibility. A peer-selected exporter label is never
+accepted.
+
+The context bytes are fixed by \texttt{sbaip\_context\_v1}:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{context = canonical(}
-\NormalTok{  "hwtls-l2-context-v1",}
-\NormalTok{  role, protocol_id, aud, grant_hash,}
-\NormalTok{  task_context, verifier_nonce_or_attempt_id}
-\NormalTok{)}
+\NormalTok{field(name, value) = u16be(len(name)) || name || u32be(len(value)) || value}
+
+\NormalTok{context = "SBAIP{-}CONTEXT{-}v1" || NUL ||}
+\NormalTok{          field("role", role) ||}
+\NormalTok{          field("protocol\_id", protocol\_id) ||}
+\NormalTok{          field("aud", aud) ||}
+\NormalTok{          field("grant\_hash", raw\_32\_byte\_grant\_hash) ||}
+\NormalTok{          field("task\_context", task\_context) ||}
+\NormalTok{          field("verifier\_nonce\_or\_attempt\_id", verifier\_nonce\_or\_attempt\_id)}
 \end{Highlighting}
 \end{Shaded}
 
-\texttt{canonical(...)} is a deployment-defined byte encoding that is
-fixed by the profile or local policy before verification. It MUST be
-unambiguous, length delimited, and not derived from peer-provided
-aliases during acceptance.
+\texttt{role}, \texttt{protocol\_id}, \texttt{aud}, and
+\texttt{task\_context} are UTF-8 bytes after verifier-local
+canonicalization. \texttt{grant\_hash} is the raw 32-byte digest, not a
+hex string. \texttt{task\_context} is itself a length-delimited
+canonical byte string when it contains multiple fields.
 
 Construction:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{EKM = TLS{-}Exporter(tls_connection,}
+\NormalTok{EKM = TLS{-}Exporter(tls\_connection,}
 \NormalTok{                   label = "Attestation",}
 \NormalTok{                   context = context,}
 \NormalTok{                   length = 32)}
 
-\NormalTok{leaf_public_key_sha256     = SHA{-}256(leaf_spki)}
-\NormalTok{tls_exporter_sha256        = SHA{-}256(EKM)}
-\NormalTok{request_context_sha256    = SHA{-}256(context)}
-
-\NormalTok{attestation_binding        = H(leaf_spki || EKM)}
-\NormalTok{attestation_binder_sha256 = SHA{-}256(attestation_binding)}
+\NormalTok{leaf\_public\_key\_sha256     = SHA{-}256(leaf\_spki)}
+\NormalTok{tls\_exporter\_sha256        = SHA{-}256(EKM)}
+\NormalTok{request\_context\_sha256     = SHA{-}256(context)}
+\NormalTok{attestation\_binding        = H(leaf\_spki || EKM)}
+\NormalTok{attestation\_binder\_sha256  = SHA{-}256(attestation\_binding)}
 \end{Highlighting}
 \end{Shaded}
 
-\texttt{tls\_exporter\_sha256} is a mandatory Session Binding Statement
-field in the direct-Agent profile. It binds the statement to the current
-TLS exporter secret without exposing the exporter value itself.
-\texttt{request\_context\_sha256} is also mandatory and binds the
-statement to role, protocol, audience, grant, task, delegation,
-capability, tenant, and freshness context.
+The Session Binding Statement carries the SHA-256 values, normally
+serialized as lowercase hexadecimal without a \texttt{sha256:} prefix in
+the current Go adapters.
 
-\texttt{attestation\_binder\_sha256} is the Session Binding
-Statement's compact reference to the accepted attestation-channel
-binding. It ties together four facts that the verifier has already
-accepted or will check before acceptance:
+\texttt{leaf\_public\_key\_sha256} confirms the endpoint key, but it is
+not session unique. The primary session binding is the TLS exporter
+under the accepted context, plus the grant hash, audience, nonce,
+attestation binder when present, and replay state.
 
-\begin{itemize}
-\tightlist
-\item
-  the accepted endpoint key, through \texttt{leaf\_spki};
-\item
-  the current TLS exporter value, through \texttt{EKM};
-\item
-  the verifier-accepted request context, through the exporter
-  \texttt{context} and the separately compared
-  \texttt{request\_context\_sha256};
-\item
-  fresh attestation evidence or fresh verifier results, only when those
-  evidence/results carry or verifiably reference the same
-  \texttt{attestation\_binding}, \texttt{report\_data}, \texttt{nonce},
-  or challenge identifier.
-\end{itemize}
-
-The field is not a standalone freshness proof. A verifier MUST reject it
-if the corresponding evidence or attestation results are stale, missing,
-untrusted, or not bound to the same exporter value and request context.
-
-\texttt{leaf\_public\_key\_sha256} is endpoint-key confirmation. It is
-useful for checking which TLS or exported-authenticator key was
-accepted, but it is not a session-unique value and MUST NOT be used by
-itself as replay protection or as proof that a Session Binding Statement
-belongs to this authentication instance. The primary session binding is
-the TLS exporter output under the verifier's accepted \texttt{context},
-plus the grant hash, audience, one-shot nonce, and replay state.
-
-The current Go implementation serializes
-\texttt{leaf\_public\_key\_sha256}, \texttt{tls\_exporter\_sha256},
-\texttt{request\_context\_sha256}, and
-\texttt{attestation\_binder\_sha256} as lowercase hexadecimal SHA-256
-values without a \texttt{sha256:} prefix.
-
-The attestation evidence or attestation results MUST be appraised
-against the same \texttt{attestation\_binding}. For evidence formats
-that expose a report-data or nonce field, this repository's lower layer
-derives:
+Attestation evidence or attestation results must be appraised against
+the same \texttt{attestation\_binding}. For evidence formats that expose
+report data or nonce, the lower layer derives:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{report_data = SHA{-}512(attestation_binding)}
+\NormalTok{report\_data = SHA{-}512(attestation\_binding)}
 \NormalTok{nonce       = SHA{-}256(EKM)}
 \end{Highlighting}
 \end{Shaded}
 
-The exporter label is verifier policy. A verifier MUST NOT accept a
-peer-selected exporter label. Unsupported labels fail closed.
+A verifier compares \texttt{tls\_exporter\_sha256} and
+\texttt{request\_context\_sha256} with its own accepted values. Missing
+or mismatched mandatory fields fail closed.
 
-The verifier MUST compare \texttt{tls\_exporter\_sha256} with the
-accepted TLS exporter value and MUST compare
-\texttt{request\_context\_sha256} with the exact accepted context bytes.
-It MUST NOT infer either value from peer-provided metadata.
+\subsection{8. Verification and policy
+model}\label{verification-and-policy-model}
 
-RFC 9266 \texttt{tls-exporter} channel binding identifies the TLS
-connection. That is not enough when multiple authentication instances,
-tasks, Agents, capabilities, HTTP/2 streams, or pooled requests share one
-TLS connection. This profile therefore requires application-specific
-context binding in addition to the TLS connection binding.
+Acceptance has two phases.
 
-Reuse rules:
-
-\begin{itemize}
-\tightlist
-\item
-  a Session Binding Statement MUST NOT be replayed across different
-  \texttt{context} values, tasks, delegations, capabilities, or
-  relying-service audiences;
-\item
-  replay cache entries are keyed over the verified grant hash, audience,
-  TLS exporter hash, request-context hash, and nonce;
-\item
-  HTTP/2 multiplexing and connection pooling MUST use distinct accepted
-  \texttt{context} values and one-shot nonces for distinct
-  authentication instances;
-\item
-  TLS resumption creates a new accepted TLS connection and MUST NOT reuse
-  a prior Session Binding Statement or attestation binder as acceptance
-  evidence;
-\item
-  0-RTT data MUST NOT be accepted as profile-authenticated identity
-  before the post-handshake binder and Session Binding Statement are
-  verified;
-\item
-  QUIC/TLS 1.3 is not automatically equivalent to this direct TLS
-  profile; a QUIC profile MUST define its exporter API, context bytes,
-  endpoint-key binding, replay rules, and gateway behavior explicitly;
-\item
-  gateway-terminated deployments bind the client-to-gateway TLS endpoint
-  with this construction, but that does not prove the final Agent
-  process. A gateway-routed deployment needs the separate Gateway Route
-  Assertion profile.
-\end{itemize}
-
-\textbf{Negative L2 cases:} a verifier rejects a same grant with a
-different TLS exporter, a same TLS connection with a different task
-context, a peer-selected exporter label, missing
-\texttt{tls\_exporter\_sha256}, missing
-\texttt{request\_context\_sha256}, a missing
-\texttt{attestation\_binder\_sha256} when accepted attestation binding
-exists, a replayed nonce under the same grant/audience/exporter/context,
-and old statements reused after TLS resumption or 0-RTT.
-
-Test vectors for this profile MUST include at least one positive vector
-and these negative cases. A positive vector records the exact signed
-grant bytes, \texttt{grant\_hash}, accepted \texttt{context} bytes,
-\texttt{tls\_exporter\_sha256}, \texttt{request\_context\_sha256},
-\texttt{leaf\_public\_key\_sha256}, nonce, and, when attestation is
-present, \texttt{attestation\_binder\_sha256}.
-
-\subsection{11.1 Attestation freshness
-minimum}\label{attestation-freshness-minimum}
-
-This profile uses the RATS roles as follows: the Attester is the
-platform or Agent endpoint that produces evidence; the Verifier appraises
-evidence or attestation results against the accepted channel binding; the
-Relying Party accepts identity only after verifier output and local
-policy both succeed.
-
-Hardware evidence can describe a correct measurement and still be too
-old for the current session. For that reason, freshness is not satisfied
-by measurement matching alone.
-
-Minimum requirements:
-
-\begin{itemize}
-\tightlist
-\item
-  the verifier or relying party MUST generate a fresh per-attempt
-  challenge before accepting evidence or attestation results;
-\item
-  the challenge MUST be bound to the accepted TLS exporter value and
-  canonical application context from Section 10.1;
-\item
-  the signed or measured attestation evidence MUST carry the derived
-  \texttt{report\_data} or \texttt{nonce} value from Section 10.1, or an
-  equivalent verifier-defined value with the same channel and context
-  binding;
-\item
-  attestation results MUST be signed by a trusted verifier and MUST
-  include or verifiably reference the same
-  \texttt{attestation\_binding}, \texttt{report\_data}, \texttt{nonce},
-  or challenge identifier;
-\item
-  evidence or results from an older handshake, task, context, challenge,
-  or binding attempt MUST NOT be reused as acceptance evidence;
-\item
-  evidence, attestation results, Session Binding Statement
-  \texttt{iat}/\texttt{exp}, replay TTL, and maximum clock skew MUST be
-  explicit verifier policy; a missing policy value fails closed;
-\item
-  if an evidence format has no trusted timestamp, it is acceptable only
-  for the current challenge and current authentication attempt;
-\item
-  stale, unknown, or expired attestation collateral and TCB appraisal
-  data fail closed.
-\end{itemize}
-
-Replay state SHOULD include the evidence nonce, attestation-result
-identifier, or verifier challenge when the format exposes one, in
-addition to the verified grant hash, audience, request-context hash, and
-Session Binding Statement nonce.
-
-The implementation API passes the computed \texttt{EvidenceBinding} to
-both evidence and attestation-result verifiers. A verifier that accepts
-results without checking this binding is outside the production profile.
-
-\subsection{12. Verification model}\label{verification-model}
-
-The verifier performs authority checks, session-binding checks, replay
-checks, and policy comparison in that order. The final accepted
-assertion is built only from verified material.
+\textbf{Authentication phase}:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
@@ -985,296 +540,75 @@ assertion is built only from verified material.
   Verify the Identity Grant under a trusted Manager or policy-authority
   key.
 \item
-  Check grant issuer, audience, profile version, token type, algorithm,
-  key status, expiration, issued-at time, grant ID, and required scope
-  or resource fields.
+  Check issuer, audience, profile guard, algorithm, key status,
+  \texttt{iat}, \texttt{exp}, grant ID, and required authorization
+  fields.
 \item
-  Verify the Session Binding Statement signature.
+  Verify the Session Binding Statement under the Agent confirmation key
+  or an explicitly authorized endpoint key.
 \item
-  Check that the statement signer is the grant confirmation key or
-  another endpoint key explicitly authorized by the verified grant or
-  local policy.
+  Check \texttt{grant\_hash}, \texttt{aud}, endpoint-key hash, TLS
+  exporter hash, request context hash, attestation binder, nonce, and
+  replay state.
 \item
-  Verify that \texttt{grant\_hash} matches the exact verified Identity
-  Grant bytes.
-\item
-  Verify that the statement audience matches the relying service or
-  client.
-\item
-  Reject arbitrary accepted endpoint keys that are not explicitly bound
-  to the same Agent identity by the verified grant or local attestation
-  policy.
-\item
-  Compare the statement binding fields with the accepted TLS or
-  exported-authenticator session.
-\item
-  Enforce replay policy for grant IDs, binding IDs, task-binding values,
-  and nonces when one-shot use is required.
-\item
-  Construct the internal assertion only from the verified grant and
-  binding statement.
-\item
-  Compare the assertion with local expected policy for every required
-  layer.
+  Build an internal observed assertion only from verified material.
 \end{enumerate}
 
-\texttt{identitypolicy.ValidateAssertion} remains a comparator and
-binding freshness checker. It does not parse wire tokens, verify
-signatures, select keys, rotate keys, check revocation, or own replay
-storage. Those checks belong to the component that authenticates
-external identity material before it returns an observed assertion.
+\textbf{Policy phase}:
 
-\subsection{13. Policy model}\label{policy-model}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Load verifier-local expected values for required layers.
+\item
+  Reject missing, ambiguous, non-canonical, or peer-supplied expected
+  values.
+\item
+  Compare each observed L3 through L6 value with local expected policy.
+\item
+  Enforce L6 set semantics. The default is exact set equality.
+  \texttt{contains\_all} is allowed only when local policy explicitly
+  permits surplus observed values for that endpoint, task, Agent, and
+  resource.
+\end{enumerate}
 
-Expected values and observed values stay separate.
+Neither an Identity Grant alone nor a Session Binding Statement alone is
+enough. Sender-constraining proves possession and freshness; it does not
+authorize surplus scopes, resources, capabilities, or authorization
+details.
+
+\subsection{9. Canonical policy values}\label{canonical-policy-values}
+
+Decision-sensitive semantic values must be canonical before acceptance.
+Examples include:
 
 \begin{itemize}
 \tightlist
 \item
-  Expected values come from local policy, operator configuration, a
-  trusted registry, a Manager, computation state, or a policy engine.
+  \texttt{ontology\_id} for the vocabulary or policy namespace;
 \item
-  Observed values come from a session-bound assertion built from
-  authenticated grants, Session Binding Statements, attestation
-  evidence, CoRIM metadata, EAT claims, agent manifests, authenticated
-  request metadata, or authorization tokens.
+  \texttt{intent\_ref} for the intended task or action family;
 \item
-  Verification compares observed values against expected values.
-\item
-  Required layers fail closed when an expected value is missing,
-  ambiguous, or only peer supplied.
+  \texttt{capability\_ref} for a resource-action class.
 \end{itemize}
 
-A minimal policy object can be shaped as follows:
+Receivers MUST NOT repair peer-provided aliases, display labels, natural
+language phrases, case variants, URI variants, or model interpretations
+during the final acceptance path. Alias resolution belongs to the
+Manager, trusted registry, or local policy engine before issuance or
+comparison.
 
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{identity\_policy}\KeywordTok{:}
-\AttributeTok{  }\FunctionTok{mode}\KeywordTok{:}\AttributeTok{ }\StringTok{"disabled"}\CommentTok{        \# disabled | required}
-\AttributeTok{  }\FunctionTok{set\_mode}\KeywordTok{:}\AttributeTok{ }\StringTok{"exact"}\CommentTok{       \# exact | contains\_all}
+An alias is acceptable only when it resolves to exactly one canonical
+reference under a pinned registry namespace and version. Missing,
+ambiguous, deprecated, or unsupported registry data fails closed.
 
-\AttributeTok{  }\FunctionTok{require}\KeywordTok{:}
-\AttributeTok{    }\FunctionTok{l3}\KeywordTok{:}\AttributeTok{ }\CharTok{false}
-\AttributeTok{    }\FunctionTok{l4}\KeywordTok{:}\AttributeTok{ }\CharTok{false}
-\AttributeTok{    }\FunctionTok{l5}\KeywordTok{:}\AttributeTok{ }\CharTok{false}
-\AttributeTok{    }\FunctionTok{l6}\KeywordTok{:}\AttributeTok{ }\CharTok{false}
+\subsection{10. Production requirements}\label{production-requirements}
 
-\AttributeTok{  }\FunctionTok{expected}\KeywordTok{:}
-\AttributeTok{    }\FunctionTok{service}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{tenant}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{deployment}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{environment}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{workload}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{agent}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{agent\_public\_key}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{computation\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{task\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{thread\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{delegation\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{intent\_ref}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{capability\_ref}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{ontology\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{""}
-\AttributeTok{    }\FunctionTok{scopes}\KeywordTok{:}\AttributeTok{ }\KeywordTok{[]}
-\AttributeTok{    }\FunctionTok{resources}\KeywordTok{:}\AttributeTok{ }\KeywordTok{[]}
-\AttributeTok{    }\FunctionTok{authorization\_details}\KeywordTok{:}\AttributeTok{ }\KeywordTok{[]}
-\end{Highlighting}
-\end{Shaded}
-
-After external identity material has been authenticated, the verifier
-can build an internal assertion:
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\FunctionTok{identity\_assertion}\KeywordTok{:}
-\AttributeTok{  }\FunctionTok{issuer}\KeywordTok{:}\AttributeTok{ }\StringTok{"manager{-}or{-}policy{-}engine"}
-
-\AttributeTok{  }\FunctionTok{values}\KeywordTok{:}
-\AttributeTok{    }\FunctionTok{service}\KeywordTok{:}\AttributeTok{ }\StringTok{"payment{-}agent"}
-\AttributeTok{    }\FunctionTok{tenant}\KeywordTok{:}\AttributeTok{ }\StringTok{"tenant{-}a"}
-\AttributeTok{    }\FunctionTok{deployment}\KeywordTok{:}\AttributeTok{ }\StringTok{"prod"}
-\AttributeTok{    }\FunctionTok{environment}\KeywordTok{:}\AttributeTok{ }\StringTok{"asia{-}northeast1"}
-\AttributeTok{    }\FunctionTok{workload}\KeywordTok{:}\AttributeTok{ }\StringTok{"settlement{-}worker"}
-\AttributeTok{    }\FunctionTok{agent}\KeywordTok{:}\AttributeTok{ }\StringTok{"agent{-}a"}
-\AttributeTok{    }\FunctionTok{agent\_public\_key}\KeywordTok{:}\AttributeTok{ }\StringTok{"sha256:..."}
-\AttributeTok{    }\FunctionTok{computation\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{"cmp{-}..."}
-\AttributeTok{    }\FunctionTok{task\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{"task{-}..."}
-\AttributeTok{    }\FunctionTok{thread\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{"thread{-}..."}
-\AttributeTok{    }\FunctionTok{delegation\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{"delegation{-}..."}
-\AttributeTok{    }\FunctionTok{intent\_ref}\KeywordTok{:}\AttributeTok{ }\StringTok{"intent:monthly{-}settlement"}
-\AttributeTok{    }\FunctionTok{capability\_ref}\KeywordTok{:}\AttributeTok{ }\StringTok{"capability:orders{-}read"}
-\AttributeTok{    }\FunctionTok{ontology\_id}\KeywordTok{:}\AttributeTok{ }\StringTok{"ontology:payments:v1"}
-\AttributeTok{    }\FunctionTok{scopes}\KeywordTok{:}
-\AttributeTok{      }\KeywordTok{{-}}\AttributeTok{ }\StringTok{"orders:read"}
-\AttributeTok{    }\FunctionTok{resources}\KeywordTok{:}
-\AttributeTok{      }\KeywordTok{{-}}\AttributeTok{ }\StringTok{"orders"}
-\AttributeTok{    }\FunctionTok{authorization\_details}\KeywordTok{:}
-\AttributeTok{      }\KeywordTok{{-}}\AttributeTok{ }\StringTok{"purpose:monthly{-}settlement"}
-
-\AttributeTok{  }\FunctionTok{binding}\KeywordTok{:}
-\AttributeTok{    }\FunctionTok{leaf\_public\_key\_sha256}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{tls\_exporter\_sha256}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{request\_context\_sha256}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{attestation\_binder\_sha256}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{nonce}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{issued\_at}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\AttributeTok{    }\FunctionTok{expires\_at}\KeywordTok{:}\AttributeTok{ }\StringTok{"..."}
-\end{Highlighting}
-\end{Shaded}
-
-This assertion is not a wire format. It is a local representation used
-after the caller has authenticated external identity material.
-\texttt{Assertion.Issuer} is informational unless the observed-identity
-implementation has already verified the corresponding issuer and trust
-anchor.
-
-\subsection{14. L3 through L6 policy
-fields}\label{l3-through-l6-policy-fields}
-
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 4\tabcolsep) * \real{0.3333}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Layer
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Required question
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Common expected values
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-L3 & Is this the intended service, tenant, deployment, or environment? &
-service, tenant, deployment, environment, region, CoRIM or EAT
-deployment claims \\
-L4 & Is this the intended workload, process, or Agent? & workload ID,
-Agent ID, process or binary hash, config or policy hash, Agent public
-key, routing target \\
-L5 & Is this the intended task, thread, context, or delegation? &
-computation ID, task ID, thread ID, request context, delegation ID,
-callback binding, one-shot task state \\
-L6 & Is the action authorized for this peer and context? & scope,
-resource, authorization details, capability token, policy decision, user
-consent, tool policy \\
-\end{longtable}
-
-OIDC and OAuth-style names are useful analogies:
-
-\begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
-\toprule\noalign{}
-\begin{minipage}[b]{\linewidth}\raggedright
-Layer
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-OAuth/OIDC-style analogue
-\end{minipage} \\
-\midrule\noalign{}
-\endhead
-\bottomrule\noalign{}
-\endlastfoot
-L3 & issuer, audience, tenant, hosted domain, deployment claim,
-environment claim \\
-L4 & subject, client ID, workload identity, actor claim, confirmation
-key \\
-L5 & nonce, state, transaction ID, request object, delegation token \\
-L6 & scope, resource indicator, authorization details, policy decision,
-consent \\
-\end{longtable}
-
-These analogies are not normative requirements. A deployment can source
-the same expected values from configuration, a registry, CoRIM metadata,
-an EAT claim, an agent manifest, or an application policy engine.
-
-\subsection{15. Canonical semantic
-references}\label{canonical-semantic-references}
-
-Some L5 and L6 inputs are semantic references rather than raw labels:
-
-\begin{itemize}
-\tightlist
-\item
-  \texttt{ontologyId}: stable identifier for the vocabulary or policy
-  namespace;
-\item
-  \texttt{intentRef}: stable identifier for the intended task, intent,
-  or action family;
-\item
-  \texttt{capabilityRef}: stable identifier for an authorization
-  capability or resource-action class.
-\end{itemize}
-
-These values are profile reference identifiers. They are not
-natural-language prompts, display names, or peer-selected aliases.
-
-Decision-sensitive semantic values MUST be canonical before they appear
-in an Identity Grant, Session Binding Statement, local expected policy,
-or authorization decision. The relying client, Manager, or local policy
-authority resolves aliases before issuance or local policy comparison.
-
-Receivers MUST validate canonical identifiers deterministically against
-receiver-side policy, task state, trusted registry data, signed profile
-data, or the underlying interaction/security protocol.
-
-Profiles that use \texttt{ontologyId}, \texttt{intentRef},
-\texttt{capabilityRef}, or equivalent semantic references MUST define
-the registry namespace and registry version that give those identifiers
-their meaning. The registry version may be carried directly in the
-identifier, in \texttt{ontologyId}, in the Identity Grant, or in
-verifier-local policy. It MUST be unambiguous before the final
-acceptance comparison.
-
-An identifier from one registry or registry version MUST NOT be treated
-as equivalent to the same string from another registry or version unless
-a trusted registry migration rule explicitly defines that equivalence.
-Registry lookup, version pinning, migration rules, and deprecation
-status are verifier policy and MUST fail closed when unavailable or
-unsupported.
-
-Receivers MUST NOT normalize peer-provided decision-sensitive values
-during the final acceptance path. They MUST NOT turn a peer-provided
-alias, display label, natural-language phrase, case variant, URI
-variant, or model interpretation into an accepted canonical identifier.
-
-Alias handling is part of local policy:
-
-\begin{itemize}
-\tightlist
-\item
-  an alias resolves to exactly one normalized reference at the relevant
-  registry or policy version;
-\item
-  a missing alias, unsupported registry version, or ambiguous alias
-  fails closed;
-\item
-  case folding, Unicode normalization, URI normalization, or prefix
-  expansion is allowed only when the referenced identifier scheme
-  defines it;
-\item
-  otherwise, normalized references are compared as exact strings;
-\item
-  set-like fields, such as scopes, resources, and authorization details,
-  use the configured set mode after normalization.
-\end{itemize}
-
-Free-form natural-language intent, context, or capability text MAY be
-carried as descriptive metadata. It MUST NOT be decision-authoritative
-profile data.
-
-\subsection{16. Production profile}\label{production-profile}
-
-Production identity policy has two modes: disabled or required.
-
-In disabled mode, the transport does not enforce L3 through L6 identity
-policy. L0 through L2 lower-layer checks still apply according to the
-configured TLS and attestation profile.
-
-In required mode, the client fails closed when any required policy input
-is missing, untrusted, expired, replayed, non-canonical, unsupported,
-revoked, or inconsistent with the accepted TLS session. Peer-provided
-metadata is never used as expected policy.
+Production identity policy has two modes: \texttt{disabled} and
+\texttt{required}. In required mode, any missing, expired, replayed,
+unsupported, revoked, non-canonical, or session-inconsistent input is an
+authentication failure.
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
@@ -1289,41 +623,33 @@ Required-mode behavior
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-Manager trust & Manager or policy-authority verification keys are
-configured locally by issuer, audience, \texttt{kid}, algorithm, key
-type, key use, key status, and public-key thumbprint, or loaded through
-an equivalent fail-closed key source. \\
-Algorithm safety & The token \texttt{alg} must match local key policy.
-\texttt{none} is forbidden. Algorithm confusion is a hard failure. \\
-Key separation & Manager signing keys and Agent confirmation keys are
-separate trust domains and MUST NOT be accepted interchangeably. \\
-Grant lifetime & Identity Grants are short-lived and carry \texttt{iat},
-\texttt{exp}, and a unique \texttt{jti} or \texttt{cti}. \\
-Grant revocation & Deployments that require early invalidation reject
-revoked grant IDs and disabled Manager-key IDs before expiration. \\
-Unknown keys & Unknown, disabled, retired, stale, wrong-use, or
-mismatched key IDs fail closed. \\
-Session-binding signer & Session Binding Statements are signed by the
-confirmation key named in the verified grant, or by another key
-explicitly authorized by that grant or local policy. \\
-Session-binding fields & Session Binding Statements carry accepted
-endpoint-key hash, TLS exporter hash, request-context hash, one-shot
-nonce, and attestation-binder hash when attestation binding is present.
-\\
-Replay & JWT/CWT identity acceptance requires replay protection for
-binding nonces or one-shot IDs. A missing replay cache is a hard
-failure for one-shot acceptance APIs. Multi-instance production
-deployments use shared atomic insert-with-expiry semantics, such as
-\texttt{SET\ NX\ EX}. \\
-Local policy & Required L3 through L6 values are compared against local
-expected policy. Missing expected values fail closed. L6 set-valued
-authorization fields default to exact set matching. \\
-Error handling & Failure to check keys, revocation, session binding,
-replay, canonicalization, or local identity policy is an authentication
-failure, not a warning. \\
+Manager trust & Verification keys are configured or loaded fail-closed
+by issuer, audience, algorithm, key type, key use, key status, and
+public-key thumbprint. \\
+Algorithm safety & \texttt{alg} must match local key policy.
+\texttt{none} and algorithm confusion are hard failures. \\
+Parser safety & Reject duplicate claims, unexpected \texttt{crit},
+unsupported \texttt{typ}/\texttt{cty}, malformed base64url, unsupported
+nesting, and token-type confusion. \\
+Audience safety & Multi-audience grants are rejected unless local policy
+explicitly allows the exact audience set and authority boundary. \\
+Key separation & Manager signing, Agent confirmation, and endpoint keys
+are separate key-use namespaces. \\
+Grant lifetime & Grants carry \texttt{iat}, \texttt{exp}, and unique
+\texttt{jti} or \texttt{cti}. \\
+Binding signer & The statement signer is the grant confirmation key or
+another key explicitly authorized by the grant or local policy. \\
+Binding fields & Endpoint-key hash, TLS exporter hash, request-context
+hash, nonce, and attestation-binder hash when present are checked
+against accepted session facts. \\
+Replay & Public one-shot acceptance requires atomic insert-with-expiry
+over the replay key before returning acceptance. Store unavailability
+fails closed. \\
+Local policy & Required L3 through L6 values are compared against
+verifier-local expected policy. \\
 \end{longtable}
 
-The initial mandatory JWT/JWS claim set is:
+The initial mandatory claim set is:
 
 \begin{longtable}[]{@{}
   >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
@@ -1338,37 +664,63 @@ Mandatory claims
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-Identity Grant & \texttt{agtp\_type}, \texttt{agtp\_version},
+Identity Grant & \texttt{profile\_type}, \texttt{profile\_version},
 \texttt{iss}, \texttt{aud}, \texttt{sub}, \texttt{jti}, \texttt{iat},
 \texttt{exp}, \texttt{cnf.kid} \\
-Session Binding Statement & \texttt{agtp\_type}, \texttt{agtp\_version},
-\texttt{aud}, \texttt{jti}, \texttt{iat}, \texttt{exp},
-\texttt{grant\_hash}, \texttt{leaf\_public\_key\_sha256},
+Session Binding Statement & \texttt{profile\_type},
+\texttt{profile\_version}, \texttt{aud}, \texttt{jti}, \texttt{iat},
+\texttt{exp}, \texttt{grant\_hash}, \texttt{leaf\_public\_key\_sha256},
 \texttt{tls\_exporter\_sha256}, \texttt{request\_context\_sha256},
 \texttt{nonce}; also \texttt{attestation\_binder\_sha256} when
 attestation binding is present \\
 \end{longtable}
 
-When identity is accepted from JWT/JWS material, the Session Binding
-Statement JWT is REQUIRED. The Identity Grant JWT authenticates
-authority and semantics; it does not prove that the authorized Agent key
-is present on the current TLS or exported-authenticator session. The
-verifier accepts identity only after the Session Binding Statement JWT
-is verified, linked to the exact signed Identity Grant JWT, compared
-with the accepted session binding, checked for freshness and replay, and
-compared with local expected policy.
+Legacy \texttt{agtp\_type} and \texttt{agtp\_version} aliases MAY be
+accepted only by an adapter that explicitly maps them to the profile
+guards above. Mixing legacy and current profile guards in one token is
+rejected unless a compatibility profile defines an exact precedence
+rule.
 
-CWT/COSE is a compact binary encoding for the same model. The grant
-issuer must be trusted locally, the confirmation key must be named by
-the verified grant, the COSE \texttt{kid} used for key lookup must be
-protected, and the binding statement must bind the exact grant to the
-accepted session.
+CWT/COSE is a compact encoding for the same model. It does not change
+issuer trust, confirmation-key authorization, replay, or local-policy
+requirements.
 
-Replay mode is explicit:
+\subsection{11. Freshness, replay, rotation, and
+revocation}\label{freshness-replay-rotation-and-revocation}
+
+The accepted assertion expiry is the earliest applicable expiry among:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{grant exp,}
+\NormalTok{Session Binding Statement exp,}
+\NormalTok{attestation{-}result exp,}
+\NormalTok{evidence challenge lifetime,}
+\NormalTok{attestation collateral or TCB lifetime,}
+\NormalTok{replay{-}cache TTL,}
+\NormalTok{local policy maximum TTL}
+\end{Highlighting}
+\end{Shaded}
+
+A missing required freshness policy value fails closed. Evidence without
+a trusted timestamp is acceptable only for the current challenge and
+current authentication attempt.
+
+Replay protection is keyed at least over:
+
+\begin{Shaded}
+\begin{Highlighting}[]
+\NormalTok{grant\_hash || aud || tls\_exporter\_sha256 || request\_context\_sha256 || nonce}
+\end{Highlighting}
+\end{Shaded}
+
+When available, the key also includes the binding statement ID,
+task-binding value, evidence nonce, verifier challenge, or
+attestation-result identifier.
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.2800}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.7200}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
 Replay mode
@@ -1379,760 +731,287 @@ Valid use
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-\texttt{disabled} & Only when this identity profile is disabled or when
-a low-level helper is composing validation without making an acceptance
-decision. It is not valid for required-mode identity acceptance. \\
-\texttt{local} & Single-process or test deployments where one
-in-process replay cache covers all accepted bindings. \\
+\texttt{disabled} & Only when this identity profile is disabled or a
+low-level helper is composing checks without making an acceptance
+decision. \\
+\texttt{local} & Single-process or test deployments where one in-process
+replay cache covers all acceptances. \\
 \texttt{distributed\_required} & Multi-process or multi-node production
-deployments. The store uses atomic insert-with-expiry semantics over
-\texttt{grant\_hash}, \texttt{aud},
-\texttt{tls\_exporter\_sha256}, \texttt{request\_context\_sha256}, and
-\texttt{nonce}. Store unavailability fails closed. \\
+deployments using atomic insert-with-expiry semantics, such as
+\texttt{SET\ NX\ EX}. \\
 \end{longtable}
 
-The low-level \texttt{identitypolicy.MarkSessionBindingUsed} helper
-accepts a nil cache so callers can validate first and mark replay state
-only after local policy succeeds. Public one-shot acceptance helpers,
-such as \texttt{VerifySessionIdentityJWT},
-\texttt{VerifySessionIdentityJWTEnvelope}, and
-\texttt{VerifySessionIdentityCWT}, require a replay cache.
+Replay state is committed after signatures, freshness, session binding,
+and local policy have succeeded, but before the acceptance decision is
+returned. If the atomic insert fails because the key already exists, the
+verifier rejects the attempt. This prevents two concurrent acceptances
+of the same one-shot binding.
 
-\subsection{17. Freshness, replay, key rotation, and
-revocation}\label{freshness-replay-key-rotation-and-revocation}
-
-JWT/JWS and CWT/COSE adapters verify signatures against caller-provided
-key lookup policy. They do not define how Manager keys are rotated, how
-old keys are retired, how grants are revoked before expiration, or where
-replay state is stored. Deployments own those decisions.
-
-Deployments using this profile define:
-
-\begin{itemize}
-\tightlist
-\item
-  a trusted issuer namespace for Manager or policy-authority keys;
-\item
-  key identifiers, key-use rules, key-version rules, and key namespace
-  rules;
-\item
-  overlap windows for key rotation;
-\item
-  revocation sources for grants, Manager keys, or Agent binding keys
-  when early invalidation is required;
-\item
-  maximum grant and session-binding lifetimes;
-\item
-  clock-skew tolerance;
-\item
-  replay-cache key shape;
-\item
-  replay-cache retention at least as long as the accepted
-  session-binding lifetime.
-\end{itemize}
-
-Revocation has three separate targets:
-
-\begin{itemize}
-\tightlist
-\item
-  grant revocation rejects a specific Identity Grant by JWT \texttt{jti}
-  or CWT \texttt{cti};
-\item
-  Manager-key revocation rejects grants signed by a disabled issuer key
-  or \texttt{kid};
-\item
-  Agent binding-key revocation rejects Session Binding Statements signed
-  by a compromised or retired confirmation key.
-\end{itemize}
-
-Unknown, revoked, stale, wrong-use, or ambiguous keys fail closed. A
-deployment that relies on JWKS or another remote key set must define
-freshness, cache lifetime, pinning or trust anchors, and failure
-behavior for that key source.
-
-The JWT or COSE \texttt{kid} value is never a global key name. It is a
-protected-header selection hint inside a verifier-controlled namespace.
-Key lookup and key-cache entries MUST be scoped by the equivalent of:
+Key lookup and key caches MUST be scoped by the equivalent of:
 
 \begin{Shaded}
 \begin{Highlighting}[]
-\NormalTok{profile_version || token_type || issuer || audience ||}
-\NormalTok{key_use || alg || kty || kid || key_status || public_key_thumbprint}
+\NormalTok{profile\_version || token\_type || issuer || audience ||}
+\NormalTok{key\_use || alg || kty || kid || key\_status || public\_key\_thumbprint}
 \end{Highlighting}
 \end{Shaded}
 
-\texttt{key\_use} distinguishes at least Manager or policy-authority
-signing keys, Agent confirmation keys, and explicitly authorized
-endpoint keys. Two issuers that publish the same \texttt{kid} do not
-identify the same key. A Manager signing key and an Agent confirmation
-key with the same \texttt{kid} do not identify the same key. The
-Identity Grant \texttt{cnf.kid} is a grant-scoped reference to the Agent
-confirmation namespace; it is not a Manager-key lookup and not an
-authority by itself.
+\texttt{kid} is never a global key name. Unknown, revoked, retired,
+stale, wrong-use, or ambiguous keys fail closed. Deployments that need
+early invalidation must support grant revocation, Manager-key
+revocation, and Agent-binding-key revocation separately.
 
-Implementations that use callback-style key lookup receive only the
-bare protected-header \texttt{kid} from the token parser. Those
-callbacks MUST apply the same namespace using the verifier's expected
-issuer, audience, token type, key use, algorithm allow-list, key status,
-and public-key identity. JWKS or registry caches MUST NOT be keyed only
-by \texttt{kid}.
+\subsection{12. Cache, privacy, and
+diagnostics}\label{cache-privacy-and-diagnostics}
 
-Replay state is marked only after signature validation, session-binding
-comparison, freshness checks, and local policy comparison succeed.
-Failed attempts may be logged or rate-limited, but they do not consume a
-one-shot nonce unless deployment policy deliberately chooses that
-anti-probing behavior.
+Response caching and security-state caching are different. Verified
+grants, Session Binding Statements, attestation evidence, authorization
+decisions, and verification results MUST NOT be cached as acceptance
+evidence for a later session or request.
 
-\subsection{18. Core cache-safety rules}\label{core-cache-safety-rules}
+The default for profile-sensitive HTTP responses is \texttt{no-store}. A
+shared cache may store a response only when it is invariant across Agent
+ID, principal, tenant, authority scope, policy grant, mTLS identity,
+attestation result, session binding, task state, and other
+verifier-local policy inputs. \texttt{Vary} is not enough when the
+decision depends on non-header security state.
 
-Response caching and security-state caching are different things.
+Identity-binding data can create correlation. Deployments SHOULD prefer
+audience-scoped identifiers, short lifetimes, selective disclosure,
+reference tokens, and redacted logs. Short lifetime alone is not a
+privacy control.
 
-Response caching stores endpoint results for reuse. Replay caches store
-one-shot freshness state. Verified Identity Grants, Session Binding
-Statements, attestation evidence, authorization decisions, and prior
-verification results MUST NOT be cached as acceptance evidence for a
-later session or request.
+Diagnostics preserve layer, field, and error class, but they do not echo
+raw peer values. Validators reject invalid UTF-8, C0/C1 controls, CR,
+LF, DEL, and HTML delimiter code points \texttt{\textless{}},
+\texttt{\textgreater{}}, \texttt{\&}, \texttt{"}, and
+\texttt{\textquotesingle{}} in decision-sensitive string fields unless
+the field profile explicitly permits and canonicalizes them. Individual
+values are limited to 1024 bytes and set-like fields to 128 values
+unless a stricter deployment policy applies.
 
-The default for profile-sensitive endpoints is \texttt{no-store}. A
-shared response cache MAY store a response only when the response is
-invariant across Agent ID, principal, tenant, authority scope, policy
-grant, mTLS certificate identity, attestation result, session binding,
-task state, and other verifier-local policy inputs.
+\subsection{13. Deployment topologies}\label{deployment-topologies}
 
-Private or partitioned cache hits do not bypass current security checks.
-A verifier still authenticates the current Identity Grant, verifies the
-current Session Binding Statement, checks replay state, and compares
-local policy before using a cached response. Cache hit is a performance
-result, not an authorization result.
+\subsubsection{13.1 Direct-Agent mode}\label{direct-agent-mode}
 
-The broader RFC 9111 response-cache profile is non-normative for core
-identity binding and is kept in \texttt{docs/http-cache-profile.md}.
+In direct-Agent mode, the Agent terminates TLS and signs the Session
+Binding Statement with the confirmation key named by the verified
+Identity Grant, or with an endpoint key explicitly authorized by the
+grant or local policy.
 
-\subsection{19. Privacy and correlation
-controls}\label{privacy-and-correlation-controls}
+\subsubsection{13.2 Gateway-routed mode}\label{gateway-routed-mode}
 
-Identity-binding data can become a correlation surface. Tenant IDs,
-deployment names, task IDs, capability references, key fingerprints,
-grant IDs, route IDs, and attestation-related identifiers can link
-sessions even when the cryptography is correct.
-
-Deployments SHOULD minimize stable cross-context identifiers. In
-particular:
-
-\begin{itemize}
-\tightlist
-\item
-  partition audiences so a grant or binding issued for one relying
-  service is not useful or linkable at another relying service;
-\item
-  prefer pairwise or audience-scoped Agent, task, grant, and key
-  identifiers when global identifiers are not required for safety;
-\item
-  keep grants and Session Binding Statements short-lived, but do not
-  rely on short lifetime alone as the privacy control;
-\item
-  avoid logging full grants, binding statements, key fingerprints,
-  attestation evidence, task IDs, tenant IDs, and capability references
-  unless needed for security audit;
-\item
-  redact, hash with an audit-only salt, or separately protect
-  correlation fields in logs;
-\item
-  disclose only the L3 through L6 fields needed by the receiver's local
-  policy;
-\item
-  use selective disclosure or reference tokens when a deployment needs
-  to prove one attribute without revealing unrelated tenant, task,
-  capability, or deployment values.
-\end{itemize}
-
-\subsection{20. Deployment topologies}\label{deployment-topologies}
-
-\subsubsection{20.1 Direct-Agent mode}\label{direct-agent-mode}
-
-In direct-Agent mode, the Agent terminates the TLS session and performs
-the profile binding checks. The Agent signs the Session Binding
-Statement with the confirmation key named by the verified Identity Grant,
-or with an endpoint key explicitly authorized by the grant or local
-policy.
-
-\subsubsection{20.2 Gateway-routed mode}\label{gateway-routed-mode}
-
-Gateway-routed mode is a separate profile from direct-Agent mode.
-Gateway session binding proves the gateway endpoint, not the final Agent
-process. The relying party treats the final Agent as accepted only after
-a Gateway Route Assertion is checked against verifier-local route policy,
-freshness, replay state, and, when required, a final-Agent
-holder-of-key proof.
+Gateway-routed mode is a separate profile. Gateway session binding
+proves the gateway endpoint, not the final Agent process. The relying
+party accepts the final Agent only after a Gateway Route Assertion
+passes local route policy, freshness, replay, and any required
+final-Agent holder-of-key check.
 
 The Gateway Route Assertion binds at least the gateway identity,
 relying-party audience, grant hash, gateway session-binding hash, route
 ID, tenant or authority partition, policy ID, target Agent,
-request-context hash, nonce, and expiry. When final-Agent process
-identity is required, the assertion also binds an Agent holder-of-key
-proof hash or target Agent key thumbprint. Missing, stale, replayed,
+request-context hash, nonce, and expiry. Missing, stale, replayed,
 wrong-route, wrong-tenant, wrong-policy, wrong-task, or wrong-Agent
 assertions fail closed.
 
-The claim map and failure semantics are kept in
-\texttt{docs/gateway-routed-profile.md}. Local route-assertion
-validation lives in \texttt{pkg/agtp/gatewayroute}. JWT/JWS and
-CWT/COSE route-assertion adapters live in \texttt{pkg/agtp}. Runtime
-client/server wiring and a full gateway-routed network red-team harness
-remain separate work.
+\texttt{pkg/agtp/gatewayroute} is an implementation/reference namespace
+for local route-assertion validation. JWT/JWS and CWT/COSE
+route-assertion adapters may exist under AGTP-named packages, but the
+AGTP name is not normative for this profile.
 
-\subsection{21. Implementation hooks}\label{implementation-hooks}
+\subsection{14. Implementation status}\label{implementation-status}
 
-The production client hook is:
+The reusable comparator lives in \texttt{pkg/atls/identitypolicy}. It
+compares a session-bound observed assertion with verifier-local expected
+policy. It does not parse wire tokens, verify signatures, choose keys,
+rotate keys, check revocation, or own distributed replay storage.
 
-\begin{itemize}
-\tightlist
-\item
-  \texttt{atls.ClientConfig.IdentityPolicy} for local expected values;
-\item
-  \texttt{atls.ClientConfig.ObservedIdentity} for a session-bound
-  observed assertion extracted from a trusted source.
-\end{itemize}
+\texttt{identitypolicy.NewAssertionFromSessionBinding} builds an
+internal assertion after external identity material has already been
+authenticated. The statement must already be tied to the grant,
+audience, allowed confirmation key, minimum session-binding fields, and
+replay policy.
 
-The hook runs after exported-authenticator and attestation validation,
-but before the accepted TLS connection is returned to the caller.
+The client transport calls identity-policy validation after exported
+authenticator and attestation validation, but before returning the
+accepted TLS connection to the caller. Callers may provide an
+\texttt{ObservedIdentity} callback or pass a verified Identity Grant,
+verified Session Binding Statement, and replay cache through
+\texttt{atls.ClientConfig}.
 
-The client computes expected session binding from the accepted exported
-authenticator: the leaf public key, the certificate request context, and
-the attestation binder when attestation is present. The observed
-assertion must carry matching binding values and a non-expired
-\texttt{expires\_at} value before its identity fields are compared with
-local policy.
+\texttt{pkg/agtp} provides concrete JWT/JWS and CWT/COSE adapters. The
+package name is historical/reference naming. The adapters verify grants
+and binding statements using locally configured issuer, audience,
+signing methods, protected \texttt{kid}, and key lookup policy. They do
+not choose trusted Manager keys, rotate keys, define revocation policy,
+define deployment policy, or provide distributed replay storage.
 
-The profile gives the client two defenses:
+\texttt{VerifySessionIdentityJWT} is the fail-closed direct JWT/JWS
+gate: it verifies the Manager-signed grant, verifies the Session Binding
+Statement, checks binding-signer authorization, compares session binding
+and local policy, and then commits the replay nonce before returning
+acceptance.
 
-\begin{itemize}
-\tightlist
-\item
-  relay defense: the observed assertion is tied to this accepted TLS
-  session at L2;
-\item
-  diversion defense: the session-bound observed identity matches locally
-  expected deployment, Agent, task, and authorization values at L3
-  through L6.
-\end{itemize}
+\subsection{15. Evaluation boundary and conformance
+checklist}\label{evaluation-boundary-and-conformance-checklist}
 
-\subsection{22. Validation algorithm}\label{validation-algorithm}
+Tests and local harnesses are useful but not enough for the full
+security claim. The claim is receiver-verifiable linkage: the verified
+grant, Session Binding Statement, accepted session, attestation result,
+replay state, and local expected policy all describe the same intended
+interaction.
 
-For each layer required by policy:
+An implementation claiming this profile should evaluate relay, borrowed
+attestation, token substitution, multiple tasks on one TLS connection,
+HTTP/2 or gRPC connection reuse, TLS resumption, 0-RTT behavior,
+distributed replay-cache races, gateway route confusion, malformed
+JWT/CWT/COSE inputs, duplicate JSON members, Unicode edge cases, and the
+invariant that a grant is accepted only with the intended binding,
+session, and local policy.
 
-\begin{enumerate}
-\def\labelenumi{\arabic{enumi}.}
-\tightlist
-\item
-  Load the local expected value.
-\item
-  Reject if the expected value is missing, ambiguous, non-canonical, or
-  only peer supplied.
-\item
-  Extract the observed session-bound assertion from an authenticated
-  source.
-\item
-  Reject if the assertion is not bound to the accepted TLS session.
-\item
-  Reject if the assertion is expired or missing freshness metadata.
-\item
-  Extract the observed value for the required layer.
-\item
-  Reject if the observed value is missing or non-canonical.
-\item
-  Compare the observed value with the expected value.
-\item
-  Reject on mismatch.
-\item
-  Continue to the next required layer.
-\end{enumerate}
-
-For set-like L6 values such as scopes, resources, or authorization
-details, the observed set must satisfy local policy. The default
-\texttt{exact} mode rejects both missing and extra observed values.
-\texttt{contains\_all} is allowed only when local policy or a policy
-engine explicitly permits surplus observed authorization values for that
-endpoint, task, Agent, and resource. A peer-provided scope list is not
-enough by itself.
-
-Sender-constraining and replay checks prove possession and freshness.
-They do not authorize surplus scopes, resources, capabilities, or
-authorization details. L6 authorization semantics remain a separate
-local-policy decision.
-
-\subsection{23. Error handling and
-diagnostics}\label{error-handling-and-diagnostics}
-
-Validation failures preserve the layer, field, and error class. Callers
-can distinguish local policy configuration errors from missing peer
-claims, mismatched values, stale keys, replay, unsupported profile
-versions, and binding mismatches.
-
-Aggregated validation errors remain inspectable by layer and field so
-callers can fail closed while still reporting actionable diagnostics.
-
-The validator rejects unsafe identity-policy values, including invalid
-UTF-8, control characters such as CRLF, and HTML delimiter characters.
-It limits individual values to 1024 bytes and set-like fields to 128
-values. Validation errors report only layer, field, and error class;
-they do not echo raw peer values. HTTP or HTML presentation layers still
-need normal output escaping and CSRF protections.
-
-\subsection{24. Minimal implementation
-path}\label{minimal-implementation-path}
-
-A small implementation can be staged without changing the lower-layer
-TLS or post-handshake attestation wire protocol:
+Minimum conformance:
 
 \begin{enumerate}
 \def\labelenumi{\arabic{enumi}.}
 \tightlist
 \item
-  Define a local policy input structure for L3 through L6 expected
-  values.
+  Identity Grant and Session Binding Statement authorities are
+  separated.
 \item
-  Define extraction points for observed values.
+  The statement binds the exact signed grant bytes through
+  \texttt{grant\_hash}.
 \item
-  Authenticate the observed identity material before constructing an
-  internal assertion.
+  L2 uses the fixed exporter label and \texttt{sbaip\_context\_v1} bytes
+  for this profile version.
 \item
-  Add fail-closed validators for exact-match string fields.
+  The verifier compares endpoint key, exporter hash, context hash,
+  nonce, and attestation binder when present.
 \item
-  Add set-containment or exact-set validation for scopes, resources, and
-  authorization details.
+  Replay state is atomic and committed before acceptance is returned.
 \item
-  Add replay-cache support for one-shot binding nonces or IDs.
+  Required L3 through L6 values come from local expected policy, not
+  peer metadata.
 \item
-  Wire validation before treating an accepted peer as the intended
-  deployment, Agent, task, or authorized actor.
+  Decision-sensitive semantic references are canonical and
+  registry-scoped.
+\item
+  JWT/CWT/COSE parsing is fail-closed for type, algorithm, key,
+  audience, duplicate-field, nesting, and critical-header ambiguity.
+\item
+  Accepted assertion expiry is the earliest applicable component expiry.
+\item
+  Gateway mode authenticates the gateway endpoint and gateway-to-Agent
+  route separately.
 \end{enumerate}
 
-The lower-layer verifier can remain focused on L0 through L2. L3 through
-L6 enforcement belongs at the layer that has deployment policy, Agent
-metadata, computation state, and authorization decisions.
+\subsection{Appendix A. Claim maps}\label{appendix-a.-claim-maps}
 
-\subsection{25. Implementation status}\label{implementation-status}
-
-The reusable validator lives in \texttt{pkg/atls/identitypolicy}. It
-implements the expected-versus-observed comparison model and
-session-bound assertion validation described in this profile. The client
-transport calls it when \texttt{atls.ClientConfig.IdentityPolicy} is
-enabled.
-
-The same package provides
-\texttt{identitypolicy.NewAssertionFromSessionBinding} for the
-post-authentication step. It builds an internal \texttt{Assertion} from
-an already authenticated Identity Grant and an already-verified Session
-Binding Statement. It does not parse wire tokens or verify signatures.
-It checks that the statement is tied to the grant, audience, allowed
-confirmation key, and minimum session-binding fields before policy
-comparison. \texttt{identitypolicy.SessionBindingOptions} can attach a
-replay cache for one-shot binding nonces.
-
-The client config supports two integration styles. Callers can provide a
-custom \texttt{ObservedIdentity} callback, or they can pass a verified
-Identity Grant, a verified Session Binding Statement, and an optional
-replay cache directly on \texttt{atls.ClientConfig}. In both cases, the
-transport validates the resulting assertion against the accepted TLS
-session before returning the connection. For the direct grant/statement
-path, replay-cache marking happens only after session-binding and local
-policy comparison succeed.
-
-\texttt{pkg/agtp} provides concrete JWT/JWS and CWT/COSE wire-token
-adapters. The JWT/JWS adapter verifies Identity Grants and Session
-Binding Statements using locally configured issuer, audience, signing
-methods, and key lookup policy. It does not choose trusted Manager keys,
-rotate keys, perform revocation, define deployment policy, or own
-distributed replay storage.
-
-\texttt{pkg/agtp/gatewayroute} validates already-verified Gateway Route
-Assertions against verifier-local route policy and optional final-Agent
-holder-of-key proofs. It checks route, tenant, authority scope, policy,
-target Agent, request context, task or context, audit hash, freshness,
-and replay state. \texttt{pkg/agtp} adds JWT/JWS and CWT/COSE
-route-assertion adapters that verify protected \texttt{kid}, issuer,
-audience, expiry, nonce, grant hash, gateway session-binding hash,
-holder-of-key proof hash, replay state, and local route policy before
-acceptance. The adapters do not replace runtime client/server wiring or
-a full gateway network harness.
-
-The initial JWT/JWS adapter treats grant \texttt{cnf.kid} as the
-authorized session-binding signer key. The Session Binding Statement
-signer is taken from the protected JWS \texttt{kid} header and later
-checked by \texttt{identitypolicy} against the verified grant.
-Thumbprint-based confirmation, such as \texttt{cnf.jkt}, can be added
-when a deployment defines how key thumbprints map to local verification
-keys.
-
-For callers that want one fail-closed acceptance gate, \texttt{pkg/agtp}
-exposes \texttt{VerifySessionIdentityJWT}. That helper verifies the
-Manager-signed Identity Grant, verifies the Session Binding Statement,
-checks binding-signer authorization, compares the resulting assertion
-with local expected \texttt{identitypolicy.Policy} values and the
-accepted TLS session binding, and only then marks the binding nonce in
-the replay cache.
-
-The implemented production profile covers:
-
-\begin{itemize}
-\tightlist
-\item
-  trusted Manager or policy-authority key lookup for Identity Grants
-  through \texttt{JWTVerifyOptions};
-\item
-  issuer, audience, signing-method, \texttt{kid}, expiration, issued-at,
-  token type, profile version, and \texttt{jti} checks;
-\item
-  confirmation-key binding through Identity Grant \texttt{cnf.kid};
-\item
-  Session Binding Statement signer authorization against the verified
-  grant;
-\item
-  comparison with the accepted TLS endpoint key, TLS exporter hash,
-  request context, and optional attestation binder;
-\item
-  local \texttt{identitypolicy.Policy} comparison for required L3
-  through L6 values;
-\item
-  replay-cache enforcement before the observed identity is accepted;
-\item
-  local Gateway Route Assertion validation for gateway-routed
-  deployments, including policy-bound diversion and required final-Agent
-  holder-of-key proof checks.
-\end{itemize}
-
-Deployment still chooses trusted keys, expected policy values,
-revocation data, and distributed replay storage. Those sources can be
-Manager configuration, Agent metadata, computation state, an
-authorization policy engine, or a fail-closed registry integration. They
-must not be raw peer-controlled metadata.
-
-\subsection{26. Evaluation boundary}\label{evaluation-boundary}
-
-Negative test vectors, unit tests, and dependency-free live-style
-harnesses are necessary, but they are not sufficient evidence for the
-full security claim. The profile's central claim is receiver-verifiable
-linkage: the verified grant, Session Binding Statement, accepted
-session, attestation result, replay state, and local expected policy all
-describe the same intended interaction.
-
-An implementation that claims this profile should evaluate at least:
-
-\begin{itemize}
-\tightlist
-\item
-  relay attacks with real network endpoints and an active relay;
-\item
-  borrowed hardware attestation across sessions;
-\item
-  token substitution and cross-JWT or cross-envelope confusion;
-\item
-  multiple tasks over one TLS connection;
-\item
-  HTTP/2 or gRPC connection reuse;
-\item
-  TLS resumption and 0-RTT behavior;
-\item
-  distributed replay-cache races under multi-node storage;
-\item
-  gateway route confusion when gateway-routed mode is enabled;
-\item
-  fuzzing of JWT claims, Unicode values, duplicate JSON keys, malformed
-  protected headers, malformed base64url, and malformed JWS structure;
-\item
-  a small model or property test for the invariant that a grant is
-  accepted only with the intended binding, session, and local expected
-  policy.
-\end{itemize}
-
-\texttt{docs/live-red-team-report.md} records which of these are covered
-by the current repository and which remain future evaluation work.
-
-Current repository coverage includes local loopback relay checks, HTTP/2
-connection-reuse checks, malformed JWT/CWT corpus checks, deterministic
-acceptance-invariant coverage for the JWT gate, and local gateway route
-assertion red-team tests for policy-bound diversion and holder-of-key
-proof requirements, and JWT/JWS plus CWT/COSE route-assertion adapters.
-Local TLS resumption behavior is covered for JWT/JWS acceptance.
-Remaining work includes real 0-RTT transport behavior, gRPC-specific
-connection pooling, runtime gateway wiring, a full gateway-routed
-network harness, randomized property or fuzz generation, and
-hardware-backed confidential-VM attestation replay.
-
-\subsection{Appendix A. Identity Grant JWT claim
-map}\label{appendix-a.-identity-grant-jwt-claim-map}
-
-The initial JWT/JWS profile uses two signed JWTs for different authority
-questions:
-
-\begin{itemize}
-\tightlist
-\item
-  Identity Grant JWT: a Manager or policy authority signs upper-layer
-  identity, task, and authorization values that the peer is allowed to
-  claim.
-\item
-  Session Binding Statement JWT: the Agent confirmation key signs a
-  holder-of-key statement binding the verified grant to the accepted TLS
-  session.
-\end{itemize}
-
-The Session Binding Statement JWT does not authorize service, tenant,
-task, scope, resource, or capability values. Those semantic values
-belong in the Identity Grant JWT and are accepted only after local
-policy comparison.
+\subsubsection{A.1 Identity Grant}\label{a.1-identity-grant}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Identity Grant JWT field
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Source or form
+Field
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Purpose
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Layer
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-JWS protected header \texttt{kid} & Manager or policy-authority signing
-key ID & Select the local verification key for the signed grant. The
-value is only a key-selection hint. & prerequisite \\
-JWS protected header \texttt{alg} & locally allowed signing method &
-Prevent algorithm confusion. \texttt{none} is forbidden. &
-prerequisite \\
-\texttt{agtp\_type} & \texttt{agtp.identity-grant} & Distinguish the
-grant token from other repository profile tokens. & profile guard \\
-\texttt{agtp\_version} & \texttt{1} & Reject unsupported wire-profile
-versions before interpreting claims. & profile guard \\
-\texttt{iss} & trusted Manager or policy authority & Identify the
-authority that issued the grant. & prerequisite \\
-\texttt{aud} & relying service or application profile audience & Ensure
-the grant was issued for this verifier or application profile. &
-prerequisite \\
-\texttt{sub} & upper-layer subject, usually the Agent when
-\texttt{agent} is absent & Provide the subject authorized by the grant.
-& L4 \\
-\texttt{jti} & unique grant ID & Support grant uniqueness, revocation,
-diagnostics, and replay-sensitive handling. & freshness \\
-\texttt{iat} & issued-at time & Detect future-issued or malformed grants
-and support freshness decisions. & freshness \\
-\texttt{exp} & expiration time & Bound the lifetime of the authority
-statement. & freshness \\
-\texttt{cnf.kid} & Agent confirmation key ID & Name the key allowed to
-sign the Session Binding Statement for this grant. & L4 / L2
-prerequisite \\
-endpoint keys & optional endpoint key IDs & Claim:
-\texttt{authorized\_endpoint\_keys}. Allow explicitly named endpoint keys
-when the deployment uses that binding model. & L4 / L2 prerequisite \\
-\texttt{service} & application service name or ID & Bind the grant to
-the intended service. & L3 \\
-\texttt{tenant} & tenant or account ID & Bind the grant to the intended
-tenant. & L3 \\
-\texttt{deployment} & deployment, region, cluster, or environment slice
-& Bind the grant to the intended deployment target. & L3 \\
-\texttt{environment} & production, staging, development, or similar &
-Bind the grant to the intended environment class. & L3 \\
-\texttt{workload} & workload, process, or component ID & Bind the grant
-to the intended workload. & L4 \\
-\texttt{agent} & Agent identity & Bind the grant to the intended Agent
-rather than any peer on the same platform. & L4 \\
-\texttt{agent\_public\_key} & stable Agent public-key reference or
-fingerprint & Bind the Agent identity to a specific key when required by
-policy. & L4 \\
-\texttt{computation\_id} & computation or job ID & Bind the grant to a
-computation instance. & L5 \\
-\texttt{task\_id} & task ID & Bind the grant to the intended task. &
-L5 \\
-\texttt{thread\_id} & thread, conversation, or workflow ID & Bind the
-grant to the intended thread or workflow context. & L5 \\
-\texttt{delegation\_id} & delegation token or delegation record ID &
-Bind the grant to a specific delegation chain or authorization handoff.
-& L5 \\
-\texttt{intent\_ref} & stable intent reference & Bind the grant to a
-canonical task or intent family. & L5 \\
-\texttt{capability\_ref} & stable capability reference & Bind the grant
-to a canonical capability or resource-action class. & L6 \\
-\texttt{ontology\_id} & stable policy vocabulary or namespace ID &
-Identify the vocabulary used to interpret semantic references. & L6 \\
-\texttt{scope} / \texttt{scopes} & OAuth-style scope values & State
-coarse authorization strings for local policy comparison. & L6 \\
-\texttt{resource} / \texttt{resources} & resource indicators or resource
-URIs & State the resources the grant may be used against. & L6 \\
-\texttt{authorization\_details} & profile-specific authorization detail
-strings & Carry fine-grained authorization constraints. & L6 \\
+protected \texttt{kid} & Selects the Manager or policy-authority
+verification key inside a verifier-controlled namespace. \\
+protected \texttt{alg} & Must match local algorithm policy.
+\texttt{none} is forbidden. \\
+\texttt{profile\_type} & \texttt{sbaip.identity-grant}; legacy
+\texttt{agtp\_type} may be mapped only by an explicit compatibility
+profile. \\
+\texttt{profile\_version} & Reject unsupported versions before
+interpreting claims. \\
+\texttt{iss} & Trusted Manager or policy authority. \\
+\texttt{aud} & Relying service or application profile audience. \\
+\texttt{sub} & Upper-layer subject, usually the Agent when
+\texttt{agent} is absent. \\
+\texttt{jti} or \texttt{cti} & Unique grant ID for diagnostics,
+revocation, and freshness handling. \\
+\texttt{iat}, \texttt{exp} & Grant freshness and lifetime. \\
+\texttt{cnf.kid} & Agent confirmation key authorized to sign the Session
+Binding Statement. \\
+\texttt{authorized\_endpoint\_keys} & Optional endpoint keys explicitly
+authorized for session binding. \\
+L3 fields & \texttt{service}, \texttt{tenant}, \texttt{deployment},
+\texttt{environment}, region, or equivalent deployment claims. \\
+L4 fields & \texttt{workload}, \texttt{agent},
+\texttt{agent\_public\_key}, process or manifest references. \\
+L5 fields & \texttt{computation\_id}, \texttt{task\_id},
+\texttt{thread\_id}, \texttt{delegation\_id}, \texttt{intent\_ref}. \\
+L6 fields & \texttt{capability\_ref}, \texttt{ontology\_id},
+\texttt{scope}/\texttt{scopes}, \texttt{resource}/\texttt{resources},
+\texttt{authorization\_details}. \\
 \end{longtable}
 
-\subsection{Appendix B. Session Binding Statement JWT claim
-map}\label{appendix-b.-session-binding-statement-jwt-claim-map}
-
-The Session Binding Statement JWT carries session facts, not semantic
-authority. A verifier that accepts JWT/JWS identity material MUST verify
-this JWT under the Agent confirmation key authorized by the verified
-Identity Grant and MUST reject missing, mismatched, expired, replayed,
-non-canonical, or unsupported binding material.
+\subsubsection{A.2 Session Binding
+Statement}\label{a.2-session-binding-statement}
 
 \begin{longtable}[]{@{}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}
-  >{\raggedright\arraybackslash}p{(\columnwidth - 6\tabcolsep) * \real{0.2500}}@{}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}
+  >{\raggedright\arraybackslash}p{(\columnwidth - 2\tabcolsep) * \real{0.5000}}@{}}
 \toprule\noalign{}
 \begin{minipage}[b]{\linewidth}\raggedright
-Session Binding Statement JWT field
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Source or form
+Field
 \end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
 Purpose
-\end{minipage} & \begin{minipage}[b]{\linewidth}\raggedright
-Layer
 \end{minipage} \\
 \midrule\noalign{}
 \endhead
 \bottomrule\noalign{}
 \endlastfoot
-JWS protected header \texttt{kid} & Agent confirmation or explicitly
-authorized endpoint key ID & Select the candidate binding-signature key.
-The key is accepted only if authorized by the verified grant or local
-policy. & L2/L4 prerequisite \\
-JWS protected header \texttt{alg} & locally allowed signing method &
-Prevent algorithm confusion. \texttt{none} is forbidden. &
-prerequisite \\
-\texttt{agtp\_type} & \texttt{agtp.session-binding} & Distinguish the
-binding token from grants, envelopes, or unrelated JWTs. & profile
-guard \\
-\texttt{agtp\_version} & \texttt{1} & Reject unsupported wire-profile
-versions before interpreting binding fields. & profile guard \\
-\texttt{aud} & relying service or application profile audience & Ensure
-the statement was issued for this verifier or profile. & L2
-prerequisite \\
-\texttt{jti} & unique binding statement ID & Support diagnostics and
-one-shot replay handling. & freshness \\
-\texttt{iat} & issued-at time & Detect future-issued or malformed
-binding statements. & freshness \\
-\texttt{exp} & expiration time & Bound the lifetime of the session
-proof. It should not exceed the grant lifetime. & freshness \\
-\texttt{grant\_hash} & domain-separated hash of exact signed Identity
-Grant bytes & Bind the statement to the exact Manager-signed grant that
-was verified. & L2 \\
-\texttt{leaf\_public\_key\_sha256} & hash of accepted TLS or
-exported-authenticator endpoint public key & Confirm the accepted
-endpoint key. This is auxiliary and is not session-unique by itself. &
-L2 \\
-\texttt{tls\_exporter\_sha256} & SHA-256 of the accepted TLS exporter
-output for label \texttt{Attestation} and the accepted context bytes &
-Bind the statement to the current TLS exporter value without exposing
-the exporter value. & L2 \\
-\texttt{request\_context\_sha256} & SHA-256 of the exact canonical
-application context accepted for the Exported Authenticator
-\texttt{certificate\_request\_context} bytes & Bind the statement to the
-application-specific authentication instance. & L2 \\
-\texttt{attestation\_binder\_sha256} & SHA-256 of
-\texttt{attestation\_binding = H(leaf\_spki || EKM)}, when present &
-Link the statement to the accepted endpoint key, TLS exporter value,
-request context, and fresh evidence or verifier results that reference
-the same binding. & L2 \\
-\texttt{nonce} & one-shot nonce or unique binding value & Prevent replay
-of an otherwise valid binding statement. & freshness \\
+protected \texttt{kid} & Selects the Agent confirmation or explicitly
+authorized endpoint key. \\
+protected \texttt{alg} & Must match local binding-key policy.
+\texttt{none} is forbidden. \\
+\texttt{profile\_type} & \texttt{sbaip.session-binding}; legacy
+\texttt{agtp\_type} may be mapped only by an explicit compatibility
+profile. \\
+\texttt{profile\_version} & Reject unsupported versions before
+interpreting binding fields. \\
+\texttt{aud} & Relying service or application profile audience. \\
+\texttt{jti} & Unique binding statement ID. \\
+\texttt{iat}, \texttt{exp} & Binding freshness and lifetime. \\
+\texttt{grant\_hash} & Domain-separated hash of the exact signed
+Identity Grant bytes. \\
+\texttt{leaf\_public\_key\_sha256} & Hash of accepted TLS or
+exported-authenticator endpoint public key. \\
+\texttt{tls\_exporter\_sha256} & Hash of the accepted TLS exporter
+output. \\
+\texttt{request\_context\_sha256} & Hash of the exact
+\texttt{sbaip\_context\_v1} bytes. \\
+\texttt{attestation\_binder\_sha256} & Hash of
+\texttt{attestation\_binding\ =\ H(leaf\_spki\ \textbar{}\textbar{}\ EKM)}
+when attestation binding is present. \\
+\texttt{nonce} & One-shot binding value used for replay protection. \\
 \end{longtable}
 
-The receiver compares these fields as strict, already-canonical values.
-It does not repair aliases, reserialize JSON to compute
-\texttt{grant\_hash}, infer missing binding fields from peer metadata,
-or treat a valid Identity Grant JWT as session-bound without the Session
-Binding Statement JWT.
+\subsection{Appendix B. Packaging and trust-flow
+note}\label{appendix-b.-packaging-and-trust-flow-note}
 
-\subsection{Appendix C. Authority separation and envelope
-packaging}\label{appendix-c.-authority-separation-and-envelope-packaging}
-
-A deployment may package the Manager-signed Identity Grant inside, or
-alongside, the Agent-signed Session Binding Statement so an
-implementation passes around one envelope. Packaging does not merge
-authorities. The verifier still validates the Manager or
-policy-authority signature on the grant, validates the Agent
-confirmation-key signature on the session binding, checks that the
-binding names the exact verified grant, and compares the resulting
-assertion with local policy.
+A deployment may package the Manager-signed Identity Grant inside or
+alongside the Agent-signed Session Binding Statement. Packaging does not
+merge authorities. The verifier still authenticates the Manager
+signature, the Agent binding signature, the exact grant hash, the
+current session binding, replay state, and local policy.
 
 Moving semantic grant fields directly into an Agent-signed Session
-Binding Statement would make the Agent the authority for service,
-tenant, task, scope, resource, and capability claims. That changes the
-trust model and is unsafe for profiles that need Manager- or
-policy-authority-issued authorization.
+Binding Statement changes the trust model by making the Agent the
+authority for service, tenant, task, scope, resource, and capability
+claims. Profiles that need Manager or policy-authority authorization
+MUST NOT do that.
 
-A single Manager-signed JWT that also includes session-binding values is
-possible only when the Manager participates in, or is given trustworthy
-evidence of, the per-connection TLS binding. That design adds an online
-authority dependency and moves replay and freshness responsibilities to
-the Manager path.
-
-The two-JWT design adds one additional JWS verification plus a
-domain-separated hash over the exact compact Identity Grant JWT bytes.
-This is usually small compared with TLS setup and attestation
-verification. Verifiers MUST NOT cache a verified Identity Grant as
-acceptance evidence across sessions. Internal optimization must still
-re-check signature, expiration, revocation state, profile version,
-issuer, audience, grant hash, fresh Session Binding Statement, replay
-state, and local policy for each accepted session.
-
-The reusable \texttt{pkg/agtp} JWT/JWS adapter also supports a
-single-envelope verification path. In that profile, the outer envelope
-is signed by the Agent binding key and carries the exact inner
-Manager-signed Identity Grant JWT plus the session-binding fields. The
-verifier still authenticates the inner Manager grant, authenticates the
-outer Agent binding statement, compares the outer \texttt{grant\_hash}
-with the exact inner grant bytes, enforces replay and freshness, and
-compares the resulting assertion with local policy. Agent-signed
-semantic claims in the outer envelope are not Manager authorization. The
-current runtime client configuration remains wired to the two-token
-JWT/JWS profile unless a caller explicitly uses the envelope verifier.
-
-\subsection{Appendix D. Non-normative trust-flow
-example}\label{appendix-d.-non-normative-trust-flow-example}
-
-\begin{Shaded}
-\begin{Highlighting}[]
-\NormalTok{sequenceDiagram}
-\NormalTok{  participant M as Bob Manager}
-\NormalTok{  participant B as Bob Agent}
-\NormalTok{  participant A as Alice}
-\NormalTok{  participant X as Malware Agent on Alice machine}
-
-\NormalTok{  M{-}\textgreater{}\textgreater{}B: Identity Grant signed by Manager key}
-\NormalTok{  Note over M,B: Grant authorizes Bob Agent key}
-
-\NormalTok{  A{-}\textgreater{}\textgreater{}B: Start TLS session and profile binding}
-\NormalTok{  B{-}\textgreater{}\textgreater{}A: Identity Grant}
-\NormalTok{  B{-}\textgreater{}\textgreater{}A: Session Binding Statement signed by Bob Agent key}
-
-\NormalTok{  X{-}{-}\textgreater{}\textgreater{}A: Injects peer{-}provided identity metadata}
-\NormalTok{  X{-}{-}\textgreater{}\textgreater{}A: Replays another grant or binding statement}
-
-\NormalTok{  A{-}\textgreater{}\textgreater{}A: Verify grant with trusted Bob Manager public key}
-\NormalTok{  A{-}\textgreater{}\textgreater{}A: Verify session binding with Bob Agent key from grant}
-\NormalTok{  A{-}\textgreater{}\textgreater{}A: Check expected service, Agent, task, and capability}
-\NormalTok{  A{-}\textgreater{}\textgreater{}A: Reject metadata not signed or not bound to this session}
-\end{Highlighting}
-\end{Shaded}
-
-Bob Manager issues an authorization grant for Bob Agent. Bob Agent
-communicates with Alice and binds the Manager grant to the current TLS
-session. Malware on Alice's machine can try to inject peer-provided
-metadata or reuse an old grant or binding statement, but it cannot create
-a valid Manager-signed grant or Bob-Agent-key-signed session binding for
-the current accepted session.
-
-Alice accepts only the Manager-signed grant and the Agent-signed session
-binding after local expected service, Agent, task, and capability checks
-pass. This does not protect a fully compromised Alice process or local
-policy store.
+A single Manager-signed token that also includes session-binding values
+is possible only when the Manager participates in, or receives
+trustworthy evidence of, the per-connection binding. That design moves
+freshness and replay responsibility to the Manager path.
 
 \end{document}

@@ -1,5 +1,11 @@
 # Live Red-Team Completion Report
 
+Copyright (c) 2026 ToppyMicroServices OÜ
+
+Verification notice: this report contains AI-generated draft text and remains
+under human verification. Treat its conclusions as provisional until the
+referenced checks are independently confirmed.
+
 This report summarizes the completed live-style red-team work for the
 session-bound agent identity profile. The normative profile source is
 `docs/SSOT.md`.
