@@ -17,12 +17,13 @@ of the repository.
 
 The profile makes relay, diversion, wrong-agent, replay, and
 binding-parameter failures concrete. The layer split is one decomposition, not
-the only possible taxonomy. AGTP / Agent2Agent is one reference target; see the
+the only possible taxonomy. A2A/AGTP-style protocols are possible mapping
+targets; see the
 [Agent2Agent GitHub repository](https://github.com/a2aproject/A2A). The
-[nomoticai/agtp](https://github.com/nomoticai/agtp) repository was also used as
-an implementation reference for AGTP-facing profile feedback. The same checks
-can also be reused by other application protocols with similar identity-binding
-needs.
+[nomoticai/agtp](https://github.com/nomoticai/agtp) repository was also used
+as an implementation reference for AGTP-facing profile feedback. The same
+checks can also be reused by other application protocols with similar
+identity-binding needs.
 
 ## Why This Profile Exists
 
@@ -182,7 +183,7 @@ itself is not the scope of this security profile.
 
 ## Reference Protocol Notes
 
-AGTP is a natural reference target; see the
+A2A/AGTP-style protocols are possible mapping targets; see the
 [Agent2Agent GitHub repository](https://github.com/a2aproject/A2A) and
 [nomoticai/agtp](https://github.com/nomoticai/agtp). This repository stays at
 the security-profile and test-vector layer. AGTP, or any similar application
@@ -202,6 +203,12 @@ go test ./pkg/clients ./pkg/clients/http ./pkg/clients/grpc
 
 Some client tests open local loopback listeners. In restricted sandboxes, those
 tests may need to run outside the sandbox.
+
+## Authorship and Review
+
+This repository is maintained by ToppyMicroServices OÜ. Drafting and editing
+may use AI-assisted tools, but published specifications, tests, and releases
+are reviewed and accepted by the maintainer.
 
 ## License
 

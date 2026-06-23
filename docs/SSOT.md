@@ -2,12 +2,18 @@
 
 Draft v0.4
 
+Copyright (c) 2026 ToppyMicroServices OÜ
+
+Author: Akira Okutomi
+
+SPDX-License-Identifier: Apache-2.0
+
 ## Abstract
 
 This profile binds upper-layer identity and authorization material to an
 accepted TLS 1.3 session and to post-handshake platform-attestation facts. It is
-application-protocol neutral at L0 through L2. Agent2Agent / AGTP is the first
-reference target for the upper layers, not a replacement for the trust model
+application-protocol neutral at L0 through L2 and does not depend on
+Agent2Agent, AGTP, or any other application protocol to supply the trust model
 described here.
 
 This profile is not a TLS extension. It is an application-profile acceptance
@@ -107,6 +113,7 @@ replay, canonical references, local policy comparison, and cache safety.
 | TLS channel binding and exported authenticators | RFC 9266 and RFC 9261 | The profile consumes accepted lower-layer binding facts. It does not define a new TLS exporter or exported-authenticator format. |
 | Remote attestation roles | RFC 9334 | The attestation-binder hash, accepted-evidence policy, and L1/L2 wiring are profile details. |
 | CWT/COSE | RFC 8392 and RFC 9052 | CWT/COSE is an alternative encoding for the same semantics, not a different trust model. |
+| Wallets, DID, and verifiable credentials | Deployment-specific; related work includes W3C DID and Verifiable Credentials specifications | A wallet can store grants, protect confirmation keys, and sign or present profile material. Wallet metadata, display names, card fields, and credential labels are not verifier policy and do not replace Identity Grant, Session Binding Statement, replay, or local-policy checks. |
 | HTTP response caching | RFC 9111 | The core rule is that security-state objects and verification results are not cacheable acceptance evidence. Detailed response-cache guidance is separated into `docs/http-cache-profile.md`. |
 | OIDC | OpenID Connect Core | OIDC is vocabulary only. This profile does not require OIDC. |
 | L0-L6, Identity Grant, Session Binding Statement, canonical references | Not standardized as one combined profile | These are local names for fail-closed identity binding. |
