@@ -18,11 +18,14 @@ completed successfully on 2026-06-25 UTC.
 
 ## What This Is / Is Not
 
-Agents Secure Binding is a verifier-side acceptance profile for session-bound
-Agent identity. A verifier accepts an Agent only when a verified authority
-grant, holder-of-key proof, accepted TLS or exported-authenticator session,
-freshness and replay state, any required attestation result, and verifier-local
-policy all describe the same intended interaction.
+Agents Secure Binding implements an experimental Direct-Agent binding profile
+based on the core acceptance rules. It is not the draft itself, and it does not
+claim to implement every binding profile.
+
+A verifier accepts an Agent only when a verified authority grant,
+holder-of-key proof, accepted TLS or exported-authenticator session, freshness
+and replay state, any required attestation result, and verifier-local policy
+all describe the same intended interaction.
 
 This repository contains profile text, implementation helpers, tests, vectors,
 and derived notes for that acceptance rule.
@@ -40,6 +43,10 @@ This profile is not:
 
 Application protocols can carry the profile material, but they do not by
 themselves supply the verifier-side acceptance rule.
+
+Wallets are optional presentation or signing components, not trust roots or
+sources of expected policy. Gateway-routed mode is out of scope for this
+Direct-Agent implementation surface.
 
 ## Start Here
 
@@ -100,13 +107,19 @@ Covered in the current v0.4 evidence:
 - dependency-free live-style harnesses for local TLS exporter binding, HTTP/2
   connection reuse, TLS resumption replay rejection, malformed token corpora,
   and deterministic acceptance invariants;
-- local gateway route-assertion policy and JWT/CWT adapter tests.
+- route-assertion policy unit tests for the documented gateway boundary, with
+  no runtime gateway mode.
+
+For accepted TLS sessions, the AGTP observed-identity path derives
+`tls_exporter_sha256` from the accepted `tls.ConnectionState`. Fixed exporter
+bytes are used only in synthetic unit fixtures.
 
 Not yet validated as a full security claim:
 
 - real 0-RTT early-data transport behavior;
 - gRPC connection pooling;
-- runtime gateway wiring and a full gateway-routed network harness;
+- runtime gateway wiring and a full gateway-routed network harness, if that
+  profile is split out for separate implementation;
 - randomized fuzz/property generation for token and invariant paths;
 - hardware-backed confidential-VM attestation replay coverage.
 

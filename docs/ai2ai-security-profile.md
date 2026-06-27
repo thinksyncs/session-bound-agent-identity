@@ -5,6 +5,10 @@ agent-to-agent protocols such as A2A and AGTP. It is not a replacement for the
 SSOT. Its purpose is to keep discovery, authentication, message metadata, and
 session-bound identity in separate trust domains.
 
+This repository's implementation surface is Direct-Agent. Wallet and gateway
+sections below are boundary guidance for optional presentation components and
+separate gateway-routed profiles; they are not core verifier requirements here.
+
 ## Scope
 
 The profile adds a receiver-verifiable binding between:
@@ -80,7 +84,7 @@ An Agent wallet is a key-custody and credential-presentation component. It is
 not a trust root. A receiver does not accept a peer because a wallet label,
 display name, card field, or wallet metadata says the peer is a given Agent.
 
-The recommended wallet model is:
+If a wallet is used, the model is:
 
 - the Manager or policy authority issues an Identity Grant;
 - the wallet stores the grant and protects the Agent confirmation key;
@@ -248,6 +252,9 @@ does not replace the signed Identity Grant or the signed Session Binding
 Statement.
 
 ## Gateway-Routed Mode
+
+This repository does not implement gateway-routed runtime mode. The section is
+boundary guidance for a separate binding profile.
 
 Gateway-routed mode needs a Gateway Route Assertion in addition to the direct
 Agent profile material. Gateway session binding proves the gateway endpoint. It
