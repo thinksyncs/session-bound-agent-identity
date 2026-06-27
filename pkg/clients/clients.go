@@ -1,4 +1,3 @@
-// Copyright (c) Ultraviolet
 // SPDX-License-Identifier: Apache-2.0
 
 package clients
@@ -112,8 +111,8 @@ func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc,
 		return nil, fmt.Errorf("%w: identity replay cache is required for AGTP JWT validation", ErrInvalidIdentityJWTConfig)
 	}
 
-	return func(_ *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Assertion, error) {
-		expectedBinding, err := atls.IdentityBindingFromValidation(validation)
+	return func(st *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Assertion, error) {
+		expectedBinding, err := expectedBindingForAGTP(st, validation)
 		if err != nil {
 			return identitypolicy.Assertion{}, err
 		}
@@ -129,4 +128,11 @@ func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc,
 		}
 		return result.Assertion, nil
 	}, nil
+}
+
+func expectedBindingForAGTP(st *tls.ConnectionState, validation *ea.ValidationResult) (identitypolicy.Binding, error) {
+	if st != nil && st.Version != 0 {
+		return atls.IdentityBindingFromConnectionState(st, validation)
+	}
+	return atls.IdentityBindingFromValidation(validation)
 }
