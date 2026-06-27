@@ -9,7 +9,7 @@ Semantic diversion is broader than a wrong service or tenant. A valid channel,
 session, peer, or token can still be bound to the wrong semantic target,
 context, delegation, capability, or authority boundary.
 
-The static diversion policy covers the L3 part of that family: service, tenant,
+The static diversion policy covers the D3 part of that family: service, tenant,
 deployment, environment, and agent target changes. It gives deployments a
 fail-closed way to say which diversions are allowed, which are denied, and which
 fields must be preserved for audit.

@@ -17,9 +17,9 @@ tied to the same accepted TLS session and to locally expected identity policy.
 
 The profile separates two questions:
 
-- L2 relay defense: is the profile material bound to this accepted TLS
+- D2 relay defense: is the profile material bound to this accepted TLS
   session?
-- L3 and above: is the accepted session the intended deployment, agent, task, or
+- D3 and above: is the accepted session the intended deployment, agent, task, or
   authorized actor?
 
 ## Exporter Label and Context

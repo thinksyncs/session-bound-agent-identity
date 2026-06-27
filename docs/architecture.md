@@ -3,8 +3,8 @@
 This architecture note covers the key split for session-bound agent identity:
 TLS and attestation establish lower-layer facts, while application policy
 decides whether those facts describe the intended peer. AGTP is one reference
-target, not the owner of this security-hardening profile. The layer split is
-one decomposition; terminology, layers, and verification order are defined in
+target, not the owner of this security-hardening profile. The dimension split is
+one decomposition; terminology, dimensions, and verification order are defined in
 `docs/SSOT.md`.
 
 The profile is an application acceptance gate over ordinary TLS 1.3,
@@ -30,20 +30,20 @@ trust domains. The profile requires separate verification policy for them so
 that an Agent cannot authorize itself and a Manager key is not reused as an
 Agent presence key.
 
-## Layer Split
+## Dimension Split
 
 The profile keeps the lower TLS and attestation facts separate from application
 policy.
 
-| Layer | Responsibility | Primary failure class |
+| Dimension | Responsibility | Primary failure class |
 | --- | --- | --- |
-| L0 | Authenticate the live TLS channel | MITM or session confusion |
-| L1 | Appraise platform or VM evidence | fake or malformed platform evidence |
-| L2 | Bind attestation or authenticator material to the accepted TLS session | relay, replay, borrowed evidence |
-| L3 | Check intended service, tenant, deployment, or environment | service / tenant diversion |
-| L4 | Check intended workload, process, or agent | wrong-agent |
-| L5 | Check task, thread, context, or delegation | cross-task replay or context diversion |
-| L6 | Check authorization or capability policy | confused deputy |
+| D0 | Authenticate the live TLS channel | MITM or session confusion |
+| D1 | Appraise platform or VM evidence | fake or malformed platform evidence |
+| D2 | Bind attestation or authenticator material to the accepted TLS session | relay, replay, borrowed evidence |
+| D3 | Check intended service, tenant, deployment, or environment | service / tenant diversion |
+| D4 | Check intended workload, process, or agent | wrong-agent |
+| D5 | Check task, thread, context, or delegation | cross-task replay or context diversion |
+| D6 | Check authorization or capability policy | confused deputy |
 
 An application protocol, including AGTP, may carry profile material, but it must
 not make peer-controlled metadata authoritative. The verifier compares

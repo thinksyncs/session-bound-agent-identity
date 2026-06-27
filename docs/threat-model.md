@@ -1,7 +1,7 @@
 # Session-Bound Agent Identity Threat Model
 
 This threat model covers a session-bound agent identity profile. AGTP is one
-reference target, but the risks are not AGTP-specific. Terminology, layers,
+reference target, but the risks are not AGTP-specific. Terminology, dimensions,
 verification order, and the normative threat-to-design-impact mapping are
 defined in `docs/SSOT.md`. This file is explanatory and should be updated after
 the SSOT when the two diverge.
@@ -14,7 +14,7 @@ peer as the intended application peer.
 ## Assumptions
 
 - TLS 1.3 and exported-authenticator validation are implemented by the lower
-  layer.
+  transport layer.
 - Platform evidence appraisal is handled by the lower attestation verifier.
 - The Manager or policy-authority signing key is configured locally or through
   a trusted key source.
@@ -40,7 +40,7 @@ Semantic diversion is an intended-subject failure family. The channel, session,
 token, or peer may be valid, but the action is bound to the wrong semantic
 target, context, delegation, capability, or authority boundary.
 
-Service / tenant diversion is the L3 subset. The accepted peer may be genuine,
+Service / tenant diversion is the D3 subset. The accepted peer may be genuine,
 but it is not the intended service, tenant, deployment, or environment.
 
 Profile requirement:
