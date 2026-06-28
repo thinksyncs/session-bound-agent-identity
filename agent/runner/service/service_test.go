@@ -14,6 +14,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/docker"
 	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
 )
 
@@ -157,10 +158,7 @@ func TestRunWithDockerAlgorithm(t *testing.T) {
 	resp, err := rs.Run(context.Background(), req)
 	require.NoError(t, err)
 	require.NotNil(t, resp)
-	if resp.Error != "" {
-		assert.Contains(t, resp.Error, "Docker")
-		t.Skip("Docker issue, skipping test")
-	}
+	assert.Equal(t, docker.ErrDockerAlgorithmDisabled.Error(), resp.Error)
 	assert.Equal(t, "test-docker", resp.ComputationId)
 	t.Cleanup(func() {
 		_ = os.Remove("algo")

@@ -102,6 +102,8 @@ var (
 	ErrHashMismatch = errors.New("malformed data, hash does not match manifest")
 	// ErrFileNameMismatch provided dataset filename does not match filename in manifest.
 	ErrFileNameMismatch = errors.New("malformed data, filename does not match manifest")
+	// ErrUnsafeDatasetFilename indicates a dataset filename would escape the dataset directory.
+	ErrUnsafeDatasetFilename = errors.New("malformed data, unsafe dataset filename")
 	// ErrAllResultsConsumed indicates all results have been consumed.
 	ErrAllResultsConsumed = errors.New("all results have been consumed by declared consumers")
 	// ErrAttestationFailed attestation failed.
@@ -330,6 +332,31 @@ func (as *agentService) StopComputation(ctx context.Context) error {
 	return nil
 }
 
+func datasetFilePath(filename string) (string, error) {
+	name := strings.TrimSpace(filename)
+	if name == "" {
+		return "", ErrUnsafeDatasetFilename
+	}
+	cleanName := filepath.Clean(name)
+	if cleanName != name || cleanName == "." || filepath.IsAbs(cleanName) || cleanName != filepath.Base(cleanName) {
+		return "", ErrUnsafeDatasetFilename
+	}
+
+	root, err := filepath.Abs(algorithm.DatasetsDir)
+	if err != nil {
+		return "", err
+	}
+	target := filepath.Join(root, cleanName)
+	rel, err := filepath.Rel(root, target)
+	if err != nil {
+		return "", err
+	}
+	if rel == "." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) || rel == ".." || filepath.IsAbs(rel) {
+		return "", ErrUnsafeDatasetFilename
+	}
+	return target, nil
+}
+
 // downloadAlgorithmIfRemote automatically downloads the algorithm if it has a remote source.
 // This is called as an action when entering the ReceivingAlgorithm state.
 func (as *agentService) downloadAlgorithmIfRemote(state statemachine.State) {
@@ -497,14 +524,6 @@ func (as *agentService) downloadDatasetsIfRemote(state statemachine.State) {
 				return
 			}
 
-			// Write dataset to file
-			f, err := os.Create(fmt.Sprintf("%s/%s", algorithm.DatasetsDir, d.Filename))
-			if err != nil {
-				as.logger.Error("error creating dataset file", "error", err, "filename", d.Filename)
-				as.sm.SendEvent(RunFailed)
-				return
-			}
-
 			if d.Decompress {
 				if err := internal.UnzipFromMemory(res.Data, algorithm.DatasetsDir); err != nil {
 					as.runError = fmt.Errorf("failed to unzip dataset %s: %w", d.Filename, err)
@@ -513,18 +532,33 @@ func (as *agentService) downloadDatasetsIfRemote(state statemachine.State) {
 					return
 				}
 			} else {
+				datasetPath, err := datasetFilePath(d.Filename)
+				if err != nil {
+					as.runError = err
+					as.logger.Error("error validating dataset filename", "error", err, "filename", d.Filename)
+					as.sm.SendEvent(RunFailed)
+					return
+				}
+				f, err := os.Create(datasetPath)
+				if err != nil {
+					as.runError = fmt.Errorf("error creating dataset file: %w", err)
+					as.logger.Error("error creating dataset file", "error", err, "filename", d.Filename)
+					as.sm.SendEvent(RunFailed)
+					return
+				}
 				if _, err := f.Write(res.Data); err != nil {
+					as.runError = fmt.Errorf("error writing dataset to file: %w", err)
 					as.logger.Error("error writing dataset to file", "error", err, "filename", d.Filename)
 					f.Close()
 					as.sm.SendEvent(RunFailed)
 					return
 				}
-			}
-
-			if err := f.Close(); err != nil {
-				as.logger.Error("error closing file", "error", err, "filename", d.Filename)
-				as.sm.SendEvent(RunFailed)
-				return
+				if err := f.Close(); err != nil {
+					as.runError = fmt.Errorf("error closing dataset file: %w", err)
+					as.logger.Error("error closing file", "error", err, "filename", d.Filename)
+					as.sm.SendEvent(RunFailed)
+					return
+				}
 			}
 
 			// Remove from pending datasets
@@ -808,14 +842,16 @@ func (as *agentService) Data(ctx context.Context, dataset Dataset) error {
 				return ErrFileNameMismatch
 			}
 
-			as.computation.Datasets = slices.Delete(as.computation.Datasets, i, i+1)
-
 			if DecompressFromContext(ctx) {
 				if err := internal.UnzipFromMemory(datasetData, algorithm.DatasetsDir); err != nil {
 					return fmt.Errorf("error decompressing dataset: %v", err)
 				}
 			} else {
-				f, err := os.Create(fmt.Sprintf("%s/%s", algorithm.DatasetsDir, datasetFilename))
+				datasetPath, err := datasetFilePath(datasetFilename)
+				if err != nil {
+					return err
+				}
+				f, err := os.Create(datasetPath)
 				if err != nil {
 					return fmt.Errorf("error creating dataset file: %v", err)
 				}
@@ -828,6 +864,7 @@ func (as *agentService) Data(ctx context.Context, dataset Dataset) error {
 				}
 			}
 
+			as.computation.Datasets = slices.Delete(as.computation.Datasets, i, i+1)
 			matched = true
 			break
 		}

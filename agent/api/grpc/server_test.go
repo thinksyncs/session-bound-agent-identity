@@ -14,7 +14,9 @@ import (
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
 )
 
 type MockAgentService_AlgoServer struct {
@@ -171,6 +173,42 @@ func TestAlgoWithMultipleChunks(t *testing.T) {
 	mockService.AssertExpectations(t)
 }
 
+func TestAlgoRejectsOversizedUpload(t *testing.T) {
+	oldLimit := maxAlgorithmUploadBytes
+	maxAlgorithmUploadBytes = 4
+	t.Cleanup(func() { maxAlgorithmUploadBytes = oldLimit })
+
+	mockService := new(mocks.Service)
+	server := NewServer(mockService)
+
+	mockStream := &MockAgentService_AlgoServer{ctx: context.Background()}
+	mockStream.On("Recv").Return(&agent.AlgoRequest{Algorithm: []byte("12345")}, nil).Once()
+
+	err := server.Algo(mockStream)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	mockStream.AssertExpectations(t)
+	mockService.AssertNotCalled(t, "Algo", mock.Anything, mock.Anything)
+}
+
+func TestAlgoRejectsOversizedRequirementsUpload(t *testing.T) {
+	oldLimit := maxRequirementsUploadBytes
+	maxRequirementsUploadBytes = 4
+	t.Cleanup(func() { maxRequirementsUploadBytes = oldLimit })
+
+	mockService := new(mocks.Service)
+	server := NewServer(mockService)
+
+	mockStream := &MockAgentService_AlgoServer{ctx: context.Background()}
+	mockStream.On("Recv").Return(&agent.AlgoRequest{Requirements: []byte("12345")}, nil).Once()
+
+	err := server.Algo(mockStream)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	mockStream.AssertExpectations(t)
+	mockService.AssertNotCalled(t, "Algo", mock.Anything, mock.Anything)
+}
+
 func TestData(t *testing.T) {
 	mockService := new(mocks.Service)
 	server := NewServer(mockService)
@@ -187,6 +225,24 @@ func TestData(t *testing.T) {
 
 	mockStream.AssertExpectations(t)
 	mockService.AssertExpectations(t)
+}
+
+func TestDataRejectsOversizedUpload(t *testing.T) {
+	oldLimit := maxDatasetUploadBytes
+	maxDatasetUploadBytes = 4
+	t.Cleanup(func() { maxDatasetUploadBytes = oldLimit })
+
+	mockService := new(mocks.Service)
+	server := NewServer(mockService)
+
+	mockStream := &MockAgentService_DataServer{ctx: context.Background()}
+	mockStream.On("Recv").Return(&agent.DataRequest{Dataset: []byte("12345"), Filename: "test.txt"}, nil).Once()
+
+	err := server.Data(mockStream)
+	assert.Equal(t, codes.ResourceExhausted, status.Code(err))
+
+	mockStream.AssertExpectations(t)
+	mockService.AssertNotCalled(t, "Data", mock.Anything, mock.Anything)
 }
 
 func TestResult(t *testing.T) {

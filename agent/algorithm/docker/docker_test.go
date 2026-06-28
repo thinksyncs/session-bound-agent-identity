@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/logging"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events/mocks"
 )
 
@@ -24,6 +23,13 @@ func TestNewAlgorithm(t *testing.T) {
 	assert.True(t, ok, "NewAlgorithm should return a *docker")
 	assert.Equal(t, algoFile, d.algoFile, "algoFile should be set correctly")
 	assert.NotNil(t, d.logger, "logger should be set")
-	assert.IsType(t, &logging.Stderr{}, d.stderr, "stderr should be of type *algorithm.Stderr")
-	assert.IsType(t, &logging.Stdout{}, d.stdout, "stdout should be of type *algorithm.Stdout")
+}
+
+func TestRunDisabled(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	eventsSvc := new(mocks.Service)
+
+	algo := NewAlgorithm(logger, eventsSvc, "/path/to/algo.tar", "")
+
+	assert.ErrorIs(t, algo.Run(), ErrDockerAlgorithmDisabled)
 }

@@ -5,6 +5,7 @@ package ingress
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net"
@@ -21,14 +22,17 @@ import (
 
 const unix = "unix"
 
+var ErrPlaintextIngressDisabled = errors.New("plaintext ingress proxy is disabled")
+
 // ProxyConfig contains configuration for starting a proxy instance.
 type ProxyConfig struct {
-	Port         string
-	CertFile     string
-	KeyFile      string
-	ServerCAFile string
-	ClientCAFile string
-	AttestedTLS  bool
+	Port           string
+	CertFile       string
+	KeyFile        string
+	ServerCAFile   string
+	ClientCAFile   string
+	AttestedTLS    bool
+	AllowPlaintext bool
 }
 
 // ProxyContext provides context information for logging and tracking.
@@ -78,7 +82,7 @@ func (p *proxyServer) Start(cfg ProxyConfig, ctx ProxyContext) error {
 		cfg.Port = "7002"
 	}
 
-	addr := fmt.Sprintf("0.0.0.0:%s", cfg.Port)
+	addr := net.JoinHostPort("0.0.0.0", cfg.Port)
 
 	// Configure Reverse Proxy
 	var rp *httputil.ReverseProxy
@@ -184,6 +188,11 @@ func (p *proxyServer) Start(cfg ProxyConfig, ctx ProxyContext) error {
 			p.logger.Info(fmt.Sprintf("ingress-proxy listening at %s with TLS for %s", addr, contextDesc))
 		}
 	} else {
+		if !cfg.AllowPlaintext {
+			return ErrPlaintextIngressDisabled
+		}
+		addr = net.JoinHostPort("127.0.0.1", cfg.Port)
+		p.httpServer.Addr = addr
 		p.logger.Info(fmt.Sprintf("ingress-proxy listening at %s without TLS for %s", addr, contextDesc))
 	}
 

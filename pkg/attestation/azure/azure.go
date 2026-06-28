@@ -3,10 +3,6 @@
 
 package azure
 
-import (
-	"github.com/edgelesssys/go-azguestattestation/maa"
-)
-
 type EnvConfig struct {
 	OSBuild  string
 	OSType   string
@@ -24,9 +20,6 @@ func NewEnvConfigFromAgent(agentOSBuild, agentOSType, agentOSDistro, maaURL stri
 }
 
 func InitializeDefaultMAAVars(config *EnvConfig) {
-	maa.OSBuild = config.OSBuild
-	maa.OSType = config.OSType
-	maa.OSDistro = config.OSDistro
 	MaaURL = config.MaaURL
 }
 

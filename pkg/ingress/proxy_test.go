@@ -10,6 +10,7 @@ import (
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/big"
@@ -95,7 +96,7 @@ func TestProxyStartStop(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-1", Name: "test-proxy"}
 
 	err = ps.Start(cfg, ctx)
@@ -105,12 +106,29 @@ func TestProxyStartStop(t *testing.T) {
 	require.NoError(t, err)
 }
 
+func TestProxyRejectsPlaintextByDefault(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
+	ps := NewProxyServer(logger, getBackendURL(), nil)
+
+	listener, err := net.Listen("tcp", "127.0.0.1:0")
+	require.NoError(t, err)
+	port := listener.Addr().(*net.TCPAddr).Port
+	listener.Close()
+
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	ctx := ProxyContext{ID: "test-no-plaintext"}
+
+	err = ps.Start(cfg, ctx)
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, ErrPlaintextIngressDisabled))
+}
+
 // TestProxyStartWithoutPort tests proxy without explicit port.
 func TestProxyStartWithoutPort(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	ps := NewProxyServer(logger, getBackendURL(), nil)
 
-	cfg := ProxyConfig{Port: ""}
+	cfg := ProxyConfig{Port: "", AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-2"}
 
 	err := ps.Start(cfg, ctx)
@@ -132,7 +150,7 @@ func TestProxyStartAlreadyStarted(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-3"}
 
 	err = ps.Start(cfg, ctx)
@@ -149,12 +167,12 @@ func TestProxyStartReturnsListenerError(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(os.Stdout, nil))
 	ps := NewProxyServer(logger, getBackendURL(), nil).(*proxyServer)
 
-	occupied, err := net.Listen("tcp", "0.0.0.0:0")
+	occupied, err := net.Listen("tcp", "127.0.0.1:0")
 	require.NoError(t, err)
 	defer occupied.Close()
 
 	port := occupied.Addr().(*net.TCPAddr).Port
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-bind-failure"}
 
 	err = ps.Start(cfg, ctx)
@@ -167,7 +185,7 @@ func TestProxyStartReturnsListenerError(t *testing.T) {
 	retryPort := retry.Addr().(*net.TCPAddr).Port
 	retry.Close()
 
-	err = ps.Start(ProxyConfig{Port: fmt.Sprintf("%d", retryPort)}, ctx)
+	err = ps.Start(ProxyConfig{Port: fmt.Sprintf("%d", retryPort), AllowPlaintext: true}, ctx)
 	require.NoError(t, err)
 	defer func() { _ = ps.Stop() }()
 }
@@ -182,7 +200,7 @@ func TestProxyStartAfterStopped(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-4"}
 
 	err = ps.Start(cfg, ctx)
@@ -207,7 +225,7 @@ func TestProxyWithName(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "id-1", Name: "named-proxy"}
 
 	err = ps.Start(cfg, ctx)
@@ -226,7 +244,7 @@ func TestProxyWithoutName(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "id-only"}
 
 	err = ps.Start(cfg, ctx)
@@ -245,7 +263,7 @@ func TestProxyMultipleStops(t *testing.T) {
 	port := listener.Addr().(*net.TCPAddr).Port
 	listener.Close()
 
-	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port)}
+	cfg := ProxyConfig{Port: fmt.Sprintf("%d", port), AllowPlaintext: true}
 	ctx := ProxyContext{ID: "test-multi-stop"}
 
 	err = ps.Start(cfg, ctx)
@@ -270,8 +288,9 @@ func TestProxyWithoutTLS(t *testing.T) {
 	listener.Close()
 
 	cfg := ProxyConfig{
-		Port:        fmt.Sprintf("%d", port),
-		AttestedTLS: false,
+		Port:           fmt.Sprintf("%d", port),
+		AttestedTLS:    false,
+		AllowPlaintext: true,
 	}
 	ctx := ProxyContext{ID: "test-no-tls"}
 
@@ -317,7 +336,8 @@ func TestProxyWithUnixBackend(t *testing.T) {
 	listener.Close()
 
 	cfg := ProxyConfig{
-		Port: fmt.Sprintf("%d", port),
+		Port:           fmt.Sprintf("%d", port),
+		AllowPlaintext: true,
 	}
 	ctx := ProxyContext{ID: "test-unix"}
 

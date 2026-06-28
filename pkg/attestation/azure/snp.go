@@ -6,6 +6,7 @@ package azure
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,9 +14,8 @@ import (
 	"strings"
 
 	"github.com/absmach/supermq/pkg/errors"
-	"github.com/edgelesssys/go-azguestattestation/maa"
+	jose "github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/google/go-sev-guest/tools/lib/report"
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
@@ -36,8 +36,9 @@ func (v *azureTokenValidator) Validate(token string) (map[string]any, error) {
 }
 
 var (
-	MaaURL             = "https://sharedeus2.eus2.attest.azure.net"
-	ErrFetchAzureToken = errors.New("failed to fetch Azure token")
+	MaaURL              = "https://sharedeus2.eus2.attest.azure.net"
+	ErrFetchAzureToken  = errors.New("failed to fetch Azure token")
+	ErrAzureMAADisabled = errors.New("Azure MAA runtime fetch is disabled")
 )
 
 var DefaultValidator TokenValidator = &azureTokenValidator{}
@@ -54,40 +55,11 @@ func NewProvider() attestation.Provider {
 }
 
 func (a provider) Attestation(teeNonce []byte, vTpmNonce []byte) ([]byte, error) {
-	var tokenNonce [vtpm.Nonce]byte
-	copy(tokenNonce[:], teeNonce)
-
-	params, err := maa.NewParameters(context.Background(), tokenNonce[:], http.DefaultClient, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get report: %w", err)
-	}
-
-	snpReport, err := report.ParseAttestation(params.SNPReport, "bin")
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse SNP report: %w", err)
-	}
-
-	quote, err := vtpm.FetchQuote(vTpmNonce)
-	if err != nil {
-		return nil, fmt.Errorf("failed to fetch quote: %w", err)
-	}
-
-	quote.TeeAttestation = &attest.Attestation_SevSnpAttestation{
-		SevSnpAttestation: snpReport,
-	}
-	return proto.Marshal(quote)
+	return nil, ErrAzureMAADisabled
 }
 
 func (a provider) TeeAttestation(teeNonce []byte) ([]byte, error) {
-	var tokenNonce [vtpm.Nonce]byte
-	copy(tokenNonce[:], teeNonce)
-
-	params, err := maa.NewParameters(context.Background(), tokenNonce[:], http.DefaultClient, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get report: %w", err)
-	}
-
-	return params.SNPReport, nil
+	return nil, ErrAzureMAADisabled
 }
 
 func (a provider) VTpmAttestation(vTpmNonce []byte) ([]byte, error) {
@@ -106,7 +78,7 @@ type MaaClient interface {
 type defaultMaaClient struct{}
 
 func (c *defaultMaaClient) Attest(ctx context.Context, nonce []byte, maaURL string, client *http.Client) (string, error) {
-	return maa.Attest(ctx, nonce, maaURL, client)
+	return "", ErrAzureMAADisabled
 }
 
 var DefaultMaaClient MaaClient = &defaultMaaClient{}
@@ -257,22 +229,57 @@ func validateToken(token string) (map[string]any, error) {
 	if _, kidOk := unverifiedToken.Header["kid"].(string); !kidOk {
 		return nil, fmt.Errorf("token is missing jku or kid in header")
 	}
-	maaURLCerts, err := validateJKU(jku, MaaURL)
-	if err != nil {
+	if _, err := validateJKU(jku, MaaURL); err != nil {
 		return nil, err
 	}
 
-	keySet, err := maa.GetKeySet(context.Background(), maaURLCerts, http.DefaultClient)
+	keySet, err := fetchJWKSet(context.Background(), jku, http.DefaultClient)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get key set: %w", err)
 	}
 
-	claims, err := maa.ValidateToken(token, keySet)
+	claims := jwt.MapClaims{}
+	parser := jwt.NewParser(jwt.WithValidMethods([]string{"RS256"}))
+	parsed, err := parser.ParseWithClaims(token, claims, func(token *jwt.Token) (any, error) {
+		kid, ok := token.Header["kid"].(string)
+		if !ok || kid == "" {
+			return nil, fmt.Errorf("token is missing kid in header")
+		}
+		keys := keySet.Key(kid)
+		if len(keys) == 0 {
+			return nil, fmt.Errorf("no key found for kid %q", kid)
+		}
+		return keys[0].Key, nil
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to validate token: %w", err)
 	}
+	if !parsed.Valid {
+		return nil, fmt.Errorf("failed to validate token")
+	}
 
 	return claims, nil
+}
+
+func fetchJWKSet(ctx context.Context, jku string, client *http.Client) (*jose.JSONWebKeySet, error) {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, jku, nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("unexpected key set status: %s", resp.Status)
+	}
+
+	var keySet jose.JSONWebKeySet
+	if err := json.NewDecoder(resp.Body).Decode(&keySet); err != nil {
+		return nil, err
+	}
+	return &keySet, nil
 }
 
 func validateJKU(jku, configuredMaaURL string) (string, error) {

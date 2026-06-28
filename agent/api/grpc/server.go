@@ -26,6 +26,12 @@ const (
 )
 
 var (
+	maxAlgorithmUploadBytes    = 512 * 1024 * 1024
+	maxRequirementsUploadBytes = 64 * 1024 * 1024
+	maxDatasetUploadBytes      = 1024 * 1024 * 1024
+)
+
+var (
 	ErrTEENonceLength   = errors.New("malformed report data, expect less or equal to 64 bytes")
 	ErrVTPMNonceLength  = errors.New("malformed vTPM nonce, expect less or equal to 32 bytes")
 	ErrTokenNonceLength = errors.New("malformed token nonce, expect less or equal to 32 bytes")
@@ -274,12 +280,23 @@ func receiveStreamingData(getData func() ([]byte, string, error)) ([]byte, strin
 		if err != nil {
 			return nil, "", status.Error(codes.Internal, err.Error())
 		}
-		data = append(data, chunk...)
+		var appendErr error
+		data, appendErr = appendBounded(data, chunk, maxDatasetUploadBytes, "dataset upload")
+		if appendErr != nil {
+			return nil, "", appendErr
+		}
 		if fname != "" {
 			filename = fname
 		}
 	}
 	return data, filename, nil
+}
+
+func appendBounded(dst, chunk []byte, max int, label string) ([]byte, error) {
+	if len(chunk) > max-len(dst) {
+		return nil, status.Errorf(codes.ResourceExhausted, "%s exceeds maximum size", label)
+	}
+	return append(dst, chunk...), nil
 }
 
 // Algo implements agent.AgentServiceServer.
@@ -310,8 +327,15 @@ func (s *grpcServer) receiveAlgoData(stream agent.AgentService_AlgoServer) ([]by
 		if err != nil {
 			return nil, nil, status.Error(codes.Internal, err.Error())
 		}
-		algoFile = append(algoFile, chunk.Algorithm...)
-		reqFile = append(reqFile, chunk.Requirements...)
+		var appendErr error
+		algoFile, appendErr = appendBounded(algoFile, chunk.Algorithm, maxAlgorithmUploadBytes, "algorithm upload")
+		if appendErr != nil {
+			return nil, nil, appendErr
+		}
+		reqFile, appendErr = appendBounded(reqFile, chunk.Requirements, maxRequirementsUploadBytes, "requirements upload")
+		if appendErr != nil {
+			return nil, nil, appendErr
+		}
 	}
 	return algoFile, reqFile, nil
 }

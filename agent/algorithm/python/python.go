@@ -29,7 +29,11 @@ func PythonRunTimeToContext(ctx context.Context, runtime string) context.Context
 }
 
 func PythonRunTimeFromContext(ctx context.Context) string {
-	return metadata.ValueFromIncomingContext(ctx, PyRuntimeKey)[0]
+	values := metadata.ValueFromIncomingContext(ctx, PyRuntimeKey)
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
 }
 
 var _ algorithm.Algorithm = (*python)(nil)

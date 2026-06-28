@@ -6,7 +6,6 @@ package azure
 import (
 	"testing"
 
-	"github.com/edgelesssys/go-azguestattestation/maa"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -40,12 +39,14 @@ func TestInitializeDefaultMAAVars(t *testing.T) {
 		OSBuild:  "build123",
 		OSType:   "CustomOS",
 		OSDistro: "DistroX",
+		MaaURL:   "https://test.attest.azure.net",
 	}
+	originalMaaURL := MaaURL
+	defer func() { MaaURL = originalMaaURL }()
+
 	InitializeDefaultMAAVars(cfg)
 
-	assert.Equal(t, "build123", maa.OSBuild)
-	assert.Equal(t, "CustomOS", maa.OSType)
-	assert.Equal(t, "DistroX", maa.OSDistro)
+	assert.Equal(t, "https://test.attest.azure.net", MaaURL)
 }
 
 func TestInitializeOSVars(t *testing.T) {

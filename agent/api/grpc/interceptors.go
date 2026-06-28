@@ -52,6 +52,13 @@ func (s *authInterceptor) AuthStreamInterceptor() grpc.StreamServerInterceptor {
 			}
 			wrapped := &wrappedServerStream{ServerStream: stream, ctx: ctx}
 			return handler(srv, wrapped)
+		case agent.AgentService_Attestation_FullMethodName, agent.AgentService_IMAMeasurements_FullMethodName:
+			ctx, err := s.auth.AuthenticateUser(stream.Context(), auth.ConsumerRole, info.FullMethod)
+			if err != nil {
+				return status.Errorf(codes.Unauthenticated, "%v", err.Error())
+			}
+			wrapped := &wrappedServerStream{ServerStream: stream, ctx: ctx}
+			return handler(srv, wrapped)
 		default:
 			return handler(srv, stream)
 		}
@@ -61,7 +68,7 @@ func (s *authInterceptor) AuthStreamInterceptor() grpc.StreamServerInterceptor {
 func (s *authInterceptor) AuthUnaryInterceptor() grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		switch info.FullMethod {
-		case agent.AgentService_Result_FullMethodName:
+		case agent.AgentService_Result_FullMethodName, agent.AgentService_AzureAttestationToken_FullMethodName:
 			ctx, err := s.auth.AuthenticateUser(ctx, auth.ConsumerRole, info.FullMethod)
 			if err != nil {
 				return nil, status.Errorf(codes.Unauthenticated, "%v", err.Error())

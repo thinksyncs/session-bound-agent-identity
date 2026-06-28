@@ -268,6 +268,36 @@ func TestData(t *testing.T) {
 	}
 }
 
+func TestDataRejectsUnsafeFilenameBeforeMutatingState(t *testing.T) {
+	wd, err := os.Getwd()
+	require.NoError(t, err)
+	tmpDir := t.TempDir()
+	require.NoError(t, os.Chdir(tmpDir))
+	t.Cleanup(func() { require.NoError(t, os.Chdir(wd)) })
+
+	require.NoError(t, os.Mkdir(algorithm.DatasetsDir, 0o755))
+	require.NoError(t, os.WriteFile("algo", []byte("original"), 0o644))
+
+	data := []byte("dataset")
+	dataHash := sha3.Sum256(data)
+
+	sm := new(smmocks.StateMachine)
+	sm.On("GetState").Return(ReceivingData)
+	svc := &agentService{
+		logger:      slog.Default(),
+		sm:          sm,
+		computation: Computation{Datasets: []Dataset{{Hash: dataHash}}},
+	}
+
+	err = svc.Data(context.Background(), Dataset{Dataset: data, Filename: "../algo"})
+	assert.True(t, errors.Contains(err, ErrUnsafeDatasetFilename), "expected %v, got %v", ErrUnsafeDatasetFilename, err)
+
+	algoContent, readErr := os.ReadFile("algo")
+	require.NoError(t, readErr)
+	assert.Equal(t, []byte("original"), algoContent)
+	assert.Len(t, svc.computation.Datasets, 1)
+}
+
 func TestResult(t *testing.T) {
 	cases := []struct {
 		name     string

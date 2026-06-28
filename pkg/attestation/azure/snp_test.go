@@ -65,7 +65,7 @@ func TestProvider_Attestation(t *testing.T) {
 			teeNonce:     testNonce,
 			vTpmNonce:    testNonce,
 			wantErr:      true,
-			errorMessage: "failed to get report",
+			errorMessage: "Azure MAA runtime fetch is disabled",
 		},
 	}
 
@@ -100,7 +100,7 @@ func TestProvider_TeeAttestation(t *testing.T) {
 			name:         "maa parameters error",
 			teeNonce:     testNonce,
 			wantErr:      true,
-			errorMessage: "failed to get report",
+			errorMessage: "Azure MAA runtime fetch is disabled",
 		},
 	}
 

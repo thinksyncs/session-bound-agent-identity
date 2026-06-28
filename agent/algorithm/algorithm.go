@@ -28,7 +28,11 @@ func AlgorithmTypeToContext(ctx context.Context, algoType string) context.Contex
 }
 
 func AlgorithmTypeFromContext(ctx context.Context) string {
-	return metadata.ValueFromIncomingContext(ctx, AlgoTypeKey)[0]
+	values := metadata.ValueFromIncomingContext(ctx, AlgoTypeKey)
+	if len(values) == 0 {
+		return ""
+	}
+	return values[0]
 }
 
 func AlgorithmArgsToContext(ctx context.Context, algoArgs []string) context.Context {
