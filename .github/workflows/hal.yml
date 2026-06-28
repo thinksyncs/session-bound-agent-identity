@@ -1,83 +1,49 @@
-name: Build and Release Hal
+name: HAL Definition Check
 
 on:
   push:
-    tags:
-      - "*"
+    branches:
+      - main
+    paths:
+      - ".github/workflows/hal.yml"
+      - "hal/linux/**"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/hal.yml"
+      - "hal/linux/**"
+  workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  build:
+  validate:
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 10
     steps:
-      - name: Free Disk Space
-        run: |
-          sudo apt-get clean
-          sudo rm -rf /usr/share/dotnet
-          sudo rm -rf /opt/ghc
-          sudo rm -rf "/usr/local/share/boost"
-          sudo rm -rf "$AGENT_TOOLSDIRECTORY"
-          df -h
-
-      - name: Update Ubuntu
-        run: |
-          sudo apt-get update
-          sudo apt-get upgrade -y
-          sudo apt-get clean
-          sudo apt-get autoremove -y
-          df -h
-
-      - name: Maximize build space
-        uses: easimon/maximize-build-space@v10
-        with:
-          root-reserve-mb: 35000
-          swap-size-mb: 1024
-          remove-dotnet: "true"
-          remove-android: "true"
-      - name: Check free space
-        run: |
-          echo "Free space:"
-          df -h
-
-      - name: Install Go
-        uses: actions/setup-go@v5
-        with:
-          go-version: 1.26.x
-          cache-dependency-path: "go.sum"
-
-      - name: Checkout cocos
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          repository: "ultravioletrs/cocos"
-          path: cocos
 
-      - name: Checkout buildroot
-        uses: actions/checkout@v4
-        with:
-          repository: "buildroot/buildroot"
-          path: buildroot
-          ref: 2025.08-rc3
-
-      - name: Build hal
+      - name: Validate HAL external tree files
         run: |
-          cd buildroot
-          make BR2_EXTERNAL=../cocos/hal/linux cocos_defconfig
-          make
+          test -f hal/linux/external.desc
+          test -f hal/linux/external.mk
+          test -f hal/linux/Config.in
+          test -f hal/linux/configs/cocos_defconfig
+          test -d hal/linux/package
+          test -d hal/linux/board/cocos
 
-      - name: Build cocos
+      - name: Check release workflow is disabled
         run: |
-          cd cocos
-          make
+          release_action="softprops/action-gh-"
+          release_action="${release_action}release"
+          upstream_owner="ultravioletrs"
+          upstream_repo="${upstream_owner}/cocos"
+          tag_trigger="ta"
+          tag_trigger="${tag_trigger}gs:"
 
-      - name: Release
-        uses: softprops/action-gh-release@v2
-        with:
-          files: |
-            buildroot/output/images/bzImage
-            buildroot/output/images/rootfs.cpio.gz
-            cocos/build/cocos-agent  
-            cocos/build/cocos-cli  
-            cocos/build/cocos-manager
+          ! grep -R "$release_action" .github/workflows/hal.yml
+          ! grep -R "$upstream_repo" .github/workflows/hal.yml
+          ! grep -R "$tag_trigger" .github/workflows/hal.yml
