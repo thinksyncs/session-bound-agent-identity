@@ -16,10 +16,10 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/api/grpc"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/auth"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/progressbar"
 	"google.golang.org/grpc/metadata"
 )

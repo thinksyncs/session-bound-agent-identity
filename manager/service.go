@@ -17,8 +17,8 @@ import (
 	"time"
 	"unicode"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/google/uuid"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/vm"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/corimgen"

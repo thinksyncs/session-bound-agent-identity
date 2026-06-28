@@ -16,7 +16,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/absmach/certs/sdk"
 	mglog "github.com/absmach/supermq/logger"
 	"github.com/absmach/supermq/pkg/prometheus"
 	"github.com/caarlos0/env/v11"
@@ -211,13 +210,7 @@ func main() {
 	var certProvider atls.CertificateProvider
 	if ccPlatform != attestation.NoCC {
 		logger.Info(fmt.Sprintf("Initializing aTLS for platform %v with attestation service at %s", ccPlatform, cfg.AttestationServiceSocket))
-		var certsSDK sdk.SDK
-		if cfg.CAUrl != "" {
-			certsSDK = sdk.NewSDK(sdk.Config{
-				CertsURL: cfg.CAUrl,
-			})
-		}
-		certProvider, err = atls.NewProvider(attClient, ccPlatform, cfg.CertsToken, cfg.CVMId, certsSDK)
+		certProvider, err = atls.NewProvider(attClient, ccPlatform, cfg.CertsToken, cfg.CVMId, nil)
 		if err != nil {
 			logger.Error(fmt.Sprintf("failed to create certificate provider for aTLS: %s. Continuing without attested TLS.", err))
 		} else {

@@ -9,12 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
 	agentgrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/api/grpc"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"

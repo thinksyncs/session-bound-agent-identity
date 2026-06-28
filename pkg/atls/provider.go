@@ -11,7 +11,6 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/absmach/certs/sdk"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
 	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
 	cocosattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
@@ -30,7 +29,7 @@ type provider struct {
 	platformType cocosattestation.PlatformType
 }
 
-func NewProvider(attClient attestationclient.Client, platformType cocosattestation.PlatformType, _ string, _ string, _ sdk.SDK) (CertificateProvider, error) {
+func NewProvider(attClient attestationclient.Client, platformType cocosattestation.PlatformType, _ string, _ string, _ any) (CertificateProvider, error) {
 	if attClient == nil {
 		return nil, fmt.Errorf("atls: missing attestation client")
 	}

@@ -16,12 +16,12 @@ import (
 	sync "sync"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
 	runnerpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
 	attestation_client "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/attestation"

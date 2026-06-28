@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 )
 
 type failedWriter struct{}

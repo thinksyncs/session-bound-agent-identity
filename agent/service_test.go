@@ -19,7 +19,6 @@ import (
 	"time"
 
 	mglog "github.com/absmach/supermq/logger"
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -30,6 +29,7 @@ import (
 	runnerpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine"
 	smmocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine/mocks"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
 	runnermocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/runner/mocks"

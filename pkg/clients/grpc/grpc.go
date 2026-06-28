@@ -9,7 +9,7 @@ import (
 	"net"
 	"strings"
 
-	"github.com/absmach/supermq/pkg/errors"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"

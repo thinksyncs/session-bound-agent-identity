@@ -13,10 +13,10 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/absmach/supermq/pkg/errors"
 	jose "github.com/go-jose/go-jose/v4"
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/go-tpm-tools/proto/attest"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
 	"github.com/veraison/corim/comid"

@@ -29,7 +29,6 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
 	attestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
@@ -51,8 +50,8 @@ func TestAGTPObservedIdentityAcceptsSessionBoundJWT(t *testing.T) {
 		"jti":          "grant-1",
 		"iat":          now.Unix(),
 		"exp":          now.Add(time.Minute).Unix(),
-		"agtp_type":    agtp.TokenTypeIdentityGrant,
-		"agtp_version": agtp.ProfileVersion,
+		"agtp_type":    TokenTypeIdentityGrant,
+		"agtp_version": ProfileVersion,
 		"cnf":          map[string]any{"kid": "agent-key-1"},
 		"service":      "payments",
 	})
@@ -62,9 +61,9 @@ func TestAGTPObservedIdentityAcceptsSessionBoundJWT(t *testing.T) {
 		"jti":                       "binding-1",
 		"iat":                       now.Unix(),
 		"exp":                       now.Add(time.Minute).Unix(),
-		"agtp_type":                 agtp.TokenTypeSessionBinding,
-		"agtp_version":              agtp.ProfileVersion,
-		"grant_hash":                agtp.IdentityGrantHash(grantToken),
+		"agtp_type":                 TokenTypeSessionBinding,
+		"agtp_version":              ProfileVersion,
+		"grant_hash":                IdentityGrantHash(grantToken),
 		"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
 		"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
 		"request_context_sha256":    expectedBinding.RequestContextSHA256,
@@ -78,14 +77,14 @@ func TestAGTPObservedIdentityAcceptsSessionBoundJWT(t *testing.T) {
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -124,7 +123,7 @@ func TestAGTPObservedIdentityAcceptsManagerIssuedGrantE2E(t *testing.T) {
 	grantToken := manager.issueIdentityGrant(t, now, map[string]any{
 		"service": "payments",
 	})
-	bindingToken := agent.issueSessionBinding(t, now, agtp.IdentityGrantHash(grantToken), expectedBinding, nil)
+	bindingToken := agent.issueSessionBinding(t, now, IdentityGrantHash(grantToken), expectedBinding, nil)
 	cfg := AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
 			Require:  identitypolicy.Requirements{L3: true},
@@ -132,14 +131,14 @@ func TestAGTPObservedIdentityAcceptsManagerIssuedGrantE2E(t *testing.T) {
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -203,7 +202,7 @@ func TestAGTPObservedIdentityKeepsNaturalLanguageOutsideSemanticReference(t *tes
 		"resources":             values.Resources,
 		"authorization_details": values.AuthorizationDetails,
 	})
-	bindingToken := agent.issueSessionBinding(t, now, agtp.IdentityGrantHash(grantToken), expectedBinding, nil)
+	bindingToken := agent.issueSessionBinding(t, now, IdentityGrantHash(grantToken), expectedBinding, nil)
 	replayServer := newClientTestHTTPSetNXReplayServer(t)
 	cfg := AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
@@ -226,14 +225,14 @@ func TestAGTPObservedIdentityKeepsNaturalLanguageOutsideSemanticReference(t *tes
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -360,7 +359,7 @@ func TestAGTPObservedIdentityRedTeamRealTLSAttestationBinding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("IdentityBindingFromValidation() borrowed error = %v", err)
 		}
-		borrowedBindingToken := fixture.agent.issueSessionBinding(t, fixture.now, agtp.IdentityGrantHash(grantToken), borrowedBinding, map[string]any{
+		borrowedBindingToken := fixture.agent.issueSessionBinding(t, fixture.now, IdentityGrantHash(grantToken), borrowedBinding, map[string]any{
 			"jti":   "borrowed-binding",
 			"nonce": "borrowed-nonce",
 		})
@@ -390,7 +389,7 @@ func TestAGTPObservedIdentityAcceptsHTTPJWKSAndRejectsRevocation(t *testing.T) {
 	grantToken := manager.issueIdentityGrant(t, now, map[string]any{
 		"service": "payments",
 	})
-	bindingToken := agent.issueSessionBinding(t, now, agtp.IdentityGrantHash(grantToken), expectedBinding, nil)
+	bindingToken := agent.issueSessionBinding(t, now, IdentityGrantHash(grantToken), expectedBinding, nil)
 	registry := newClientTestIdentityRegistry(t, map[string][]byte{
 		"manager-key": []byte("manager-secret"),
 		"agent-key-1": []byte("agent-secret"),
@@ -403,7 +402,7 @@ func TestAGTPObservedIdentityAcceptsHTTPJWKSAndRejectsRevocation(t *testing.T) {
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -411,7 +410,7 @@ func TestAGTPObservedIdentityAcceptsHTTPJWKSAndRejectsRevocation(t *testing.T) {
 			RevokedJWTIDs:    registry.revokedJWTIDs(t),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -441,8 +440,8 @@ func TestAGTPObservedIdentityAcceptsHTTPJWKSAndRejectsRevocation(t *testing.T) {
 		t.Fatalf("AGTPObservedIdentity() with revocation source error = %v", err)
 	}
 	_, err = observedIdentity(&tls.ConnectionState{}, validation)
-	if !errors.Is(err, agtp.ErrRevokedJWTID) {
-		t.Fatalf("revoked observed identity error = %v, want %v", err, agtp.ErrRevokedJWTID)
+	if !errors.Is(err, ErrRevokedJWTID) {
+		t.Fatalf("revoked observed identity error = %v, want %v", err, ErrRevokedJWTID)
 	}
 }
 
@@ -462,8 +461,8 @@ func TestAGTPObservedIdentityRedTeamRejectsAttacks(t *testing.T) {
 			"jti":          "grant-1",
 			"iat":          now.Unix(),
 			"exp":          now.Add(time.Minute).Unix(),
-			"agtp_type":    agtp.TokenTypeIdentityGrant,
-			"agtp_version": agtp.ProfileVersion,
+			"agtp_type":    TokenTypeIdentityGrant,
+			"agtp_version": ProfileVersion,
 			"cnf":          map[string]any{"kid": "agent-key-1"},
 			"service":      "payments",
 			"tenant":       "tenant-a",
@@ -477,9 +476,9 @@ func TestAGTPObservedIdentityRedTeamRejectsAttacks(t *testing.T) {
 			"jti":                       "binding-1",
 			"iat":                       now.Unix(),
 			"exp":                       now.Add(time.Minute).Unix(),
-			"agtp_type":                 agtp.TokenTypeSessionBinding,
-			"agtp_version":              agtp.ProfileVersion,
-			"grant_hash":                agtp.IdentityGrantHash(grantToken),
+			"agtp_type":                 TokenTypeSessionBinding,
+			"agtp_version":              ProfileVersion,
+			"grant_hash":                IdentityGrantHash(grantToken),
 			"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
 			"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
 			"request_context_sha256":    expectedBinding.RequestContextSHA256,
@@ -499,14 +498,14 @@ func TestAGTPObservedIdentityRedTeamRejectsAttacks(t *testing.T) {
 			},
 			IdentityGrantJWT:   grantToken,
 			IdentityBindingJWT: bindingToken,
-			IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+			IdentityGrantJWTOptions: JWTVerifyOptions{
 				ExpectedIssuer:   "manager",
 				ExpectedAudience: "client-a",
 				ValidMethods:     []string{"HS256"},
 				KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 				Now:              now,
 			},
-			IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+			IdentityBindingJWTOptions: JWTVerifyOptions{
 				ExpectedIssuer:   "agent-a",
 				ExpectedAudience: "client-a",
 				ValidMethods:     []string{"HS256"},
@@ -645,8 +644,8 @@ func TestAGTPObservedIdentityRedTeamRejectsAgentThreats(t *testing.T) {
 			"jti":                   "grant-1",
 			"iat":                   now.Unix(),
 			"exp":                   now.Add(time.Minute).Unix(),
-			"agtp_type":             agtp.TokenTypeIdentityGrant,
-			"agtp_version":          agtp.ProfileVersion,
+			"agtp_type":             TokenTypeIdentityGrant,
+			"agtp_version":          ProfileVersion,
 			"cnf":                   map[string]any{"kid": "agent-key-1"},
 			"service":               "payments",
 			"tenant":                "tenant-a",
@@ -668,9 +667,9 @@ func TestAGTPObservedIdentityRedTeamRejectsAgentThreats(t *testing.T) {
 			"jti":                       "binding-1",
 			"iat":                       now.Unix(),
 			"exp":                       now.Add(time.Minute).Unix(),
-			"agtp_type":                 agtp.TokenTypeSessionBinding,
-			"agtp_version":              agtp.ProfileVersion,
-			"grant_hash":                agtp.IdentityGrantHash(grantToken),
+			"agtp_type":                 TokenTypeSessionBinding,
+			"agtp_version":              ProfileVersion,
+			"grant_hash":                IdentityGrantHash(grantToken),
 			"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
 			"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
 			"request_context_sha256":    expectedBinding.RequestContextSHA256,
@@ -718,14 +717,14 @@ func TestAGTPObservedIdentityRedTeamRejectsAgentThreats(t *testing.T) {
 			IdentityPolicy:     policy,
 			IdentityGrantJWT:   grantToken,
 			IdentityBindingJWT: bindingToken,
-			IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+			IdentityGrantJWTOptions: JWTVerifyOptions{
 				ExpectedIssuer:   "manager",
 				ExpectedAudience: "client-a",
 				ValidMethods:     []string{"HS256"},
 				KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 				Now:              now,
 			},
-			IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+			IdentityBindingJWTOptions: JWTVerifyOptions{
 				ExpectedIssuer:   "agent-a",
 				ExpectedAudience: "client-a",
 				ValidMethods:     []string{"HS256"},
@@ -802,14 +801,14 @@ func TestAGTPObservedIdentityRedTeamRejectsAgentThreats(t *testing.T) {
 			mutateGrant: func(grant jwt.MapClaims) {
 				delete(grant, "jti")
 			},
-			wantErr: agtp.ErrMissingJWTID,
+			wantErr: ErrMissingJWTID,
 		},
 		{
 			name: "audit evasion missing binding id is rejected",
 			mutateBinding: func(binding jwt.MapClaims) {
 				delete(binding, "jti")
 			},
-			wantErr: agtp.ErrMissingJWTID,
+			wantErr: ErrMissingJWTID,
 		},
 	}
 
@@ -841,8 +840,8 @@ func TestAGTPObservedIdentityRedTeamRejectsReplay(t *testing.T) {
 		"jti":          "grant-1",
 		"iat":          now.Unix(),
 		"exp":          now.Add(time.Minute).Unix(),
-		"agtp_type":    agtp.TokenTypeIdentityGrant,
-		"agtp_version": agtp.ProfileVersion,
+		"agtp_type":    TokenTypeIdentityGrant,
+		"agtp_version": ProfileVersion,
 		"cnf":          map[string]any{"kid": "agent-key-1"},
 		"service":      "payments",
 	})
@@ -852,9 +851,9 @@ func TestAGTPObservedIdentityRedTeamRejectsReplay(t *testing.T) {
 		"jti":                       "binding-1",
 		"iat":                       now.Unix(),
 		"exp":                       now.Add(time.Minute).Unix(),
-		"agtp_type":                 agtp.TokenTypeSessionBinding,
-		"agtp_version":              agtp.ProfileVersion,
-		"grant_hash":                agtp.IdentityGrantHash(grantToken),
+		"agtp_type":                 TokenTypeSessionBinding,
+		"agtp_version":              ProfileVersion,
+		"grant_hash":                IdentityGrantHash(grantToken),
 		"leaf_public_key_sha256":    expectedBinding.LeafPublicKeySHA256,
 		"tls_exporter_sha256":       expectedBinding.TLSExporterSHA256,
 		"request_context_sha256":    expectedBinding.RequestContextSHA256,
@@ -868,14 +867,14 @@ func TestAGTPObservedIdentityRedTeamRejectsReplay(t *testing.T) {
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -1042,7 +1041,7 @@ func TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures(t *testing.T
 	bindingToken := fixture.issueBinding(t, grantToken, nil)
 	rotatedManager := clientTestJWTIssuer{keyID: "manager-key-rotated", secret: []byte("manager-rotated-secret")}
 	rotatedGrantToken := rotatedManager.issueIdentityGrant(t, fixture.now, map[string]any{"service": "payments"})
-	rotatedBindingToken := fixture.agent.issueSessionBinding(t, fixture.now, agtp.IdentityGrantHash(rotatedGrantToken), fixture.binding, nil)
+	rotatedBindingToken := fixture.agent.issueSessionBinding(t, fixture.now, IdentityGrantHash(rotatedGrantToken), fixture.binding, nil)
 	registry := newClientTestIdentityRegistry(t, map[string][]byte{
 		"manager-key": []byte("manager-secret"),
 		"agent-key-1": []byte("agent-secret"),
@@ -1077,7 +1076,7 @@ func TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures(t *testing.T
 				cfg.IdentityGrantJWTOptions.KeyFunc = registry.keyFunc(t)
 				cfg.IdentityBindingJWTOptions.KeyFunc = registry.keyFunc(t)
 			},
-			wantErr: agtp.ErrUnknownKeyID,
+			wantErr: ErrUnknownKeyID,
 		},
 		{
 			name:         "key rotation overlap accepts old and rotated manager keys",
@@ -1094,7 +1093,7 @@ func TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures(t *testing.T
 			mutate: func(cfg *AttestedClientConfig) {
 				cfg.IdentityGrantJWTOptions.KeyFunc = failingRegistry.keyFunc(t)
 			},
-			wantErr: agtp.ErrUnknownKeyID,
+			wantErr: ErrUnknownKeyID,
 		},
 		{
 			name: "HTTP JWKS timeout rejects fail closed",
@@ -1115,21 +1114,21 @@ func TestAGTPObservedIdentityRedTeamRejectsKeyAndRevocationFailures(t *testing.T
 			mutate: func(cfg *AttestedClientConfig) {
 				cfg.IdentityGrantJWTOptions.DisabledKeyIDs = []string{"manager-key"}
 			},
-			wantErr: agtp.ErrDisabledKeyID,
+			wantErr: ErrDisabledKeyID,
 		},
 		{
 			name: "revoked manager grant rejects jti",
 			mutate: func(cfg *AttestedClientConfig) {
 				cfg.IdentityGrantJWTOptions.RevokedJWTIDs = []string{"grant-1"}
 			},
-			wantErr: agtp.ErrRevokedJWTID,
+			wantErr: ErrRevokedJWTID,
 		},
 		{
 			name: "disabled agent binding key rejects statement",
 			mutate: func(cfg *AttestedClientConfig) {
 				cfg.IdentityBindingJWTOptions.DisabledKeyIDs = []string{"agent-key-1"}
 			},
-			wantErr: agtp.ErrDisabledKeyID,
+			wantErr: ErrDisabledKeyID,
 		},
 	}
 
@@ -1215,7 +1214,7 @@ func TestAGTPObservedIdentityRedTeamRejectsManagerKeyAsBindingKey(t *testing.T) 
 		"service": "payments",
 		"cnf":     map[string]any{"kid": "manager-key"},
 	})
-	bindingToken := fixture.manager.issueSessionBinding(t, fixture.now, agtp.IdentityGrantHash(grantToken), fixture.binding, nil)
+	bindingToken := fixture.manager.issueSessionBinding(t, fixture.now, IdentityGrantHash(grantToken), fixture.binding, nil)
 	cfg := fixture.config(grantToken, bindingToken)
 	cfg.IdentityBindingJWTOptions.KeyFunc = clientTestKeyFunc(map[string][]byte{
 		"manager-key": []byte("manager-secret"),
@@ -1273,8 +1272,8 @@ func TestAGTPObservedIdentityRedTeamRejectsVerifiedGrantCacheMisuse(t *testing.T
 		t.Fatalf("AGTPObservedIdentity() with revoked grant error = %v", err)
 	}
 	_, err = observedIdentity(&tls.ConnectionState{}, fixture.validation)
-	if !errors.Is(err, agtp.ErrRevokedJWTID) {
-		t.Fatalf("revoked observed identity error = %v, want %v", err, agtp.ErrRevokedJWTID)
+	if !errors.Is(err, ErrRevokedJWTID) {
+		t.Fatalf("revoked observed identity error = %v, want %v", err, ErrRevokedJWTID)
 	}
 }
 
@@ -1316,7 +1315,7 @@ func TestAGTPObservedIdentityRejectsMissingJWTOptions(t *testing.T) {
 	}
 
 	_, err := cfg.AGTPObservedIdentity()
-	if !errors.Is(err, ErrInvalidIdentityJWTConfig) || !errors.Is(err, agtp.ErrMissingKeyFunc) {
+	if !errors.Is(err, ErrInvalidIdentityJWTConfig) || !errors.Is(err, ErrMissingKeyFunc) {
 		t.Fatalf("AGTPObservedIdentity() error = %v, want invalid config with missing key func", err)
 	}
 }
@@ -1329,13 +1328,13 @@ func TestAGTPObservedIdentityRejectsMissingReplayCache(t *testing.T) {
 			Require:  identitypolicy.Requirements{L3: true},
 			Expected: identitypolicy.Values{Service: "payments"},
 		},
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -1616,7 +1615,7 @@ func clientTestLRTT03Config(t *testing.T, replayURL string) (AttestedClientConfi
 	manager := clientTestJWTIssuer{keyID: "manager-key", secret: []byte("manager-secret")}
 	agent := clientTestJWTIssuer{keyID: "agent-key-1", secret: []byte("agent-secret")}
 	grantToken := manager.issueIdentityGrant(t, now, map[string]any{"service": "payments"})
-	bindingToken := agent.issueSessionBinding(t, now, agtp.IdentityGrantHash(grantToken), binding, nil)
+	bindingToken := agent.issueSessionBinding(t, now, IdentityGrantHash(grantToken), binding, nil)
 
 	cfg := AttestedClientConfig{
 		IdentityPolicy: identitypolicy.Policy{
@@ -1625,14 +1624,14 @@ func clientTestLRTT03Config(t *testing.T, replayURL string) (AttestedClientConfi
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -1661,7 +1660,7 @@ func (f clientTestAGTPFixture) issueGrant(t *testing.T, overrides map[string]any
 func (f clientTestAGTPFixture) issueBinding(t *testing.T, grantToken string, overrides map[string]any) string {
 	t.Helper()
 
-	return f.agent.issueSessionBinding(t, f.now, agtp.IdentityGrantHash(grantToken), f.binding, overrides)
+	return f.agent.issueSessionBinding(t, f.now, IdentityGrantHash(grantToken), f.binding, overrides)
 }
 
 func (f clientTestAGTPFixture) config(grantToken, bindingToken string) AttestedClientConfig {
@@ -1672,14 +1671,14 @@ func (f clientTestAGTPFixture) config(grantToken, bindingToken string) AttestedC
 		},
 		IdentityGrantJWT:   grantToken,
 		IdentityBindingJWT: bindingToken,
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          clientTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 			Now:              f.now,
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -1702,11 +1701,11 @@ func signClientTestJWT(t *testing.T, keyID string, secret []byte, claims jwt.Map
 	return tokenString
 }
 
-func clientTestKeyFunc(keys map[string][]byte) agtp.KeyFunc {
+func clientTestKeyFunc(keys map[string][]byte) KeyFunc {
 	return func(keyID string) (interface{}, error) {
 		key, ok := keys[keyID]
 		if !ok {
-			return nil, agtp.ErrMissingKeyID
+			return nil, ErrMissingKeyID
 		}
 		return key, nil
 	}
@@ -1727,8 +1726,8 @@ func (i clientTestJWTIssuer) issueIdentityGrant(t *testing.T, now time.Time, ove
 		"jti":          "grant-1",
 		"iat":          now.Unix(),
 		"exp":          now.Add(time.Minute).Unix(),
-		"agtp_type":    agtp.TokenTypeIdentityGrant,
-		"agtp_version": agtp.ProfileVersion,
+		"agtp_type":    TokenTypeIdentityGrant,
+		"agtp_version": ProfileVersion,
 		"cnf":          map[string]any{"kid": "agent-key-1"},
 	}
 	for key, value := range overrides {
@@ -1746,8 +1745,8 @@ func (i clientTestJWTIssuer) issueSessionBinding(t *testing.T, now time.Time, gr
 		"jti":                    "binding-1",
 		"iat":                    now.Unix(),
 		"exp":                    now.Add(time.Minute).Unix(),
-		"agtp_type":              agtp.TokenTypeSessionBinding,
-		"agtp_version":           agtp.ProfileVersion,
+		"agtp_type":              TokenTypeSessionBinding,
+		"agtp_version":           ProfileVersion,
 		"grant_hash":             grantHash,
 		"leaf_public_key_sha256": binding.LeafPublicKeySHA256,
 		"tls_exporter_sha256":    binding.TLSExporterSHA256,
@@ -1966,7 +1965,7 @@ func writeClientTestJWKSet(t *testing.T, w http.ResponseWriter, keys map[string]
 	}
 }
 
-func (r *clientTestIdentityRegistry) keyFunc(t *testing.T) agtp.KeyFunc {
+func (r *clientTestIdentityRegistry) keyFunc(t *testing.T) KeyFunc {
 	t.Helper()
 
 	return func(keyID string) (interface{}, error) {
@@ -1976,7 +1975,7 @@ func (r *clientTestIdentityRegistry) keyFunc(t *testing.T) agtp.KeyFunc {
 		}
 		defer resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return nil, agtp.ErrUnknownKeyID
+			return nil, ErrUnknownKeyID
 		}
 		var keySet struct {
 			Keys []struct {
@@ -1998,11 +1997,11 @@ func (r *clientTestIdentityRegistry) keyFunc(t *testing.T) agtp.KeyFunc {
 			}
 			return secret, nil
 		}
-		return nil, agtp.ErrUnknownKeyID
+		return nil, ErrUnknownKeyID
 	}
 }
 
-func (r *clientTestIdentityRegistry) keyFuncWithRevocationCheck(t *testing.T) agtp.KeyFunc {
+func (r *clientTestIdentityRegistry) keyFuncWithRevocationCheck(t *testing.T) KeyFunc {
 	t.Helper()
 
 	keyFunc := r.keyFunc(t)

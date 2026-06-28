@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"

@@ -9,12 +9,12 @@ import (
 	"os"
 	"strings"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/fatih/color"
 	"github.com/google/go-sev-guest/abi"
 	tpmAttest "github.com/google/go-tpm-tools/proto/attest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
 	"google.golang.org/protobuf/encoding/prototext"

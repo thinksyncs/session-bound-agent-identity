@@ -19,9 +19,9 @@ import (
 	smqserver "github.com/absmach/supermq/pkg/server"
 	grpcserver "github.com/absmach/supermq/pkg/server/grpc"
 	httpserver "github.com/absmach/supermq/pkg/server/http"
-	"github.com/absmach/supermq/pkg/uuid"
 	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
+	"github.com/google/uuid"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/api"
 	managergrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/api/grpc"
@@ -72,11 +72,7 @@ func main() {
 	defer mglog.ExitWithError(&exitCode)
 
 	if cfg.InstanceID == "" {
-		if cfg.InstanceID, err = uuid.New().ID(); err != nil {
-			logger.Error(fmt.Sprintf("Failed to generate instance ID: %s", err))
-			exitCode = 1
-			return
-		}
+		cfg.InstanceID = uuid.NewString()
 	}
 
 	tp, err := jaeger.NewProvider(ctx, svcName, cfg.JaegerURL, cfg.InstanceID, cfg.TraceRatio)

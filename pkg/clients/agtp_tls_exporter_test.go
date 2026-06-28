@@ -4,11 +4,9 @@ package clients
 
 import (
 	"errors"
-	"testing"
-
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"testing"
 )
 
 func TestAGTPObservedIdentityRejectsMockedTLSExporterWithRealState(t *testing.T) {
@@ -32,7 +30,7 @@ func TestAGTPObservedIdentityRejectsMockedTLSExporterWithRealState(t *testing.T)
 	if mockedBinding.TLSExporterSHA256 == realBinding.TLSExporterSHA256 {
 		t.Fatal("mocked validation exporter unexpectedly matched real TLS exporter")
 	}
-	bindingToken := fixture.agent.issueSessionBinding(t, fixture.now, agtp.IdentityGrantHash(grantToken), mockedBinding, map[string]any{
+	bindingToken := fixture.agent.issueSessionBinding(t, fixture.now, IdentityGrantHash(grantToken), mockedBinding, map[string]any{
 		"jti":   "mocked-exporter-binding",
 		"nonce": "mocked-exporter-nonce",
 	})

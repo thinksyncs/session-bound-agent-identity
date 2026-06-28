@@ -16,10 +16,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 	"google.golang.org/grpc/metadata"
 )
 

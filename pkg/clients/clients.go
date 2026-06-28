@@ -10,7 +10,6 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
@@ -57,8 +56,8 @@ type AttestedClientConfig struct {
 	IdentityLogger            *slog.Logger                                    `env:"-"`
 	IdentityGrantJWT          string                                          `env:"-"`
 	IdentityBindingJWT        string                                          `env:"-"`
-	IdentityGrantJWTOptions   agtp.JWTVerifyOptions                           `env:"-"`
-	IdentityBindingJWTOptions agtp.JWTVerifyOptions                           `env:"-"`
+	IdentityGrantJWTOptions   JWTVerifyOptions                                `env:"-"`
+	IdentityBindingJWTOptions JWTVerifyOptions                                `env:"-"`
 }
 
 func (c AttestedClientConfig) Config() StandardClientConfig {
@@ -99,12 +98,12 @@ func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc,
 		return nil, fmt.Errorf("%w: AGTP JWT tokens cannot be combined with pre-verified identity grant or binding", ErrInvalidIdentityJWTConfig)
 	}
 	if !c.IdentityPolicy.Enabled() {
-		return nil, fmt.Errorf("%w: identity policy is required for AGTP JWT validation", ErrInvalidIdentityJWTConfig)
+		return nil, fmt.Errorf("%w: identity policy is required for identity JWT validation", ErrInvalidIdentityJWTConfig)
 	}
-	if err := agtp.ValidateJWTVerifyOptions(c.IdentityGrantJWTOptions); err != nil {
+	if err := ValidateJWTVerifyOptions(c.IdentityGrantJWTOptions); err != nil {
 		return nil, fmt.Errorf("%w: identity grant JWT options: %w", ErrInvalidIdentityJWTConfig, err)
 	}
-	if err := agtp.ValidateJWTVerifyOptions(c.IdentityBindingJWTOptions); err != nil {
+	if err := ValidateJWTVerifyOptions(c.IdentityBindingJWTOptions); err != nil {
 		return nil, fmt.Errorf("%w: identity binding JWT options: %w", ErrInvalidIdentityJWTConfig, err)
 	}
 	if c.IdentityReplay == nil {
@@ -116,7 +115,7 @@ func (c AttestedClientConfig) AGTPObservedIdentity() (atls.ObservedIdentityFunc,
 		if err != nil {
 			return identitypolicy.Assertion{}, err
 		}
-		result, err := agtp.VerifySessionIdentityJWT(c.IdentityGrantJWT, c.IdentityBindingJWT, agtp.SessionIdentityJWTOptions{
+		result, err := VerifySessionIdentityJWT(c.IdentityGrantJWT, c.IdentityBindingJWT, SessionIdentityJWTOptions{
 			Grant:           c.IdentityGrantJWTOptions,
 			SessionBinding:  c.IdentityBindingJWTOptions,
 			Policy:          c.IdentityPolicy,

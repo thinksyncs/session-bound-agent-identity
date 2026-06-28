@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"
@@ -304,13 +303,13 @@ func TestBuildATLSClientConfigWiresAGTPObservedIdentity(t *testing.T) {
 		},
 		IdentityGrantJWT:   "grant",
 		IdentityBindingJWT: "binding",
-		IdentityGrantJWTOptions: agtp.JWTVerifyOptions{
+		IdentityGrantJWTOptions: clients.JWTVerifyOptions{
 			ExpectedIssuer:   "manager",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
 			KeyFunc:          httpTestKeyFunc(map[string][]byte{"manager-key": []byte("manager-secret")}),
 		},
-		IdentityBindingJWTOptions: agtp.JWTVerifyOptions{
+		IdentityBindingJWTOptions: clients.JWTVerifyOptions{
 			ExpectedIssuer:   "agent-a",
 			ExpectedAudience: "client-a",
 			ValidMethods:     []string{"HS256"},
@@ -365,11 +364,11 @@ func (c *httpReplayCache) MarkUsed(string, time.Time) error {
 	return nil
 }
 
-func httpTestKeyFunc(keys map[string][]byte) agtp.KeyFunc {
+func httpTestKeyFunc(keys map[string][]byte) clients.KeyFunc {
 	return func(keyID string) (interface{}, error) {
 		key, ok := keys[keyID]
 		if !ok {
-			return nil, agtp.ErrMissingKeyID
+			return nil, clients.ErrMissingKeyID
 		}
 		return key, nil
 	}

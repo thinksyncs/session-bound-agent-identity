@@ -10,11 +10,11 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/absmach/supermq/pkg/errors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
 )
 
 func TestNew(t *testing.T) {
