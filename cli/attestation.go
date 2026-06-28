@@ -14,9 +14,9 @@ import (
 	tpmAttest "github.com/google/go-tpm-tools/proto/attest"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/vtpm"
 	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 )

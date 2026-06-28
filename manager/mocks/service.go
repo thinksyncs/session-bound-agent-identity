@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager"
 )
 
 // NewService creates a new instance of Service. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

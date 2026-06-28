@@ -8,10 +8,10 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/azure"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/corimgen"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/gcp"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/generator"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/azure"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/gcp"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/generator"
 )
 
 func (cli *CLI) NewCreateCoRIMCmd() *cobra.Command {

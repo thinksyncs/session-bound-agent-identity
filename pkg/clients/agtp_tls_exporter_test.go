@@ -4,8 +4,8 @@ package clients
 
 import (
 	"errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 	"testing"
 )
 

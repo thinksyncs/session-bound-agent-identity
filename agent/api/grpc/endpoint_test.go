@@ -8,9 +8,9 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/agent/mocks"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
 	"golang.org/x/crypto/sha3"
 )
 

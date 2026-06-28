@@ -5,8 +5,8 @@ package grpc
 import (
 	"errors"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/vtpm"
 )
 
 type algoReq struct {

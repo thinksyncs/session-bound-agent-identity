@@ -9,7 +9,7 @@ import (
 	"crypto/x509"
 
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
 )
 
 type CertificateProvider struct {

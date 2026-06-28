@@ -14,7 +14,7 @@ import (
 
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/sdk/mocks"
+	"github.com/thinksyncs/agents-secure-binding/pkg/sdk/mocks"
 )
 
 const algorithmFile = "test_algo_file.py"

@@ -11,9 +11,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/pkg/tls"
 )
 
 type Client interface {

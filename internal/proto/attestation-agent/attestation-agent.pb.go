@@ -590,8 +590,8 @@ const file_internal_proto_attestation_agent_attestation_agent_proto_rawDesc = ""
 	"ent.ExtendRuntimeMeasurementRequest\x1a3.attestation_agent.ExtendRuntimeMeasurement" +
 	"Response\"\x00\x12a\n\fBindInitData\x12&.attestation_agent.BindInitDataRequest\x1a'.attestation" +
 	"_agent.BindInitDataResponse\"\x00\x12[\n\nGetTeeType\x12$.attestation_agent.GetTeeTypeReques" +
-	"t\x1a%.attestation_agent.GetTeeTypeResponse\"\x00B\\ZZgithub.com/thinksyncs/agtp-atls-pr" +
-	"ofile/internal/proto/attestation-agent;attestation_agentb\x06proto3"
+	"t\x1a%.attestation_agent.GetTeeTypeResponse\"\x00B`Z^github.com/thinksyncs/agents-se" +
+	"cure-binding/internal/proto/attestation-agent;attestation_agentb\x06proto3"
 
 var (
 	file_internal_proto_attestation_agent_attestation_agent_proto_rawDescOnce sync.Once

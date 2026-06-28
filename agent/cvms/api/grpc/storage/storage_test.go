@@ -10,7 +10,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
 )
 
 func createTempDir(t *testing.T) string {

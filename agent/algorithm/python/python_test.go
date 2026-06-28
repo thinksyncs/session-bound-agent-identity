@@ -16,8 +16,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/logging"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events/mocks"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/logging"
+	"github.com/thinksyncs/agents-secure-binding/agent/events/mocks"
 	"google.golang.org/grpc/metadata"
 )
 

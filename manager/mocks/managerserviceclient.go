@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/emptypb"
 )

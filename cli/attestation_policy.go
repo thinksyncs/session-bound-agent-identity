@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/gcp"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/gcp"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )

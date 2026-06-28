@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 )
 
 func TestValidateAcceptsRouteAssertionWithAgentHolderProof(t *testing.T) {

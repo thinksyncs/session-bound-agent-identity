@@ -332,7 +332,7 @@ const file_internal_proto_attestation_v1_attestation_proto_rawDesc = "" +
 	"\".attestation.v1.AttestationRequest\x1a#.attestation.v1.AttestationResponse\x12[\n\x10Fetc" +
 	"hRawEvidence\x12\".attestation.v1.AttestationRequest\x1a#.attestation.v1.RawEvidenceRes" +
 	"ponse\x12X\n\x0fFetchAzureToken\x12!.attestation.v1.AzureTokenRequest\x1a\".attestation.v1.Azu" +
-	"reTokenResponseBeZcgithub.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attest" +
+	"reTokenResponseBWZUgithub.com/thinksyncs/agents-secure-binding/internal/proto/attest" +
 	"ation/v1;attestationb\x06proto3"
 
 var (

@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
 )
 
 type failedWriter struct{}

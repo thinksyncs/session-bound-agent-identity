@@ -5,11 +5,11 @@ package agent
 import (
 	"context"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc"
+	"github.com/thinksyncs/agents-secure-binding/pkg/tls"
 	grpchealth "google.golang.org/grpc/health/grpc_health_v1"
 )
 

@@ -9,10 +9,10 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
-	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
-	internaltransport "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/internal_transport"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
+	internaltransport "github.com/thinksyncs/agents-secure-binding/pkg/atls/internal_transport"
 )
 
 // IdentityBindingFromConnectionState derives identity-policy binding values

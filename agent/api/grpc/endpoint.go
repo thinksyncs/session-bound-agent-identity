@@ -6,8 +6,8 @@ import (
 	"context"
 
 	"github.com/go-kit/kit/endpoint"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
 )
 
 func algoEndpoint(svc agent.Service) endpoint.Endpoint {

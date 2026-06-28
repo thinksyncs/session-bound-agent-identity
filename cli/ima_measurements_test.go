@@ -11,7 +11,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/sdk/mocks"
+	"github.com/thinksyncs/agents-secure-binding/pkg/sdk/mocks"
 )
 
 func TestCLI_NewIMAMeasurementsCmd(t *testing.T) {

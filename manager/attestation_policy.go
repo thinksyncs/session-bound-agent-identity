@@ -11,9 +11,9 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/generator"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/igvmmeasure"
+	"github.com/thinksyncs/agents-secure-binding/manager/qemu"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/generator"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/igvmmeasure"
 )
 
 func (ms *managerService) FetchAttestationPolicy(_ context.Context, computationId string) ([]byte, error) {

@@ -6,8 +6,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
 )
 
 func TestNewManagerClient(t *testing.T) {

@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine"
+	"github.com/thinksyncs/agents-secure-binding/agent/statemachine"
 )
 
 type MockState int

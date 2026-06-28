@@ -6,7 +6,7 @@ import (
 	"context"
 	"time"
 
-	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
+	pb "github.com/thinksyncs/agents-secure-binding/agent/runner"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"

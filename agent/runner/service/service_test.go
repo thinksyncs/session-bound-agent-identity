@@ -14,8 +14,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/docker"
-	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/docker"
+	pb "github.com/thinksyncs/agents-secure-binding/agent/runner"
 )
 
 // MockEventService is a mock implementation of events.Service.

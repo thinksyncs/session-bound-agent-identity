@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 package ingress
 
-import "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
+import "github.com/thinksyncs/agents-secure-binding/agent"
 
 // AgentConfigToProxyConfig converts agent.AgentConfig to ProxyConfig.
 func AgentConfigToProxyConfig(cfg agent.AgentConfig) ProxyConfig {

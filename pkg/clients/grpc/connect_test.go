@@ -20,10 +20,10 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/pkg/tls"
 )
 
 func TestNewClient(t *testing.T) {

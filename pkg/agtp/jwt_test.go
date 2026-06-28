@@ -28,8 +28,8 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	attestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	attestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 )
 
 const (

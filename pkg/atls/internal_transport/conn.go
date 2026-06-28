@@ -15,9 +15,9 @@ import (
 	"net"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
-	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 )
 
 // ErrMissingObservedIdentity reports an enabled identity policy without a

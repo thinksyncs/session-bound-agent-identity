@@ -14,8 +14,8 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/agent/mocks"
 )
 
 func setupTest(t *testing.T) (*slog.Logger, *mocks.Service, string, []byte) {

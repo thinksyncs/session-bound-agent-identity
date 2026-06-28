@@ -12,7 +12,7 @@ import (
 	"net"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/server"
+	"github.com/thinksyncs/agents-secure-binding/internal/runtime/server"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials"

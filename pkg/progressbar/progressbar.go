@@ -9,8 +9,8 @@ import (
 	"strings"
 
 	"github.com/fatih/color"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/vtpm"
 	"golang.org/x/term"
 )
 

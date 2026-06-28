@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	aa "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
+	aa "github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

@@ -7,9 +7,9 @@ import (
 	"encoding/json"
 	"log/slog"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
-	logpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
-	logclient "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/log"
+	"github.com/thinksyncs/agents-secure-binding/agent/events"
+	logpb "github.com/thinksyncs/agents-secure-binding/agent/log"
+	logclient "github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/log"
 )
 
 type adapter struct {

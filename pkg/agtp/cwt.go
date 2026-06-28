@@ -12,7 +12,7 @@ import (
 	"time"
 
 	"github.com/fxamacker/cbor/v2"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 	"github.com/veraison/go-cose"
 )
 

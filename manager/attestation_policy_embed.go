@@ -8,7 +8,7 @@ package manager
 import (
 	"context"
 	/*
-		attestationPolicy "github.com/thinksyncs/hardware-aware-tls-identity-binding/scripts/attestation_policy/sev-snp"
+		attestationPolicy "github.com/thinksyncs/agents-secure-binding/scripts/attestation_policy/sev-snp"
 	*/)
 
 func (ms *managerService) FetchAttestationPolicy(_ context.Context, _ string) ([]byte, error) {

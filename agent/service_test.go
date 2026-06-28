@@ -21,19 +21,19 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/python"
-	agentevents "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events/mocks"
-	runnerpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine"
-	smmocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine/mocks"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
-	runnermocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/runner/mocks"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/oci"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/python"
+	agentevents "github.com/thinksyncs/agents-secure-binding/agent/events"
+	"github.com/thinksyncs/agents-secure-binding/agent/events/mocks"
+	runnerpb "github.com/thinksyncs/agents-secure-binding/agent/runner"
+	"github.com/thinksyncs/agents-secure-binding/agent/statemachine"
+	smmocks "github.com/thinksyncs/agents-secure-binding/agent/statemachine/mocks"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	mglog "github.com/thinksyncs/agents-secure-binding/internal/runtime/logging"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/vtpm"
+	runnermocks "github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/runner/mocks"
+	"github.com/thinksyncs/agents-secure-binding/pkg/oci"
 	"golang.org/x/crypto/sha3"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -598,7 +598,7 @@ func TestStopComputation(t *testing.T) {
 
 			// Use real dirs for test
 			// algorithm.DatasetsDir refers to global var?
-			// "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
+			// "github.com/thinksyncs/agents-secure-binding/agent/algorithm"
 			// It uses hardcoded path "datasets" and "results" in current dir.
 			// Tests create them in current dir.
 

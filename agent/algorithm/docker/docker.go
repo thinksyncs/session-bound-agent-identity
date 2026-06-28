@@ -6,8 +6,8 @@ import (
 	"errors"
 	"log/slog"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/agent/events"
 )
 
 var (

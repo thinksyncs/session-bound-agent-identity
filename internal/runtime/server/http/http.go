@@ -10,7 +10,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/server"
+	"github.com/thinksyncs/agents-secure-binding/internal/runtime/server"
 )
 
 type runtimeServer struct {

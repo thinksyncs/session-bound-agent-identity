@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/eat"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/eat"
 )
 
 func TestVerifyEAT_TDX(t *testing.T) {

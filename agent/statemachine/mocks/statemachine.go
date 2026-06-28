@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/statemachine"
+	"github.com/thinksyncs/agents-secure-binding/agent/statemachine"
 )
 
 // NewStateMachine creates a new instance of StateMachine. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

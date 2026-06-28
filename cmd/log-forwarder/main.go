@@ -12,12 +12,12 @@ import (
 	"syscall"
 
 	"github.com/caarlos0/env/v11"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log/service"
-	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
-	cvmsgrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/cvm"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	pb "github.com/thinksyncs/agents-secure-binding/agent/log"
+	"github.com/thinksyncs/agents-secure-binding/agent/log/service"
+	mglog "github.com/thinksyncs/agents-secure-binding/internal/runtime/logging"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
+	cvmsgrpc "github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/cvm"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )

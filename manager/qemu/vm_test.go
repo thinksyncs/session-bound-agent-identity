@@ -9,8 +9,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/vm/mocks"
-	pkgmanager "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager/vm/mocks"
+	pkgmanager "github.com/thinksyncs/agents-secure-binding/pkg/manager"
 )
 
 const testComputationID = "test-computation"

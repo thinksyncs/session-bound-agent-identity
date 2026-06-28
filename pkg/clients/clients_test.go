@@ -29,10 +29,10 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
-	attestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
+	attestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 )
 
 func TestAGTPObservedIdentityAcceptsSessionBoundJWT(t *testing.T) {

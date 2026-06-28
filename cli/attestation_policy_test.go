@@ -15,7 +15,7 @@ import (
 	"github.com/google/go-tpm-tools/proto/attest"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/gcp"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/gcp"
 	"google.golang.org/protobuf/proto"
 )
 

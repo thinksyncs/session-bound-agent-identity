@@ -10,13 +10,13 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/binary"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/docker"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/python"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/wasm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
-	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/binary"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/docker"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/python"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/wasm"
+	"github.com/thinksyncs/agents-secure-binding/agent/events"
+	pb "github.com/thinksyncs/agents-secure-binding/agent/runner"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

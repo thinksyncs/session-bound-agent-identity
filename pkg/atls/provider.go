@@ -11,10 +11,10 @@ import (
 	"crypto/x509"
 	"fmt"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
-	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	cocosattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
-	attestationclient "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/attestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
+	eaattestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	cocosattestation "github.com/thinksyncs/agents-secure-binding/pkg/attestation"
+	attestationclient "github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/attestation"
 )
 
 // CertificateProvider is kept for compatibility with existing cocos call sites.

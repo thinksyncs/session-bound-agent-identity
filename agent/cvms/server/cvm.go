@@ -10,9 +10,9 @@ import (
 	"os"
 	"sync"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	agentgrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/api/grpc"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/auth"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	agentgrpc "github.com/thinksyncs/agents-secure-binding/agent/api/grpc"
+	"github.com/thinksyncs/agents-secure-binding/agent/auth"
 	"go.opentelemetry.io/contrib/instrumentation/google.golang.org/grpc/otelgrpc"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"

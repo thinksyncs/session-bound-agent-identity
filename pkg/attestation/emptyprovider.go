@@ -6,7 +6,7 @@ package attestation
 import (
 	"fmt"
 
-	cocosai "github.com/thinksyncs/hardware-aware-tls-identity-binding"
+	cocosai "github.com/thinksyncs/agents-secure-binding"
 )
 
 var _ Provider = (*EmptyProvider)(nil)

@@ -14,11 +14,11 @@ import (
 	"github.com/caarlos0/env/v11"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	logpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
-	agentlogger "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/logger"
-	logclient "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/log"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/egress"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	logpb "github.com/thinksyncs/agents-secure-binding/agent/log"
+	agentlogger "github.com/thinksyncs/agents-secure-binding/internal/logger"
+	logclient "github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/log"
+	"github.com/thinksyncs/agents-secure-binding/pkg/egress"
 	"golang.org/x/sync/errgroup"
 )
 

@@ -7,7 +7,7 @@ import (
 	"fmt"
 	"time"
 
-	attestation_agent "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
+	attestation_agent "github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )

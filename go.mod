@@ -1,4 +1,4 @@
-module github.com/thinksyncs/hardware-aware-tls-identity-binding
+module github.com/thinksyncs/agents-secure-binding
 
 go 1.26.0
 

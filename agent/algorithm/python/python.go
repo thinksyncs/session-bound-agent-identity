@@ -13,9 +13,9 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/logging"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/logging"
+	"github.com/thinksyncs/agents-secure-binding/agent/events"
 	"google.golang.org/grpc/metadata"
 )
 

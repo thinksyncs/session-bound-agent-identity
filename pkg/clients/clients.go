@@ -10,9 +10,9 @@ import (
 	"log/slog"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/ea"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/ea"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
 )
 
 var (

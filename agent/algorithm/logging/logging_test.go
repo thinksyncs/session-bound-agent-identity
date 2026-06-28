@@ -8,9 +8,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events/mocks"
-	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/manager"
+	"github.com/thinksyncs/agents-secure-binding/agent/events/mocks"
+	mglog "github.com/thinksyncs/agents-secure-binding/internal/runtime/logging"
+	"github.com/thinksyncs/agents-secure-binding/pkg/manager"
 )
 
 func TestStdoutWrite(t *testing.T) {

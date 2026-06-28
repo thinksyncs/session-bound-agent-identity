@@ -7,7 +7,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/manager"
+	"github.com/thinksyncs/agents-secure-binding/pkg/manager"
 )
 
 const numGoroutines = 10

@@ -9,9 +9,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/auth"
-	mgerrors "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/agent"
+	"github.com/thinksyncs/agents-secure-binding/agent/auth"
+	mgerrors "github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients/grpc/agent"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )

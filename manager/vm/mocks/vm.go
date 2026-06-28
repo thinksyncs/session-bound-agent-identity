@@ -9,7 +9,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/manager"
+	"github.com/thinksyncs/agents-secure-binding/pkg/manager"
 )
 
 // NewVM creates a new instance of VM. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.

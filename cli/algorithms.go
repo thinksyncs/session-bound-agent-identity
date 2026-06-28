@@ -9,8 +9,8 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm/python"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm/python"
 	"google.golang.org/grpc/metadata"
 )
 

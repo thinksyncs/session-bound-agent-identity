@@ -12,9 +12,9 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/agent/mocks"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
 )
 
 func TestNew(t *testing.T) {

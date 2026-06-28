@@ -6,8 +6,8 @@ import (
 	"context"
 	"log/slog"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/agent/log"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

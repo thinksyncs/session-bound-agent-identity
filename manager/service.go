@@ -18,11 +18,11 @@ import (
 	"unicode"
 
 	"github.com/google/uuid"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/vm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/corimgen"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/manager"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/manager/qemu"
+	"github.com/thinksyncs/agents-secure-binding/manager/vm"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agents-secure-binding/pkg/manager"
 )
 
 const (

@@ -8,7 +8,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager"
 )
 
 const (

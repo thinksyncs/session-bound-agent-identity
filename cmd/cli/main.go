@@ -13,9 +13,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
 	"github.com/spf13/pflag"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/cli"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/cmdconfig"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/cli"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/cmdconfig"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
 	cmd "github.com/virtee/sev-snp-measure-go/sevsnpmeasure/cmd"
 )
 

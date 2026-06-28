@@ -13,7 +13,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	aa "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
+	aa "github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 )
 

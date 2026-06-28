@@ -10,7 +10,7 @@ import (
 	"errors"
 	"fmt"
 
-	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
+	eaattestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
 )
 
 var (

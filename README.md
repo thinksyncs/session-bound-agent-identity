@@ -145,10 +145,8 @@ scope of this security profile.
 The repository keeps the Apache-2.0 license and retained upstream notices. See
 `ATTRIBUTION.md`.
 
-Repository identity note: the public repository name is `agents-secure-binding`.
-The Go module path still uses
-`github.com/thinksyncs/hardware-aware-tls-identity-binding` until the public
-v0.5 module-path decision is made. See `PUBLICATION_TODO.md`.
+Repository identity note: the public repository name and Go module path are
+both `github.com/thinksyncs/agents-secure-binding`.
 
 ## Verification Commands
 

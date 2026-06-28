@@ -12,8 +12,8 @@ import (
 	tpmpb "github.com/google/go-tpm-tools/proto/tpm"
 	"github.com/google/go-tpm/legacy/tpm2"
 	"github.com/google/go-tpm/tpmutil"
-	eaattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/eaattestation"
-	cocosattestation "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
+	eaattestation "github.com/thinksyncs/agents-secure-binding/pkg/atls/eaattestation"
+	cocosattestation "github.com/thinksyncs/agents-secure-binding/pkg/attestation"
 	"google.golang.org/protobuf/proto"
 )
 

@@ -9,8 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/peer"
 )

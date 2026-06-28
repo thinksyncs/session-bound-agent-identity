@@ -7,8 +7,8 @@ import (
 	"io"
 	"log/slog"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/agent/events"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )

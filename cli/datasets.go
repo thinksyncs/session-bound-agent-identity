@@ -11,9 +11,9 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/internal"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
 	"google.golang.org/grpc/metadata"
 )
 

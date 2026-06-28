@@ -19,9 +19,9 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/identitypolicy"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/tls"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
+	"github.com/thinksyncs/agents-secure-binding/pkg/clients"
+	"github.com/thinksyncs/agents-secure-binding/pkg/tls"
 )
 
 func TestConfig_Configuration(t *testing.T) {

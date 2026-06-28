@@ -11,7 +11,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
+	"github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent"
 	"google.golang.org/grpc"
 )
 

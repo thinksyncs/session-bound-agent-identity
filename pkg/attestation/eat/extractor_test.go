@@ -10,7 +10,7 @@ import (
 
 	"github.com/google/go-sev-guest/abi"
 	"github.com/stretchr/testify/assert"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
 )
 
 func TestExtractSNPClaims(t *testing.T) {

@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/mock"
-	attestation_agent "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation-agent/mocks"
+	attestation_agent "github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent"
+	"github.com/thinksyncs/agents-secure-binding/internal/proto/attestation-agent/mocks"
 )
 
 // TestTeeAttestationSuccess tests successful TDX attestation.

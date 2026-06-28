@@ -11,7 +11,7 @@ import (
 
 	"github.com/fatih/color"
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/vtpm"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/vtpm"
 )
 
 const (

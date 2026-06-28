@@ -6,8 +6,8 @@ import (
 	"os"
 	"testing"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/algorithm"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal"
+	"github.com/thinksyncs/agents-secure-binding/agent/algorithm"
+	"github.com/thinksyncs/agents-secure-binding/internal"
 )
 
 func TestZipDirectory(t *testing.T) {

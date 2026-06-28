@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
+	"github.com/thinksyncs/agents-secure-binding/agent/cvms"
 )
 
 // Message represents a pending message with its timestamp.

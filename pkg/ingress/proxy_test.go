@@ -25,7 +25,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls/mocks"
+	"github.com/thinksyncs/agents-secure-binding/pkg/atls/mocks"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )

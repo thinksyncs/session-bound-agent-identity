@@ -13,8 +13,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/mocks"
+	"github.com/thinksyncs/agents-secure-binding/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager/mocks"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

@@ -5,7 +5,7 @@ package generator
 import (
 	"crypto"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/corimgen"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation/corimgen"
 )
 
 // Legacy SNP Defaults (re-exported from corimgen).

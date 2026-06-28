@@ -9,8 +9,8 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal"
+	"github.com/thinksyncs/agents-secure-binding/agent"
+	"github.com/thinksyncs/agents-secure-binding/internal"
 	"golang.org/x/crypto/sha3"
 )
 

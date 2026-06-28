@@ -8,8 +8,8 @@ import (
 	"crypto/x509"
 	"os"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
+	"github.com/thinksyncs/agents-secure-binding/internal/errors"
+	"github.com/thinksyncs/agents-secure-binding/pkg/attestation"
 )
 
 // Security represents the type of TLS security configuration.

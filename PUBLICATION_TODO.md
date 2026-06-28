@@ -4,15 +4,9 @@ Release blockers and evidence limits for the public draft.
 
 ## Repository Identity
 
-The public repository name is `agents-secure-binding`. The current Go module
-path is still `github.com/thinksyncs/hardware-aware-tls-identity-binding`.
-
-Before public v0.5, choose one:
-
-- rename `go.mod`, imports, protobuf `go_package` options, examples, and docs
-  to `github.com/thinksyncs/agents-secure-binding`;
-- keep the existing module path and publish a compatibility note explaining why
-  the module path remains stable.
+Resolved for public v0.5: the repository name, Go module path, imports,
+protobuf `go_package` options, examples, and local documentation use
+`github.com/thinksyncs/agents-secure-binding`.
 
 ## Recorded CI and Red-Team Status
 

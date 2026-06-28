@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/agtp/gatewayroute"
+	"github.com/thinksyncs/agents-secure-binding/pkg/agtp/gatewayroute"
 	"github.com/veraison/go-cose"
 )
 

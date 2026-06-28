@@ -6,7 +6,7 @@ import (
 	"context"
 	"errors"
 
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
+	"github.com/thinksyncs/agents-secure-binding/manager"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 

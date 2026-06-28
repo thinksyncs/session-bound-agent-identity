@@ -9,7 +9,7 @@ package mocks
 
 import (
 	mock "github.com/stretchr/testify/mock"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
+	"github.com/thinksyncs/agents-secure-binding/manager/qemu"
 )
 
 // NewPersistence creates a new instance of Persistence. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
