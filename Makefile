@@ -15,10 +15,7 @@ IGVM_BUILD_SCRIPT := ./scripts/igvmmeasure/igvm.sh
 
 define compile_service
 	CGO_ENABLED=$(CGO_ENABLED) GOOS=$(GOOS) GOARCH=$(GOARCH) GOARM=$(GOARM) \
-	go build -ldflags "-s -w \
-	-X 'github.com/absmach/supermq.BuildTime=$(TIME)' \
-	-X 'github.com/absmach/supermq.Version=$(VERSION)' \
-	-X 'github.com/absmach/supermq.Commit=$(COMMIT)'" \
+	go build -ldflags "-s -w" \
 	$(if $(filter 1,$(EMBED_ENABLED)),-tags "embed",) \
 	-o ${BUILD_DIR}/cocos-$(1) ./cmd/$(1)
 endef

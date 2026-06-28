@@ -11,11 +11,11 @@ import (
 	"os/signal"
 	"syscall"
 
-	mglog "github.com/absmach/supermq/logger"
 	"github.com/caarlos0/env/v11"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
 	pb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log/service"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients"
 	cvmsgrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/cvm"
 	"golang.org/x/sync/errgroup"

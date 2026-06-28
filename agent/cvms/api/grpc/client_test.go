@@ -7,7 +7,6 @@ import (
 	"testing"
 	"time"
 
-	mglog "github.com/absmach/supermq/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
@@ -15,6 +14,7 @@ import (
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms/api/grpc/storage"
 	servermocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms/server/mocks"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/mocks"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
 	pkggrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc"
 	clientmocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/mocks"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/ingress"

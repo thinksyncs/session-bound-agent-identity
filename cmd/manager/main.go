@@ -13,21 +13,21 @@ import (
 	"os"
 	"strings"
 
-	mglog "github.com/absmach/supermq/logger"
-	"github.com/absmach/supermq/pkg/jaeger"
-	"github.com/absmach/supermq/pkg/prometheus"
-	smqserver "github.com/absmach/supermq/pkg/server"
-	grpcserver "github.com/absmach/supermq/pkg/server/grpc"
-	httpserver "github.com/absmach/supermq/pkg/server/http"
 	"github.com/caarlos0/env/v11"
 	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/metrics"
+	smqserver "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/server"
+	grpcserver "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/server/grpc"
+	httpserver "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/server/http"
+	runtimetracing "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/tracing"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/api"
 	managergrpc "github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/api/grpc"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/api/http"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
-	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/tracing"
+	managertracing "github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/tracing"
 	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -75,7 +75,7 @@ func main() {
 		cfg.InstanceID = uuid.NewString()
 	}
 
-	tp, err := jaeger.NewProvider(ctx, svcName, cfg.JaegerURL, cfg.InstanceID, cfg.TraceRatio)
+	tp, err := runtimetracing.NewProvider(ctx, svcName, cfg.JaegerURL, cfg.InstanceID, cfg.TraceRatio)
 	if err != nil {
 		logger.Error(fmt.Sprintf("Failed to init Jaeger: %s", err))
 	}
@@ -175,9 +175,9 @@ func newService(logger *slog.Logger, tracer trace.Tracer, qemuCfg qemu.Config, a
 		return nil, err
 	}
 	svc = api.LoggingMiddleware(svc, logger)
-	counter, latency := prometheus.MakeMetrics(svcName, "api")
+	counter, latency := metrics.MakeMetrics(svcName, "api")
 	svc = api.MetricsMiddleware(svc, counter, latency)
-	svc = tracing.New(svc, tracer)
+	svc = managertracing.New(svc, tracer)
 
 	return svc, nil
 }

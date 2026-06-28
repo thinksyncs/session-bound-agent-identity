@@ -30,6 +30,11 @@ all describe the same intended interaction.
 This repository contains profile text, implementation helpers, tests, vectors,
 and derived notes for that acceptance rule.
 
+The Direct-Agent runtime implementation is centered on `pkg/clients`,
+`pkg/atls`, and `pkg/atls/identitypolicy`. The legacy-named `pkg/agtp` package
+is retained as an experimental reference-adapter surface for JWT/JWS, CWT/COSE,
+and gateway-route policy experiments; it is not the core verifier dependency.
+
 This profile is not:
 
 - a TLS extension;
@@ -150,15 +155,20 @@ v0.5 module-path decision is made. See `PUBLICATION_TODO.md`.
 Local implementation checks:
 
 ```sh
-go test ./pkg/agtp ./pkg/atls/identitypolicy
+go test ./pkg/atls/identitypolicy
 go test ./pkg/clients ./pkg/clients/http ./pkg/clients/grpc
 ```
 
-Focused red-team check:
+Reference-adapter checks:
+
+```sh
+go test ./pkg/agtp ./pkg/agtp/gatewayroute
+```
+
+Focused Direct-Agent red-team check:
 
 ```sh
 GOTOOLCHAIN=go1.26.0+auto go test -v -race -count=1 \
-  ./pkg/agtp \
   ./pkg/atls/identitypolicy \
   ./pkg/clients
 ```

@@ -13,11 +13,11 @@ import (
 	"path/filepath"
 	"testing"
 
-	mglog "github.com/absmach/supermq/logger"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/errors"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu"
 	persistenceMocks "github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/qemu/mocks"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/manager/vm"

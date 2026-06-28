@@ -1195,9 +1195,12 @@ assertion against the accepted TLS session before returning the connection. For
 the direct grant/statement path, replay-cache marking happens only after
 session-binding and local policy comparison succeed.
 
-`pkg/agtp` is a historical package name for repository reference adapters. It
-provides concrete JWT/JWS and CWT/COSE wire-token adapters. The JWT/JWS adapter
-verifies Identity Grants and Session Binding Statements using
+`pkg/agtp` is a historical package name for experimental repository reference
+adapters. It is not the Direct-Agent runtime verifier dependency; the runtime
+client path uses `pkg/clients` plus `pkg/atls/identitypolicy`. `pkg/agtp`
+provides concrete JWT/JWS and CWT/COSE wire-token adapters for compatibility
+and cross-checking. The JWT/JWS adapter verifies Identity Grants and Session
+Binding Statements using
 locally configured issuer, audience, signing methods, and key lookup policy. It
 does not choose trusted Manager keys, rotate keys, perform revocation, define
 deployment policy, or own distributed replay storage.
@@ -1219,12 +1222,12 @@ the protected JWS `kid` header and later checked by `identitypolicy` against the
 verified grant. Thumbprint-based confirmation, such as `cnf.jkt`, can be added
 when a deployment defines how key thumbprints map to local verification keys.
 
-For callers that want one fail-closed acceptance gate, the legacy-named
-`pkg/agtp` adapter exposes `VerifySessionIdentityJWT`. That helper verifies the Manager-signed Identity
-Grant, verifies the Session Binding Statement, checks binding-signer
-authorization, compares the resulting assertion with local expected
-`identitypolicy.Policy` values and the accepted TLS session binding, and only
-then marks the binding nonce in the replay cache.
+For reference-adapter callers that want one fail-closed acceptance gate, the
+legacy-named `pkg/agtp` adapter exposes `VerifySessionIdentityJWT`. That helper
+verifies the Manager-signed Identity Grant, verifies the Session Binding
+Statement, checks binding-signer authorization, compares the resulting assertion
+with local expected `identitypolicy.Policy` values and the accepted TLS session
+binding, and only then marks the binding nonce in the replay cache.
 
 The implemented production profile covers:
 

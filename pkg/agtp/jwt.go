@@ -1,8 +1,13 @@
 // Copyright (c) Ultraviolet
 // SPDX-License-Identifier: Apache-2.0
 
-// Package agtp implements wire-token adapters used to feed session-bound
-// identity material into the hardware-aware TLS identity-policy validator.
+// Package agtp contains experimental reference adapters for legacy AGTP-named
+// JWT/JWS and CWT/COSE wire-token experiments.
+//
+// Direct-Agent runtime clients do not depend on this package. Production
+// verifier code should treat these helpers as reference adapters around the
+// core identity-policy acceptance rules, not as the repository's core runtime
+// binding implementation.
 package agtp
 
 import (

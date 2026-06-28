@@ -11,7 +11,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	mglog "github.com/absmach/supermq/logger"
 	"github.com/caarlos0/env/v11"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
 	logpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
@@ -19,6 +18,7 @@ import (
 	runnerevents "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner/events"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/runner/service"
 	agentlogger "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/logger"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
 	logclient "github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/clients/grpc/log"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"

@@ -12,12 +12,12 @@ import (
 	"os/signal"
 	"syscall"
 
-	mglog "github.com/absmach/supermq/logger"
 	"github.com/caarlos0/env/v11"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/cvms"
 	logpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
 	agentlogger "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/logger"
 	attestationpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/proto/attestation/v1"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/azure"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/ccaa"

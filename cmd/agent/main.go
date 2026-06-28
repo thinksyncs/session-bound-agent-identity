@@ -16,8 +16,6 @@ import (
 	"os/signal"
 	"syscall"
 
-	mglog "github.com/absmach/supermq/logger"
-	"github.com/absmach/supermq/pkg/prometheus"
 	"github.com/caarlos0/env/v11"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/api"
@@ -27,6 +25,8 @@ import (
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/events"
 	logpb "github.com/thinksyncs/hardware-aware-tls-identity-binding/agent/log"
 	agentlogger "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/logger"
+	mglog "github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/logging"
+	"github.com/thinksyncs/hardware-aware-tls-identity-binding/internal/runtime/metrics"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/atls"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation"
 	"github.com/thinksyncs/hardware-aware-tls-identity-binding/pkg/attestation/azure"
@@ -304,7 +304,7 @@ func newService(ctx context.Context, logger *slog.Logger, eventSvc events.Servic
 	svc := agent.New(ctx, logger, eventSvc, attClient, runnerClient, vmpl)
 
 	svc = api.LoggingMiddleware(svc, logger)
-	counter, latency := prometheus.MakeMetrics(svcName, "api")
+	counter, latency := metrics.MakeMetrics(svcName, "api")
 	svc = api.MetricsMiddleware(svc, counter, latency)
 
 	return svc
