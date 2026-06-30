@@ -14,8 +14,8 @@ Latest recorded remote implementation checkpoint:
 
 | Commit | Workflow | Run | Result | Date |
 | --- | --- | --- | --- | --- |
-| `4c3e4fc57cca52a6423394fe2292d620f957c962` | `CI` | `28181903677` | Success | 2026-06-25 UTC |
-| `4c3e4fc57cca52a6423394fe2292d620f957c962` | `Security Red Team` | `28181903553` | Success | 2026-06-25 UTC |
+| `b493d2c3733cd0fa5c35035175f5f9d3466f92f7` | `CI` | `28431874162` | Success | 2026-06-30 UTC |
+| `b493d2c3733cd0fa5c35035175f5f9d3466f92f7` | `Security Red Team` | `28431874166` | Success | 2026-06-30 UTC |
 
 Local pre-publication gate after the README/module-path/runtime hardening work:
 
@@ -27,12 +27,11 @@ Local pre-publication gate after the README/module-path/runtime hardening work:
 | unsigned local worktree after 0-RTT, gateway-route, and appraisal-contract changes | JWT/JWS fuzz gate | `go test -run '^$' -fuzz=FuzzVerifySessionIdentityJWTRejectsMalformedCompactTokens -fuzztime=60s ./pkg/agtp` | Success; 1,252,457 executions | 2026-06-30 08:34 UTC |
 
 This checkpoint is not a formal proof or a broad deployment security claim. The
-remote CI and Security Red Team run IDs above are not updated for the staged
-publication-prep changes until those changes are signed, committed, pushed, and
-re-run on GitHub Actions. The product gate is scoped to the Direct-Agent core
-and reference adapters. Inherited agent/manager runtime integration tests
-include VM, sudo, loopback listener, and Python package-install paths and remain
-separate integration coverage.
+remote CI and Security Red Team run IDs above record the latest implementation
+checkpoint. The product gate is scoped to the Direct-Agent core and reference
+adapters. Inherited agent/manager runtime integration tests include VM, sudo,
+loopback listener, and Python package-install paths and remain separate
+integration coverage.
 
 ## Dependency Alert Status
 

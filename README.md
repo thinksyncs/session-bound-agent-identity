@@ -14,9 +14,9 @@ Evaluation boundary: the v0.4 evaluation is useful implementation evidence for
 the checked fail-closed verifier behavior. It is not a formal proof and should
 not be cited as validation of TLS, attestation formats, or all deployments. The
 latest recorded remote implementation checkpoint is commit
-`4c3e4fc57cca52a6423394fe2292d620f957c962`: GitHub Actions `CI` run
-`28181903677` and `Security Red Team` run `28181903553` both completed
-successfully on 2026-06-25 UTC.
+`b493d2c3733cd0fa5c35035175f5f9d3466f92f7`: GitHub Actions `CI` run
+`28431874162` and `Security Red Team` run `28431874166` both completed
+successfully on 2026-06-30 UTC.
 
 ## What This Is / Is Not
 

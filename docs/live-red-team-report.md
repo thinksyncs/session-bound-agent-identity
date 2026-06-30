@@ -50,8 +50,8 @@ GitHub Actions:
 
 | Workflow | Run | Result | Notes |
 | --- | --- | --- | --- |
-| `Security Red Team` | `27466465706` | Success | Dedicated red-team workflow for Direct-Agent and reference-adapter security packages |
-| `CI` | `27466465697` | Success | `lint`, `Build`, all Go test matrix jobs, and coverage upload passed |
+| `Security Red Team` | `28431874166` | Success | Dedicated red-team workflow for Direct-Agent and reference-adapter security packages on commit `b493d2c3733cd0fa5c35035175f5f9d3466f92f7` |
+| `CI` | `28431874162` | Success | `lint`, `Build`, all Go test matrix jobs, product-security, and coverage upload passed on commit `b493d2c3733cd0fa5c35035175f5f9d3466f92f7` |
 
 Local verification:
 
