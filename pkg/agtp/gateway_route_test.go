@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	testGatewayRouteID     = "route-payments"
-	testGatewaySPIFFEPeer  = "spiffe://mesh/ns/payments/sa/agent-a"
-	testGatewayTargetAgent = "agent-a"
+	testGatewayRouteID      = "route-payments"
+	testGatewayRouteAdminID = "route-admin"
+	testGatewaySPIFFEPeer   = "spiffe://mesh/ns/payments/sa/agent-a"
+	testGatewayTargetAgent  = "agent-a"
 )
 
 func TestVerifyGatewayRouteJWTAcceptsLocalPolicy(t *testing.T) {
@@ -50,7 +51,7 @@ func TestVerifyGatewayRouteJWTRedTeamRejectsAttacks(t *testing.T) {
 			name: "policy-bound route diversion",
 			claims: func() jwt.MapClaims {
 				claims := testGatewayRouteJWTClaims(now)
-				claims[gatewayroute.FieldRouteID] = "route-admin"
+				claims[gatewayroute.FieldRouteID] = testGatewayRouteAdminID
 				return claims
 			},
 			opts:    func() GatewayRouteJWTOptions { return testGatewayRouteJWTOptions(now) },
@@ -154,7 +155,7 @@ func TestVerifyGatewayRouteJWTLiveRedTeamNetworkHarness(t *testing.T) {
 		opts.Expected.RouteID = routeID
 		proof := testGatewayHolderProof(now)
 		proof.RouteID = routeID
-		if routeID == "route-admin" {
+		if routeID == testGatewayRouteAdminID {
 			proof.Nonce = "route-nonce-admin"
 		}
 		opts.Proof = proof
@@ -175,14 +176,14 @@ func TestVerifyGatewayRouteJWTLiveRedTeamNetworkHarness(t *testing.T) {
 	wrongRouteClaims["jti"] = "route-assertion-wrong-route"
 	wrongRouteClaims[gatewayroute.FieldNonce] = "route-nonce-wrong-route"
 	wrongRouteToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), wrongRouteClaims)
-	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-admin/tasks/task-a", wrongRouteToken, http.StatusForbidden)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/"+testGatewayRouteAdminID+"/tasks/task-a", wrongRouteToken, http.StatusForbidden)
 
 	adminClaims := testGatewayRouteJWTClaims(now)
 	adminClaims["jti"] = "route-assertion-admin"
 	adminClaims[gatewayroute.FieldNonce] = "route-nonce-admin"
-	adminClaims[gatewayroute.FieldRouteID] = "route-admin"
+	adminClaims[gatewayroute.FieldRouteID] = testGatewayRouteAdminID
 	adminToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), adminClaims)
-	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-admin/tasks/task-a", adminToken, http.StatusNoContent)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/"+testGatewayRouteAdminID+"/tasks/task-a", adminToken, http.StatusNoContent)
 }
 
 func TestVerifyGatewayRouteCWTAcceptsLocalPolicy(t *testing.T) {
@@ -205,7 +206,7 @@ func TestVerifyGatewayRouteCWTRedTeamRejectsAttacks(t *testing.T) {
 
 	t.Run("policy-bound route diversion", func(t *testing.T) {
 		claims := testGatewayRouteCWTClaims(now)
-		claims[gatewayroute.FieldRouteID] = "route-admin"
+		claims[gatewayroute.FieldRouteID] = testGatewayRouteAdminID
 		token := signTestCWT(t, "gateway-key", keys.manager, claims)
 		_, err := VerifyGatewayRouteCWT(token, testGatewayRouteCWTOptions(now, keys))
 		if !errors.Is(err, gatewayroute.ErrMismatch) {
