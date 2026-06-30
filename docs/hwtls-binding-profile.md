@@ -1,8 +1,9 @@
-# TLS and Attestation Binding Profile
+# Session and Attestation Binding Notes
 
-TLS and attestation binding expectations apply to application-profile
-material. AGTP is one reference target, but the profile does not define AGTP
-core syntax or introduce new cryptography.
+These notes describe how application-profile material is bound to an accepted
+session and accepted attestation facts. AGTP is one reference target, but this
+profile does not define AGTP core syntax, a TLS extension, an attestation
+evidence format, or new cryptography.
 
 This profile uses ordinary TLS 1.3 plus post-handshake platform attestation
 bound to the accepted TLS session. It is not a TLS extension, a replacement for
@@ -39,8 +40,11 @@ The direct-Agent profile uses:
 `attestation_binder_sha256` is the compact statement reference to the accepted
 attestation-channel binding. It connects the endpoint key, current TLS exporter
 value, verifier-accepted request context, and fresh evidence or verifier results
-that carry the same binding. It is not a standalone freshness proof; stale or
-unbound evidence still fails.
+that carry the same binding. The exact evidence format, challenge or nonce
+semantics, exporter or exported-authenticator inputs, canonical bytes, and
+freshness rules belong to the concrete binding profile or deployment appraisal
+profile. It is not a standalone freshness proof; stale or unbound evidence
+still fails.
 
 `leaf_public_key_sha256` confirms the accepted endpoint key. It is not
 session-unique by itself, because the same certificate key can be reused across

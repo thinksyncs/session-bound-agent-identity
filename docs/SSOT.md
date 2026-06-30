@@ -11,7 +11,9 @@ SPDX-License-Identifier: Apache-2.0
 ## Abstract
 
 This profile binds upper-layer identity and authorization material to an
-accepted TLS 1.3 session and to post-handshake platform-attestation facts. It is
+accepted TLS 1.3 session and to post-handshake platform-attestation facts. It
+uses accepted TLS/exported-authenticator results as inputs; it does not verify
+TLS 1.3, define a TLS extension, or define attested TLS. It is
 application-protocol neutral at D0 through D2 and does not depend on any
 application protocol to supply the trust model described here.
 
@@ -27,8 +29,9 @@ authority boundary.
 ## 1. Status
 
 This is a repository security-hardening profile. It is not an IETF consensus
-document and it does not define a new TLS handshake, a new attestation evidence
-format, a new identity provider, or a new application core protocol.
+document and it does not define a new TLS handshake, a TLS extension, a new
+attestation evidence format, a new identity provider, or a new application core
+protocol.
 
 Within this repository, this Markdown file is the normative source for the
 profile. Rendered specifications, notes, reports, and tests are derived from it
@@ -43,6 +46,14 @@ Normative requirements in this file apply to the profile behavior, not to a
 particular library layout. Implementation-status sections are descriptive unless
 they use the BCP 14 keywords above. Appendix D is non-normative.
 
+The review boundary is intentionally narrow. TLS 1.3, certificate-path
+validation, exporter computation, and key-schedule security are trusted
+components supplied by the deployment TLS stack. Attestation evidence syntax and
+appraisal policy are supplied by a concrete binding profile or deployment
+appraisal profile. This profile specifies how the verifier uses the accepted
+session, accepted binder values, authenticated grants, replay state, and local
+policy before returning a profile-authenticated identity.
+
 ## 2. Terms
 
 Session-Bound Agent Identity Profile means an application-profile acceptance
@@ -52,10 +63,11 @@ TLS extension. Platform attestation does not replace the TLS handshake and does
 not authenticate the platform before a TLS channel exists.
 
 The older shorthand `aTLS` is reserved for existing CoCos implementation code
-paths, package names, or historical text. Older text may also use
-"hardware-aware TLS" for the lower-layer TLS and attestation binding portion.
-New profile text should use "Session-Bound Agent Identity Profile" for the
-complete D0-D6 profile.
+paths, package names, or historical text. It is a legacy implementation name,
+not a claim that this profile defines attested TLS or a TLS extension. New
+profile text should use "Session-Bound Agent Identity Profile" for the complete
+D0-D6 profile and "accepted TLS/exported-authenticator and attestation facts"
+for the consumed lower-layer inputs.
 
 Repository artifacts may contain AGTP-named packages, tests, claim aliases, or
 historical notes. In this profile, AGTP is an implementation/reference
@@ -126,7 +138,7 @@ replay, canonical references, local policy comparison, and cache safety.
 | Remote attestation roles | RFC 9334 | The attestation-binder hash, accepted-evidence policy, and D1/D2 wiring are profile details. |
 | CWT/COSE | RFC 8392 and RFC 9052 | CWT/COSE is an alternative encoding for the same semantics, not a different trust model. |
 | Wallets, DID, and verifiable credentials | Deployment-specific; related work includes W3C DID and Verifiable Credentials specifications | A wallet can act as the holder-side presenter: store grants or credentials, protect confirmation keys, and create or present session-bound material after verifier challenge. Wallet metadata, display names, card fields, and credential labels are not verifier policy and do not replace Identity Grant, Session Binding Statement, replay, or local-policy checks. |
-| Repository implementation references | AGTP drafts/adapters and CoCos/aTLS implementation experience | These remain useful references for implementation, test vectors, and lower-layer attestation/TLS wiring. They are not normative application-protocol dependencies for this profile. |
+| Repository implementation references | AGTP drafts/adapters and CoCos legacy `pkg/atls` implementation experience | These remain useful references for implementation, test vectors, and session/attestation wiring. They are not normative application-protocol dependencies for this profile. |
 | HTTP response caching | RFC 9111 | The core rule is that security-state objects and verification results are not cacheable acceptance evidence. Detailed response-cache guidance is separated into `docs/http-cache-profile.md`. |
 | OIDC | OpenID Connect Core | OIDC is vocabulary only. This profile does not require OIDC. |
 | D0-D6, Identity Grant, Session Binding Statement, canonical references | Not standardized as one combined profile | These are local names for fail-closed identity binding. |
@@ -147,6 +159,11 @@ exported-authenticator validation, and platform-evidence appraisal correctly.
 This profile defines the identity and policy material that must be bound to
 those lower-layer facts before the application accepts the peer as the intended
 Agent.
+
+If the deployment accepts an insecure TLS connection, disables certificate
+validation where it is required, or appraises attestation evidence incorrectly,
+this profile cannot repair that lower-layer decision. The profile's checks start
+from the accepted session and accepted appraisal result.
 
 Out of scope for this threat model:
 
@@ -407,8 +424,12 @@ namespaces interchangeably.
 
 When accepted attestation evidence includes an attestation-to-channel binder,
 `attestation_binder_sha256` is REQUIRED in the Session Binding Statement and
-must match the accepted binder. When no such binder exists in the lower-layer
-session, the field is absent unless deployment policy requires it.
+must match the accepted binder. This core profile does not standardize one
+attestation-to-channel binder format. A concrete binding profile or deployment
+appraisal profile must define the evidence format, challenge or nonce semantics,
+TLS exporter or exported-authenticator inputs, canonical bytes, and freshness
+rules used to derive the accepted binder. When no such binder exists in the
+accepted session, the field is absent unless deployment policy requires it.
 
 ## 11. D2 Binding Construction
 
@@ -1065,8 +1086,9 @@ wrong-Agent assertions fail closed.
 
 The claim map and failure semantics are kept in
 `docs/gateway-routed-profile.md`. Local route-assertion validation lives in
-`pkg/agtp/gatewayroute`. Runtime client/server wiring and a full gateway-routed
-network red-team harness remain separate work.
+`pkg/agtp/gatewayroute`; `pkg/agtp` also includes a local HTTP route-assertion
+network harness for route diversion and replay. Runtime client/server gateway
+wiring remains separate work.
 
 ## 21. Implementation hooks
 
@@ -1214,7 +1236,8 @@ issuer, audience, expiry, nonce, grant hash, gateway session-binding hash,
 holder-of-key proof hash, replay state, and local route policy before
 acceptance. These adapters are descriptive implementation references; they do not
 make AGTP a normative dependency and they do not replace runtime client/server
-wiring or a full gateway network harness.
+wiring. The current HTTP route-assertion harness covers route-token policy
+checks across a request boundary, not a full gateway runtime.
 
 The initial JWT/JWS adapter treats grant `cnf.kid` as the authorized
 session-binding signer key. The Session Binding Statement signer is taken from
@@ -1243,7 +1266,10 @@ The implemented production profile covers:
 - replay-cache enforcement before the observed identity is accepted;
 - local Gateway Route Assertion validation for gateway-routed deployments,
   including policy-bound diversion and required final-Agent holder-of-key proof
-  checks.
+  checks;
+- local HTTP route-assertion harness coverage for route diversion and replay;
+- local QUIC/TLS early-data authentication gating coverage for pre-binding
+  rejection.
 
 Deployment still chooses trusted keys, expected policy values, revocation data,
 and distributed replay storage. Those sources can be Manager configuration,
@@ -1253,10 +1279,11 @@ fail-closed registry integration. They must not be raw peer-controlled metadata.
 ## 26. Evaluation boundary
 
 Negative test vectors, unit tests, and dependency-free live-style harnesses are
-necessary, but they are not sufficient evidence for the full security claim.
-The profile's central claim is receiver-verifiable linkage: the verified grant,
-Session Binding Statement, accepted session, attestation result, replay state,
-and local expected policy all describe the same intended interaction.
+necessary, but they are not formal proof and are not sufficient evidence for a
+broad deployment security claim. The profile's central implementation claim is
+receiver-verifiable linkage: the verified grant, Session Binding Statement,
+accepted session, attestation result, replay state, and local expected policy
+all describe the same intended interaction.
 
 An implementation that claims this profile should evaluate at least:
 
@@ -1277,14 +1304,16 @@ An implementation that claims this profile should evaluate at least:
 repository and which remain future evaluation work.
 
 Current repository coverage includes local loopback relay checks, HTTP/2
-connection-reuse checks, malformed JWT/CWT corpus checks, deterministic
-acceptance-invariant coverage for the JWT gate, local gateway route-assertion
-red-team tests for policy-bound diversion and holder-of-key proof requirements,
-JWT/JWS plus CWT/COSE route-assertion adapters, and local TLS-resumption
-coverage for JWT/JWS acceptance. Remaining work includes real 0-RTT transport
-behavior, gRPC-specific connection pooling, runtime gateway wiring, a full
-gateway-routed network harness, randomized property or fuzz generation, and
-hardware-backed confidential-VM attestation replay.
+connection-reuse checks, local gRPC reuse checks, malformed JWT/CWT corpus
+checks, deterministic acceptance-invariant coverage for the JWT gate, local
+gateway route-assertion red-team tests for policy-bound diversion and
+holder-of-key proof requirements, a local HTTP route-assertion harness,
+JWT/JWS plus CWT/COSE route-assertion adapters, local TLS-resumption coverage,
+QUIC/TLS early-data authentication gating, and a 60-second JWT/JWS fuzz pass.
+Remaining work includes end-to-end application 0-RTT payload behavior,
+broader deployment gRPC connection pooling, runtime gateway wiring, longer
+randomized property or fuzz campaigns, and hardware-backed confidential-VM
+attestation replay.
 
 ## 27. Conformance checklist
 

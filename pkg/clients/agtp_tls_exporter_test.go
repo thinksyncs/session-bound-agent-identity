@@ -1,12 +1,14 @@
+// Copyright (c) 2026 ToppyMicroServices OÜ
 // SPDX-License-Identifier: Apache-2.0
 
 package clients
 
 import (
 	"errors"
+	"testing"
+
 	"github.com/thinksyncs/agents-secure-binding/pkg/atls"
 	"github.com/thinksyncs/agents-secure-binding/pkg/atls/identitypolicy"
-	"testing"
 )
 
 func TestAGTPObservedIdentityRejectsMockedTLSExporterWithRealState(t *testing.T) {

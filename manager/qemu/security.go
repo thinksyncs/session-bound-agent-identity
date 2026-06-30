@@ -1,15 +1,32 @@
-// Copyright (c) 2026 ToppyMicroServices OU
+// Copyright (c) 2026 ToppyMicroServices OÜ
 // SPDX-License-Identifier: Apache-2.0
 
 package qemu
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"strings"
 )
 
 const SEVSNPHostDataHexLength = 64
+
+var (
+	ErrMissingSEVSNPAppraisalValue = errors.New("missing SEV-SNP appraisal value")
+	ErrSEVSNPAppraisalMismatch     = errors.New("SEV-SNP appraisal mismatch")
+)
+
+type SEVSNPAppraisalContract struct {
+	RequireHostData     bool
+	ExpectedHostData    string
+	RequireKernelHashes bool
+}
+
+type SEVSNPAppraisalEvidence struct {
+	HostData            string
+	KernelHashesEnabled bool
+}
 
 // NormalizeSEVSNPHostData validates and normalizes a SEV-SNP HostData value.
 func NormalizeSEVSNPHostData(hostData string) (string, error) {
@@ -25,6 +42,32 @@ func NormalizeSEVSNPHostData(hostData string) (string, error) {
 		return "", fmt.Errorf("invalid SEV-SNP host data: expected 32 bytes")
 	}
 	return normalized, nil
+}
+
+func (contract SEVSNPAppraisalContract) Validate(evidence SEVSNPAppraisalEvidence) error {
+	if contract.RequireHostData {
+		if strings.TrimSpace(contract.ExpectedHostData) == "" {
+			return fmt.Errorf("expected host data: %w", ErrMissingSEVSNPAppraisalValue)
+		}
+		expected, err := NormalizeSEVSNPHostData(contract.ExpectedHostData)
+		if err != nil {
+			return fmt.Errorf("expected host data: %w", err)
+		}
+		if strings.TrimSpace(evidence.HostData) == "" {
+			return fmt.Errorf("observed host data: %w", ErrMissingSEVSNPAppraisalValue)
+		}
+		observed, err := NormalizeSEVSNPHostData(evidence.HostData)
+		if err != nil {
+			return fmt.Errorf("observed host data: %w", err)
+		}
+		if observed != expected {
+			return fmt.Errorf("host data: %w", ErrSEVSNPAppraisalMismatch)
+		}
+	}
+	if contract.RequireKernelHashes && !evidence.KernelHashesEnabled {
+		return fmt.Errorf("kernel hashes: %w", ErrSEVSNPAppraisalMismatch)
+	}
+	return nil
 }
 
 func (config Config) ValidateSecurity() error {

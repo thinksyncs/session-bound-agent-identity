@@ -23,14 +23,16 @@ Local pre-publication gate after the README/module-path/runtime hardening work:
 | --- | --- | --- | --- | --- |
 | `7c29c48451cea5aeedda42171d28b67e67712a92` plus staged changes | Security red-team gate | `GOTOOLCHAIN=go1.26.0+auto go test -v -race -count=1 ./pkg/agtp ./pkg/atls/identitypolicy ./pkg/clients` | Success | 2026-06-28 14:11 UTC |
 | unsigned local worktree after Beads/product-readiness changes | Product-readiness gate | `GOCACHE=/private/tmp/asb-gocache make product-security-gate` | Success; `govulncheck` reported 0 called vulnerabilities | 2026-06-28 16:25 UTC |
+| unsigned local worktree after 0-RTT, gateway-route, and appraisal-contract changes | Full Go test gate | `go test -count=1 ./...` | Success | 2026-06-30 08:34 UTC |
+| unsigned local worktree after 0-RTT, gateway-route, and appraisal-contract changes | JWT/JWS fuzz gate | `go test -run '^$' -fuzz=FuzzVerifySessionIdentityJWTRejectsMalformedCompactTokens -fuzztime=60s ./pkg/agtp` | Success; 1,252,457 executions | 2026-06-30 08:34 UTC |
 
-This checkpoint is not a full security proof. The remote CI and Security Red
-Team run IDs above are not updated for the staged publication-prep changes
-until those changes are signed, committed, pushed, and re-run on GitHub Actions.
-The product gate is scoped to the Direct-Agent core and reference adapters.
-Inherited agent/manager runtime integration tests include VM, sudo, loopback
-listener, and Python package-install paths and remain separate integration
-coverage.
+This checkpoint is not a formal proof or a broad deployment security claim. The
+remote CI and Security Red Team run IDs above are not updated for the staged
+publication-prep changes until those changes are signed, committed, pushed, and
+re-run on GitHub Actions. The product gate is scoped to the Direct-Agent core
+and reference adapters. Inherited agent/manager runtime integration tests
+include VM, sudo, loopback listener, and Python package-install paths and remain
+separate integration coverage.
 
 ## Dependency Alert Status
 
@@ -54,8 +56,8 @@ classified as follows:
 | Area | Classification | Guardrail |
 | --- | --- | --- |
 | Unix-socket service clients for log, attestation-service, and computation-runner | Accepted local IPC | Target is constructed as `unix://...`; no TCP fallback. |
-| aTLS gRPC client path in `pkg/clients/grpc` | Accepted wrapper use | gRPC receives plaintext credentials only because the custom dialer supplies the accepted aTLS connection. |
-| Standard gRPC client path in `pkg/clients/grpc` | Fail-closed for remote plaintext | Plaintext is accepted only for Unix socket, `localhost`, or loopback targets. Remote plaintext requires TLS or aTLS. |
+| Legacy `pkg/atls` gRPC client path in `pkg/clients/grpc` | Accepted wrapper use | gRPC receives plaintext credentials only because the custom dialer supplies the already accepted package-wrapped TLS connection. |
+| Standard gRPC client path in `pkg/clients/grpc` | Fail-closed for remote plaintext | Plaintext is accepted only for Unix socket, `localhost`, or loopback targets. Remote plaintext requires TLS or the accepted package-wrapped TLS path. |
 | Agent CVM gRPC server | Fail-closed for public plaintext | Plaintext TCP listeners are accepted only on loopback. Unix sockets remain accepted. |
 | Runtime gRPC server wrapper | Fail-closed for public plaintext | Listener without TLS is accepted only for `localhost` or loopback bind hosts. |
 | CC attestation-agent clients | Fail-closed for remote plaintext | Plaintext TCP is accepted only on loopback. |
@@ -91,17 +93,18 @@ resolve them.
 | --- | --- | --- | --- |
 | OCI image handling | `pkg/oci/skopeo.go` no longer passes `--insecure-policy`, `--src-tls-verify=false`, `--dest-tls-verify=false`, or `--tls-verify=false`. | Addressed for the current runtime helper. | Keep skopeo policy and TLS verification enabled by default; do not add an insecure development mode without explicit tests and documentation. |
 | Egress proxy policy | `pkg/egress/proxy.go` now defaults to loopback-only destinations and supports an explicit host, host:port, IP, or CIDR allowlist for CONNECT, HTTP, and HTTP/2 paths. | Addressed for the current proxy helper. | Configure `EGRESS_PROXY_ALLOWLIST` or `--allowlist` for non-loopback deployments; store unavailability is not part of this local proxy. |
-| SEV-SNP HostData and kernel hashes | Go QEMU launch paths and `hal/cloud/qemu.sh` now reject invalid HostData before launch. `kernel-hashes=on` still has no profile-level appraisal contract. | Partly addressed; P0 before relying on HostData or kernel hashes as verifier policy. | Define the expected HostData source, hash construction, appraisal rule, and fail-closed behavior when missing or mismatched. |
+| SEV-SNP HostData and kernel hashes | Go QEMU launch paths and `hal/cloud/qemu.sh` now reject invalid HostData before launch. `SEVSNPAppraisalContract` defines fail-closed HostData and `kernel-hashes=on` appraisal checks for verifier-policy use. | Addressed for the local code-level appraisal contract; hardware evidence wiring remains deployment validation. | Use the contract with an explicit evidence source. Do not rely on launch flags alone as accepted verifier evidence. |
 | Zip extraction | `internal/zip.go` validates archive entry paths before extraction. | Addressed for the current in-memory zip helper. | Continue rejecting absolute paths, `..` traversal, unsafe symlinks, unsupported file types, and paths escaping the extraction root. |
 
 ## Evaluation Boundaries
 
-The v0.4 red-team evidence is useful but limited. Before stronger public
+The v0.4 red-team evidence is useful but limited. Before broader public
 claims, add or explicitly defer:
 
-- real 0-RTT early-data transport coverage;
+- end-to-end application 0-RTT payload behavior beyond the dependency-free
+  QUIC/TLS early-data harness;
 - broader gRPC deployment pooling beyond the local reuse harness;
-- full gateway-routed network harness;
-- long-running randomized fuzz/property generation beyond the bounded
-  token-parser smoke target;
+- runtime gateway wiring beyond the route-assertion HTTP network harness;
+- longer randomized fuzz/property campaigns beyond the 60-second JWT/JWS fuzz
+  pass and deterministic invariant matrix;
 - hardware-backed confidential-VM attestation replay coverage.

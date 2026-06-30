@@ -1155,6 +1155,65 @@ func TestVerifySessionIdentityJWTLiveRedTeamRejectsTLSResumptionReplayAndPreBind
 	}
 }
 
+func TestVerifySessionIdentityJWTLiveRedTeamRejectsQUICEarlyDataAuthentication(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	grantToken := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
+	clientConfig, serverConfig := liveRedTeamQUICTLSConfigs(t)
+
+	initialClient := liveRedTeamQUICClient(t, clientConfig)
+	initialClient.conn.SetTransportParameters(nil)
+	initialServer := liveRedTeamQUICServer(t, serverConfig)
+	initialServer.conn.SetTransportParameters(nil)
+	initialServer.ticketOpts.EarlyData = true
+	if err := liveRedTeamRunQUICConnection(context.Background(), initialClient, initialServer); err != nil {
+		t.Fatalf("initial QUIC handshake error = %v", err)
+	}
+	if initialClient.conn.ConnectionState().DidResume {
+		t.Fatal("first QUIC connection unexpectedly resumed")
+	}
+
+	resumedClient := liveRedTeamQUICClient(t, clientConfig)
+	resumedClient.conn.SetTransportParameters(nil)
+	resumedServer := liveRedTeamQUICServer(t, serverConfig)
+	resumedServer.conn.SetTransportParameters(nil)
+	if err := liveRedTeamRunQUICConnection(context.Background(), resumedClient, resumedServer); err != nil {
+		t.Fatalf("resumed QUIC handshake error = %v", err)
+	}
+	if !resumedClient.conn.ConnectionState().DidResume {
+		t.Fatal("second QUIC connection did not resume")
+	}
+	if resumedClient.writeSecret[tls.QUICEncryptionLevelEarly].secret == nil {
+		t.Fatal("resumed QUIC client did not receive early-data write secret")
+	}
+	if resumedServer.readSecret[tls.QUICEncryptionLevelEarly].secret == nil {
+		t.Fatal("resumed QUIC server did not receive early-data read secret")
+	}
+
+	contextBytes := []byte("agtp-lrtt18-quic-early-context")
+	contextHash := liveRedTeamSHA256Hex(contextBytes)
+	earlyClaims := liveRedTeamBindingClaimsWithSession(now, grantToken, "lrtt18-early", "", contextHash, "nonce-lrtt18-early")
+	delete(earlyClaims, "tls_exporter_sha256")
+	earlyToken := signTestJWT(t, "agent-key-1", []byte("agent-secret"), earlyClaims)
+	_, err := VerifySessionIdentityJWT(grantToken, earlyToken,
+		liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), "not-available-before-finished-handshake", contextHash, "nonce-lrtt18-early"))
+	if !errors.Is(err, ErrMissingBindingField) {
+		t.Fatalf("VerifySessionIdentityJWT() QUIC early-data binding error = %v, want %v", err, ErrMissingBindingField)
+	}
+
+	state := resumedClient.conn.ConnectionState()
+	exported, err := state.ExportKeyingMaterial(attestation.ExporterLabelAttestation, contextBytes, 32)
+	if err != nil {
+		t.Fatalf("ExportKeyingMaterial() error = %v", err)
+	}
+	exporterHash := liveRedTeamSHA256Hex(exported)
+	finishedToken := signTestJWT(t, "agent-key-1", []byte("agent-secret"),
+		liveRedTeamBindingClaimsWithSession(now, grantToken, "lrtt18-finished", exporterHash, contextHash, "nonce-lrtt18-finished"))
+	if _, err := VerifySessionIdentityJWT(grantToken, finishedToken,
+		liveRedTeamSessionIdentityOptions(now, newAGTPReplayCache(), exporterHash, contextHash, "nonce-lrtt18-finished")); err != nil {
+		t.Fatalf("VerifySessionIdentityJWT() QUIC finished-handshake binding error = %v", err)
+	}
+}
+
 func TestVerifySessionIdentityJWTRedTeamRejectsMalformedCorpus(t *testing.T) {
 	now := time.Unix(1_700_000_000, 0)
 	validGrant := signTestJWT(t, "manager-key", []byte("manager-secret"), testDefaultGrantClaims(now))
@@ -1659,6 +1718,145 @@ func firstMetadataValue(md metadata.MD, key string) string {
 type liveRedTeamTLSMaterial struct {
 	exporterHash string
 	didResume    bool
+}
+
+type liveRedTeamQUICSecret struct {
+	suite  uint16
+	secret []byte
+}
+
+type liveRedTeamQUICConn struct {
+	conn              *tls.QUICConn
+	readSecret        map[tls.QUICEncryptionLevel]liveRedTeamQUICSecret
+	writeSecret       map[tls.QUICEncryptionLevel]liveRedTeamQUICSecret
+	ticketOpts        tls.QUICSessionTicketOptions
+	onResumeSession   func(*tls.SessionState)
+	earlyDataRejected bool
+	complete          bool
+	started           bool
+}
+
+func liveRedTeamQUICClient(t *testing.T, config *tls.QUICConfig) *liveRedTeamQUICConn {
+	t.Helper()
+	conn := &liveRedTeamQUICConn{conn: tls.QUICClient(config)}
+	t.Cleanup(func() {
+		_ = conn.conn.Close()
+	})
+	return conn
+}
+
+func liveRedTeamQUICServer(t *testing.T, config *tls.QUICConfig) *liveRedTeamQUICConn {
+	t.Helper()
+	conn := &liveRedTeamQUICConn{conn: tls.QUICServer(config)}
+	t.Cleanup(func() {
+		_ = conn.conn.Close()
+	})
+	return conn
+}
+
+func liveRedTeamRunQUICConnection(ctx context.Context, client, server *liveRedTeamQUICConn) error {
+	for _, conn := range []*liveRedTeamQUICConn{client, server} {
+		if !conn.started {
+			if err := conn.conn.Start(ctx); err != nil {
+				return err
+			}
+			conn.started = true
+		}
+	}
+
+	source, target := client, server
+	idleCount := 0
+	for {
+		event := source.conn.NextEvent()
+		switch event.Kind {
+		case tls.QUICNoEvent:
+			idleCount++
+			if idleCount == 2 {
+				if !client.complete || !server.complete {
+					return errors.New("QUIC handshake incomplete")
+				}
+				return nil
+			}
+			source, target = target, source
+		case tls.QUICSetReadSecret:
+			source.setReadSecret(event.Level, event.Suite, event.Data)
+		case tls.QUICSetWriteSecret:
+			source.setWriteSecret(event.Level, event.Suite, event.Data)
+		case tls.QUICWriteData:
+			if err := target.conn.HandleData(event.Level, event.Data); err != nil {
+				return err
+			}
+		case tls.QUICTransportParameters:
+		case tls.QUICTransportParametersRequired:
+			return errors.New("QUIC transport parameters required")
+		case tls.QUICHandshakeDone:
+			source.complete = true
+			if source == server {
+				if err := server.conn.SendSessionTicket(server.ticketOpts); err != nil {
+					return err
+				}
+			}
+		case tls.QUICStoreSession:
+			if source != client {
+				return errors.New("unexpected QUICStoreSession event on server")
+			}
+			if err := source.conn.StoreSession(event.SessionState); err != nil {
+				return err
+			}
+		case tls.QUICResumeSession:
+			if source.onResumeSession != nil {
+				source.onResumeSession(event.SessionState)
+			}
+		case tls.QUICRejectedEarlyData:
+			source.earlyDataRejected = true
+		case tls.QUICErrorEvent:
+			if event.Err == nil {
+				return errors.New("QUIC error event without error")
+			}
+			return event.Err
+		}
+		if event.Kind != tls.QUICNoEvent {
+			idleCount = 0
+		}
+	}
+}
+
+func (conn *liveRedTeamQUICConn) setReadSecret(level tls.QUICEncryptionLevel, suite uint16, secret []byte) {
+	if conn.readSecret == nil {
+		conn.readSecret = map[tls.QUICEncryptionLevel]liveRedTeamQUICSecret{}
+	}
+	conn.readSecret[level] = liveRedTeamQUICSecret{suite: suite, secret: secret}
+}
+
+func (conn *liveRedTeamQUICConn) setWriteSecret(level tls.QUICEncryptionLevel, suite uint16, secret []byte) {
+	if conn.writeSecret == nil {
+		conn.writeSecret = map[tls.QUICEncryptionLevel]liveRedTeamQUICSecret{}
+	}
+	conn.writeSecret[level] = liveRedTeamQUICSecret{suite: suite, secret: secret}
+}
+
+func liveRedTeamQUICTLSConfigs(t *testing.T) (*tls.QUICConfig, *tls.QUICConfig) {
+	t.Helper()
+	cert := liveRedTeamSelfSignedTLSCertificate(t)
+	clientConfig := &tls.QUICConfig{
+		TLSConfig: &tls.Config{
+			MinVersion:         tls.VersionTLS13,
+			MaxVersion:         tls.VersionTLS13,
+			ServerName:         "localhost",
+			InsecureSkipVerify: true,
+			ClientSessionCache: tls.NewLRUClientSessionCache(1),
+			NextProtos:         []string{"h3"},
+		},
+	}
+	serverConfig := &tls.QUICConfig{
+		TLSConfig: &tls.Config{
+			Certificates: []tls.Certificate{cert},
+			MinVersion:   tls.VersionTLS13,
+			MaxVersion:   tls.VersionTLS13,
+			NextProtos:   []string{"h3"},
+		},
+	}
+	return clientConfig, serverConfig
 }
 
 func liveRedTeamTLSServer(t *testing.T, maxConnections int) string {

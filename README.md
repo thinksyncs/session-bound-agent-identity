@@ -7,18 +7,20 @@ Draft status: repository security-hardening draft.
 Current source of truth: `docs/SSOT.md`, Draft v0.5-review2.
 
 Standards status: this is not an IETF consensus document and does not define a
-new TLS handshake, attestation evidence format, identity provider, or
-application protocol.
+new TLS handshake, TLS extension, attestation evidence format, identity
+provider, or application protocol.
 
-Evaluation boundary: the v0.4 evaluation is useful implementation evidence, but
-it is not a full security proof. The latest recorded remote implementation
-checkpoint is commit `4c3e4fc57cca52a6423394fe2292d620f957c962`: GitHub
-Actions `CI` run `28181903677` and `Security Red Team` run `28181903553` both
-completed successfully on 2026-06-25 UTC.
+Evaluation boundary: the v0.4 evaluation is useful implementation evidence for
+the checked fail-closed verifier behavior. It is not a formal proof and should
+not be cited as validation of TLS, attestation formats, or all deployments. The
+latest recorded remote implementation checkpoint is commit
+`4c3e4fc57cca52a6423394fe2292d620f957c962`: GitHub Actions `CI` run
+`28181903677` and `Security Red Team` run `28181903553` both completed
+successfully on 2026-06-25 UTC.
 
 ## What This Is / Is Not
 
-Agents Secure Binding implements an experimental Direct-Agent binding profile
+Agents Secure Binding implements one experimental Direct-Agent binding profile
 based on the core acceptance rules. It is not the draft itself, and it does not
 claim to implement every binding profile.
 
@@ -31,9 +33,12 @@ This repository contains profile text, implementation helpers, tests, vectors,
 and derived notes for that acceptance rule.
 
 The Direct-Agent runtime implementation is centered on `pkg/clients`,
-`pkg/atls`, and `pkg/atls/identitypolicy`. The legacy-named `pkg/agtp` package
-is retained as an experimental reference-adapter surface for JWT/JWS, CWT/COSE,
-and gateway-route policy experiments; it is not the core verifier dependency.
+`pkg/atls`, and `pkg/atls/identitypolicy`. The `pkg/atls` name is a legacy
+implementation package name from the inherited codebase; it does not mean this
+repository defines attested TLS or a TLS extension. The legacy-named `pkg/agtp`
+package is retained as an experimental reference-adapter surface for JWT/JWS,
+CWT/COSE, and gateway-route policy experiments; it is not the core verifier
+dependency.
 
 This profile is not:
 
@@ -52,6 +57,19 @@ themselves supply the verifier-side acceptance rule.
 Wallets are optional presentation or signing components, not trust roots or
 sources of expected policy. Gateway-routed mode is out of scope for this
 Direct-Agent implementation surface.
+
+Review boundary:
+
+- TLS 1.3, certificate-path validation, exporter computation, and key-schedule
+  security are delegated to the deployment TLS stack. This repository consumes
+  an already accepted TLS connection.
+- Attestation evidence formats and appraisal policy are delegated to the
+  concrete binding profile or deployment appraisal profile. This repository
+  checks the accepted binder value when that profile supplies one.
+- The red-team evidence supports the tested fail-closed verifier behavior. It
+  is not a formal proof and does not validate every deployment topology.
+- Legacy package names such as `pkg/atls` and `pkg/agtp` are implementation
+  compatibility names. They do not define the protocol trust model.
 
 ## Start Here
 
@@ -110,24 +128,24 @@ Covered in the current v0.4 evidence:
 - relay, replay, wrong-context, wrong-Agent, downgrade, stale-evidence,
   measurement-mismatch, and binding-parameter confusion checks;
 - dependency-free live-style harnesses for local TLS exporter binding, HTTP/2
-  and gRPC connection reuse, TLS resumption replay rejection, malformed token
-  corpora, bounded fuzz smoke for compact JWT/JWS parsing, and deterministic
-  acceptance invariants;
-- route-assertion policy unit tests for the documented gateway boundary, with
-  no runtime gateway mode.
+  and gRPC connection reuse, TLS resumption replay rejection, QUIC/TLS
+  early-data pre-binding rejection, malformed token corpora, bounded fuzz smoke
+  for compact JWT/JWS parsing, and deterministic acceptance invariants;
+- route-assertion policy tests and a local HTTP route-assertion harness for the
+  documented gateway boundary, with no runtime gateway mode.
 
 For accepted TLS sessions, the AGTP observed-identity path derives
 `tls_exporter_sha256` from the accepted `tls.ConnectionState`. Fixed exporter
 bytes are used only in synthetic unit fixtures.
 
-Not yet validated as a full security claim:
+Not yet validated as a broad deployment security claim:
 
-- real 0-RTT early-data transport behavior;
+- end-to-end application 0-RTT payload behavior beyond the dependency-free
+  QUIC/TLS early-data harness;
 - broader gRPC deployment pooling beyond the local reuse harness;
-- runtime gateway wiring and a full gateway-routed network harness, if that
-  profile is split out for separate implementation;
-- long-running fuzz/property campaigns beyond the bounded token-parser smoke
-  target;
+- runtime gateway wiring beyond the route-assertion HTTP harness;
+- longer fuzz/property campaigns beyond the bounded token-parser smoke target
+  and the current 60-second local fuzz pass;
 - hardware-backed confidential-VM attestation replay coverage.
 
 See `docs/live-red-team-report.md` for the evidence matrix and
@@ -135,8 +153,8 @@ See `docs/live-red-team-report.md` for the evidence matrix and
 
 ## Implementation Provenance
 
-This repository contains derived runtime, attestation, aTLS, manager, agent,
-HAL, proxy, OCI, and helper code from
+This repository contains derived runtime, attestation, legacy `pkg/atls`,
+manager, agent, HAL, proxy, OCI, and helper code from
 [ultravioletrs/cocos](https://github.com/ultravioletrs/cocos), plus
 profile-specific documentation, tests, vectors, and security-profile helpers
 for Agents Secure Binding.

@@ -1,6 +1,6 @@
-# AGTP Security-Profile Feedback
+# AGTP Security-Profile Notes
 
-This non-normative note lists AGTP-facing security-profile feedback. The
+This non-normative note lists AGTP-facing security-profile notes. The
 normative source of truth for this repository is `docs/SSOT.md`.
 
 The scope is limited to security-hardening behavior that changes what an
@@ -10,21 +10,21 @@ or rejection.
 
 AGTP core is treated as existing work in the
 [Agent2Agent GitHub repository](https://github.com/a2aproject/A2A) and as one
-reference target for this profile. This repository does not define a competing
-AGTP core protocol or an AGTP subset. The intended contribution is
-narrower:
+reference target for this profile. This repository does not redefine AGTP core
+protocol behavior or define an AGTP subset. The intended contribution is
+narrower and optional:
 
-- a security profile that supplements missing semantic-binding, canonicalization,
-  replay, and fail-closed local-policy checks for AGTP and similar deployments;
+- optional security-profile requirements for semantic binding,
+  canonicalization, replay, and fail-closed local-policy checks in AGTP-like
+  deployments;
 - implementation feedback from the
-  [Cocos](https://github.com/ultravioletrs/cocos) hardware-attested TLS
-  identity-policy work;
+  [Cocos](https://github.com/ultravioletrs/cocos) legacy session/attestation
+  binding and identity-policy work;
 - interop and negative test vectors for security-sensitive behavior.
 
 ## Selection Rule
 
-Keep an item here only when missing it can cause one of these acceptance
-failures:
+Keep an item here only when it affects one of these acceptance failures:
 
 - a binding from the wrong live TLS or attestation session is accepted;
 - the right platform is accepted for the wrong service, tenant, agent, task, or
@@ -40,12 +40,12 @@ Omit items that are mainly:
 - generic OAuth, OIDC, JWT, JWS, CWT, or COSE behavior;
 - editorial naming or explanatory wording without a security test impact.
 
-## High-Priority Items
+## Candidate Items
 
-These items can be shared as security-profile requirements and test-vector
-requests.
+These items can be shared as candidate security-profile requirements and
+test-vector requests.
 
-| ID | Security question | Required profile decision | Test-vector anchor |
+| ID | Security question | Profile decision | Test-vector anchor |
 | --- | --- | --- | --- |
 | AGTP-FB-01 | How is AGTP-carried identity material bound to the accepted TLS and attestation session? | A Session Binding Statement must be verifiable against the accepted endpoint key, exporter context, attestation binder when present, and replay state. Mismatches fail closed. | `hwtls-id-profile-relay-001`; `TestAGTPObservedIdentityRedTeamRejectsAttestationBinderMismatch`; `TestAGTPObservedIdentityRedTeamRejectsMissingAttestationBinder` |
 | AGTP-FB-02 | Which semantic target values are verifier-local policy, and which are only observed peer claims? | Service, tenant, deployment, agent or workload, task or delegation, scope, resource, and authorization values must be compared against local expected policy. Peer-provided values must not become expected values. | `hwtls-id-profile-diversion-001`; `hwtls-id-profile-wrong-agent-001`; `hwtls-id-profile-binding-confusion-001` |

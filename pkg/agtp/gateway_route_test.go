@@ -6,6 +6,10 @@ package agtp
 import (
 	"crypto/ecdsa"
 	"errors"
+	"io"
+	"net/http"
+	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -136,6 +140,49 @@ func TestVerifyGatewayRouteJWTRejectsMissingProtectedKeyIDAndReplay(t *testing.T
 	if _, err := VerifyGatewayRouteJWT(replayToken, opts); !errors.Is(err, gatewayroute.ErrReplayDetected) {
 		t.Fatalf("VerifyGatewayRouteJWT() replay error = %v, want %v", err, gatewayroute.ErrReplayDetected)
 	}
+}
+
+func TestVerifyGatewayRouteJWTLiveRedTeamNetworkHarness(t *testing.T) {
+	now := time.Unix(1_700_000_000, 0)
+	replay := newAGTPReplayCache()
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		routeID := strings.TrimPrefix(r.URL.Path, "/routes/")
+		routeID, _, _ = strings.Cut(routeID, "/")
+		opts := testGatewayRouteJWTOptions(now)
+		opts.Route.ReplayCache = replay
+		opts.Expected.RouteID = routeID
+		proof := testGatewayHolderProof(now)
+		proof.RouteID = routeID
+		if routeID == "route-admin" {
+			proof.Nonce = "route-nonce-admin"
+		}
+		opts.Proof = proof
+		if _, err := VerifyGatewayRouteJWT(r.Header.Get("X-Gateway-Route-JWT"), opts); err != nil {
+			http.Error(w, err.Error(), http.StatusForbidden)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	}))
+	defer server.Close()
+
+	paymentClaims := testGatewayRouteJWTClaims(now)
+	paymentToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), paymentClaims)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-payments/tasks/task-a", paymentToken, http.StatusNoContent)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-payments/tasks/task-a", paymentToken, http.StatusForbidden)
+
+	wrongRouteClaims := testGatewayRouteJWTClaims(now)
+	wrongRouteClaims["jti"] = "route-assertion-wrong-route"
+	wrongRouteClaims[gatewayroute.FieldNonce] = "route-nonce-wrong-route"
+	wrongRouteToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), wrongRouteClaims)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-admin/tasks/task-a", wrongRouteToken, http.StatusForbidden)
+
+	adminClaims := testGatewayRouteJWTClaims(now)
+	adminClaims["jti"] = "route-assertion-admin"
+	adminClaims[gatewayroute.FieldNonce] = "route-nonce-admin"
+	adminClaims[gatewayroute.FieldRouteID] = "route-admin"
+	adminToken := signTestJWT(t, "gateway-key", []byte("gateway-secret"), adminClaims)
+	liveRedTeamGatewayRouteRequest(t, server.URL+"/routes/route-admin/tasks/task-a", adminToken, http.StatusNoContent)
 }
 
 func TestVerifyGatewayRouteCWTAcceptsLocalPolicy(t *testing.T) {
@@ -358,4 +405,23 @@ func signGatewayRouteJWTWithoutKID(t *testing.T, secret []byte, claims jwt.MapCl
 		t.Fatalf("SignedString() error = %v", err)
 	}
 	return tokenString
+}
+
+func liveRedTeamGatewayRouteRequest(t *testing.T, url, token string, wantStatus int) {
+	t.Helper()
+	req, err := http.NewRequest(http.MethodGet, url, nil)
+	if err != nil {
+		t.Fatalf("NewRequest() error = %v", err)
+	}
+	req.Header.Set("X-Gateway-Route-JWT", token)
+
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		t.Fatalf("Do(%s) error = %v", url, err)
+	}
+	defer resp.Body.Close()
+	_, _ = io.Copy(io.Discard, resp.Body)
+	if resp.StatusCode != wantStatus {
+		t.Fatalf("Do(%s) status = %d, want %d", url, resp.StatusCode, wantStatus)
+	}
 }

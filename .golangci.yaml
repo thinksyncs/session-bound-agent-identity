@@ -52,8 +52,11 @@ linters:
         - experimental
         - opinionated
     goheader:
+      values:
+        regexp:
+          COPYRIGHT_HOLDER: "(Ultraviolet|2026 ToppyMicroServices OÜ)"
       template: |-
-        Copyright (c) Ultraviolet
+        Copyright (c) {{ COPYRIGHT_HOLDER }}
         SPDX-License-Identifier: Apache-2.0
     staticcheck:
       checks:
